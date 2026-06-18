@@ -18,8 +18,12 @@ API.interceptors.request.use((config) => {
 
 // Auth API
 export const authAPI = {
+  login: (data) => API.post('/auth/login', data),
   register: (data) => API.post('/auth/register', data),
-  login: (data) => API.post('/auth/login', data)
+  getProfile: () => API.get('/auth/me'),
+  updateProfile: (data) => API.put('/auth/updatedetails', data),
+  forgotPassword: (email) => API.post('/auth/forgot-password', { email }),
+  resetPassword: (token, password) => API.put(`/auth/reset-password/${token}`, { password })
 };
 
 // Events API
@@ -63,7 +67,22 @@ export const adminAPI = {
   getStats: () => API.get('/admin/stats'),
   getBookings: () => API.get('/admin/bookings'),
   updatePaymentStatus: (bookingId, status) =>
-    API.put(`/admin/bookings/${bookingId}/payment`, { paymentStatus: status })
+    API.put(`/admin/bookings/${bookingId}/payment`, { paymentStatus: status }),
+  getGatewayStatus: () => API.get('/admin/gateway/status'),
+  getUsers: () => API.get('/admin/users'),
+  updateUserRole: (userId, role) => API.put(`/admin/users/${userId}/role`, { role })
+};
+
+export const uploadAPI = {
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return API.post('/upload/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  }
 };
 
 export default API;

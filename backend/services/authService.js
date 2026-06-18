@@ -36,6 +36,11 @@ const register = async (userData) => {
 
   const token = generateToken(user);
 
+  const { publishDomainEvent } = require('../shared/domainEventPublisher');
+  const EVENTS = require('../shared/domainEvents');
+  
+  await publishDomainEvent(EVENTS.USER_REGISTERED, { user: { id: user._id, name: user.name, email: user.email } }, { source: 'auth-service' });
+
   return {
     token,
     user: {
@@ -92,4 +97,45 @@ const login = async (email, password) => {
   };
 };
 
-module.exports = { register, login };
+const forgotPassword = async (email) => {
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new ApiError(404, 'There is no user with that email');
+  }
+
+  const resetToken = user.getResetPasswordToken();
+  await user.save({ validateBeforeSave: false });
+
+  const { publishDomainEvent } = require('../shared/domainEventPublisher');
+  const EVENTS = require('../shared/domainEvents');
+  
+  await publishDomainEvent(EVENTS.PASSWORD_RESET_REQUESTED, { 
+    user: { name: user.name, email: user.email },
+    resetToken
+  }, { source: 'auth-service' });
+
+  return { message: 'Email sent' };
+};
+
+const resetPassword = async (resetToken, newPassword) => {
+  const crypto = require('crypto');
+  const resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    throw new ApiError(400, 'Invalid or expired token');
+  }
+
+  user.password = newPassword;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  return { message: 'Password updated successfully' };
+};
+
+module.exports = { register, login, forgotPassword, resetPassword };

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; }
+        .header { text-align: center; margin-bottom: 20px; background-color: #111; color: #FBBF24; padding: 20px; border-radius: 10px; }
+        .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
+        .ticket-info { background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #FBBF24; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background-color: #eee; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>🎫 Vé Điện Tử Của Bạn</h2>
+            <p>Mã đặt chỗ: <strong>{{bookingNumber}}</strong></p>
+        </div>
+        
+        <p>Xin chào <strong>{{userName}}</strong>,</p>
+        <p>Chúc mừng! Thanh toán của bạn đã thành công. Dưới đây là thông tin vé của bạn:</p>
+
+        <div class="ticket-info">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Sự kiện</th>
+                        <th>Số lượng</th>
+                        <th>Đơn giá</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each tickets}}
+                    <tr>
+                        <td>{{this.eventName}}</td>
+                        <td>x{{this.quantity}}</td>
+                        <td>{{this.price}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+            <p style="text-align: right; margin-top: 15px; font-size: 18px;">
+                Tổng thanh toán: <strong>{{totalAmount}}</strong>
+            </p>
+        </div>
+
+        <p><em>Vui lòng xuất trình email này kèm theo giấy tờ tùy thân (CCCD/Passport) khi đến check-in tại quầy sự kiện.</em></p>
+        
+        <p>Cảm ơn bạn đã sử dụng dịch vụ của TicketStage!</p>
+        
+        <div class="footer">
+            <p>© 2026 TicketStage. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

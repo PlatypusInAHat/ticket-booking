@@ -33,4 +33,16 @@ router.post('/login', [
   validateRequest
 ], authController.login);
 
+router.post('/forgot-password', [
+  emailRule(),
+  validateRequest
+], authController.forgotPassword);
+
+router.put('/reset-password/:token', [
+  body('password')
+    .isLength({ min: 8, max: 128 })
+    .withMessage('Mật khẩu phải có từ 8 đến 128 ký tự'),
+  validateRequest
+], authController.resetPassword);
+
 module.exports = router;

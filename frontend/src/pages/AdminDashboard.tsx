@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
-import { Edit, Plus, Save, Trash2, TrendingUp, Ticket, Users, Banknote } from "lucide-react"
-import { adminAPI, ticketsAPI } from "@/services/api"
+import { Edit, Plus, Save, Trash2, TrendingUp, Ticket, Users, Banknote, UploadCloud } from "lucide-react"
+import { adminAPI, ticketsAPI, uploadAPI } from "@/services/api"
 import { formatCurrency, formatDate } from "@/utils/format"
 import {
   bookingStatusLabels,
@@ -33,6 +33,7 @@ export function AdminDashboard() {
   const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [ticketForm, setTicketForm] = useState(emptyTicketForm)
+  const [users, setUsers] = useState<any[]>([])
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null)
   const [message, setMessage] = useState("")
 
@@ -65,11 +66,21 @@ export function AdminDashboard() {
     }
   }, [])
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await adminAPI.getUsers()
+      setUsers(response.data.data || [])
+    } catch (error) {
+      setMessage("Failed to load users.")
+    }
+  }, [])
+
   useEffect(() => {
     fetchStats()
     fetchBookings()
     fetchTickets()
-  }, [fetchBookings, fetchStats, fetchTickets])
+    fetchUsers()
+  }, [fetchBookings, fetchStats, fetchTickets, fetchUsers])
 
   const handlePaymentStatusChange = async (bookingId: string, newStatus: string) => {
     try {
@@ -79,6 +90,16 @@ export function AdminDashboard() {
       fetchStats()
     } catch (error: any) {
       setMessage(error.response?.data?.message || "Failed to update payment status.")
+    }
+  }
+
+  const handleUserRoleChange = async (userId: string, newRole: string) => {
+    try {
+      await adminAPI.updateUserRole(userId, newRole)
+      setMessage("User role updated successfully.")
+      fetchUsers()
+    } catch (error: any) {
+      setMessage(error.response?.data?.message || "Failed to update user role.")
     }
   }
 
@@ -325,13 +346,34 @@ export function AdminDashboard() {
             </div>
             <div className="md:col-span-2 space-y-2">
               <label className="text-sm font-medium text-foreground">Image URL</label>
-              <input
-                type="url"
-                value={ticketForm.image}
-                onChange={(event) => setTicketForm((current) => ({ ...current, image: event.target.value }))}
-                className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                placeholder="https://..."
-              />
+              <div className="flex gap-3">
+                <input
+                  type="url"
+                  value={ticketForm.image}
+                  onChange={(event) => setTicketForm((current) => ({ ...current, image: event.target.value }))}
+                  className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  placeholder="https://..."
+                />
+                <label className="flex h-12 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-accent bg-accent/10 px-4 font-semibold text-accent transition-colors hover:bg-accent/20">
+                  <UploadCloud className="h-5 w-5" /> Tải ảnh
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try {
+                        const res = await uploadAPI.uploadImage(file)
+                        setTicketForm((current) => ({ ...current, image: res.data.url }))
+                        setMessage("Upload ảnh thành công.")
+                      } catch (err: any) {
+                        setMessage(err.response?.data?.error || "Lỗi upload ảnh.")
+                      }
+                    }}
+                  />
+                </label>
+              </div>
             </div>
             <div className="md:col-span-2 space-y-2">
               <label className="text-sm font-medium text-foreground">Description</label>
@@ -449,6 +491,112 @@ export function AdminDashboard() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="glass relative z-10 mb-12 rounded-2xl border border-border p-8">
+        <h2 className="mb-8 relative inline-block font-display text-2xl font-black text-foreground">
+          User Management
+        </h2>
+
+        {users.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-surface-2 p-10 text-center">
+            <p className="text-muted">No users found.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-border">
+            <table className="w-full min-w-[880px] text-left text-sm">
+              <thead className="border-b border-border bg-surface-2 text-xs font-bold uppercase tracking-wider text-muted">
+                <tr>
+                  <th className="px-6 py-4">Name</th>
+                  <th className="px-6 py-4">Email</th>
+                  <th className="px-6 py-4">Joined Date</th>
+                  <th className="px-6 py-4">Role</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border bg-surface">
+                {users.map((user) => (
+                  <tr key={user._id} className="transition-colors hover:bg-surface-2">
+                    <td className="px-6 py-4 font-bold text-foreground">{user.name}</td>
+                    <td className="px-6 py-4 text-muted">{user.email}</td>
+                    <td className="px-6 py-4 text-muted">{formatDate(user.createdAt)}</td>
+                    <td className="px-6 py-4">
+                      <select
+                        value={user.role}
+                        onChange={(event) => handleUserRoleChange(user._id, event.target.value)}
+                        className="flex min-w-[150px] rounded-lg border border-border bg-surface-3 px-3 py-2 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                      >
+                        <option value="user">User</option>
+                        <option value="staff">Staff</option>
+                        <option value="organizer">Organizer</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="glass relative z-10 rounded-2xl border border-border p-8">
+        <h2 className="mb-8 relative inline-block font-display text-2xl font-black text-foreground">
+          Event Statistics
+        </h2>
+
+        {tickets.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-surface-2 p-10 text-center">
+            <p className="text-muted">No events available.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-border">
+            <table className="w-full min-w-[880px] text-left text-sm">
+              <thead className="border-b border-border bg-surface-2 text-xs font-bold uppercase tracking-wider text-muted">
+                <tr>
+                  <th className="px-6 py-4">Event Name</th>
+                  <th className="px-6 py-4">Date</th>
+                  <th className="px-6 py-4 text-right">Total Tickets</th>
+                  <th className="px-6 py-4 text-right">Sold Tickets</th>
+                  <th className="px-6 py-4 text-right">Remaining</th>
+                  <th className="px-6 py-4 text-right">Revenue</th>
+                  <th className="px-6 py-4">Fill Rate</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border bg-surface">
+                {tickets.map((ticket) => {
+                  const total = ticket.totalSeats || ticket.availableSeats;
+                  const sold = total - ticket.availableSeats;
+                  const revenue = sold * ticket.price;
+                  const fillRate = total > 0 ? (sold / total) * 100 : 0;
+                  
+                  return (
+                    <tr key={`stats-${ticket._id}`} className="transition-colors hover:bg-surface-2">
+                      <td className="px-6 py-4 font-bold text-foreground max-w-[200px] truncate" title={ticket.eventName}>
+                        {ticket.eventName}
+                      </td>
+                      <td className="px-6 py-4 text-muted">{formatDate(ticket.date)}</td>
+                      <td className="px-6 py-4 text-right font-medium">{total}</td>
+                      <td className="px-6 py-4 text-right font-medium text-blue-500">{sold}</td>
+                      <td className="px-6 py-4 text-right font-medium text-orange-500">{ticket.availableSeats}</td>
+                      <td className="px-6 py-4 text-right font-black text-green-500">{formatCurrency(revenue)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-2 w-24 overflow-hidden rounded-full bg-surface-3">
+                            <div 
+                              className="h-full bg-accent transition-all duration-500" 
+                              style={{ width: `${Math.min(fillRate, 100)}%` }} 
+                            />
+                          </div>
+                          <span className="text-xs font-bold text-muted">{fillRate.toFixed(1)}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

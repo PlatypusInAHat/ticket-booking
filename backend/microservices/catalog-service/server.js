@@ -12,12 +12,15 @@ const startCatalogSubscribers = require('../../subscribers/catalogSubscribers');
 const SERVICE_NAME = 'catalog-service';
 const PORT = process.env.CATALOG_SERVICE_PORT || 5102;
 
+const uploadRoutes = require('../../routes/upload');
+
 const app = createServiceApp({
   serviceName: SERVICE_NAME,
   routes: [
     { path: '/api/companies', router: companyRoutes },
     { path: '/api/events', router: eventRoutes },
     { path: '/api/tickets', router: ticketRoutes },
+    { path: '/api/upload', router: uploadRoutes },
     { path: '/internal/catalog', router: internalCatalogRoutes }
   ]
 });

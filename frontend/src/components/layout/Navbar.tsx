@@ -85,17 +85,30 @@ export function Navbar() {
             </NavLink>
           )}
           {user?.role === "admin" && (
-            <NavLink
-              to="/admin"
-              className={({ isActive }) =>
-                cn(
-                  "rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                  isActive ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground"
-                )
-              }
-            >
-              Admin
-            </NavLink>
+            <>
+              <NavLink
+                to="/admin"
+                className={({ isActive }) =>
+                  cn(
+                    "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                    isActive ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground"
+                  )
+                }
+              >
+                Admin
+              </NavLink>
+              <NavLink
+                to="/api-management"
+                className={({ isActive }) =>
+                  cn(
+                    "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                    isActive ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground"
+                  )
+                }
+              >
+                API
+              </NavLink>
+            </>
           )}
         </nav>
 
@@ -172,17 +185,30 @@ export function Navbar() {
               </NavLink>
             )}
             {user?.role === "admin" && (
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-xl px-4 py-3 text-sm font-medium transition-colors",
-                    isActive ? "bg-surface-2 text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"
-                  )
-                }
-              >
-                Admin
-              </NavLink>
+              <>
+                <NavLink
+                  to="/admin"
+                  className={({ isActive }) =>
+                    cn(
+                      "rounded-xl px-4 py-3 text-sm font-medium transition-colors",
+                      isActive ? "bg-surface-2 text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"
+                    )
+                  }
+                >
+                  Admin
+                </NavLink>
+                <NavLink
+                  to="/api-management"
+                  className={({ isActive }) =>
+                    cn(
+                      "rounded-xl px-4 py-3 text-sm font-medium transition-colors",
+                      isActive ? "bg-surface-2 text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"
+                    )
+                  }
+                >
+                  API
+                </NavLink>
+              </>
             )}
             <div className="my-2 h-px bg-border" />
             {token ? (

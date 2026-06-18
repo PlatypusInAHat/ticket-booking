@@ -138,9 +138,9 @@ userSchema.index({ role: 1, status: 1 });
 userSchema.index({ createdAt: -1 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   try {
     const rounds = getPasswordHashRounds();
     const salt = await bcrypt.genSalt(rounds);
@@ -157,7 +157,7 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-userSchema.methods.comparePassword = async function(enteredPassword) {
+userSchema.methods.comparePassword = async function (enteredPassword) {
   const currentRounds = getPasswordHashRounds();
   const storedRounds = bcrypt.getRounds(this.password);
   const pepperedPassword = pepperPassword(enteredPassword);
@@ -178,6 +178,19 @@ userSchema.methods.comparePassword = async function(enteredPassword) {
   }
 
   return false;
+};
+
+// Generate and hash password reset token
+userSchema.methods.getResetPasswordToken = function() {
+  const resetToken = require('crypto').randomBytes(20).toString('hex');
+  
+  // Hash token and set to resetPasswordToken field
+  this.resetPasswordToken = require('crypto').createHash('sha256').update(resetToken).digest('hex');
+  
+  // Set expire (10 minutes)
+  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+  
+  return resetToken;
 };
 
 module.exports = mongoose.model('User', userSchema);
