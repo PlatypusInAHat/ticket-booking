@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "TicketBooking",
+    "slug": "ticket-booking-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ticketbooking",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.ticketbooking.mobile",
+      "permissions": [
+        "CAMERA",
+        "NFC"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.ticketbooking.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TicketBooking cần camera để quét mã QR và barcode khi check-in.",
+        "NFCReaderUsageDescription": "TicketBooking dùng NFC để đọc hoặc phát payload vé khi thiết bị hỗ trợ."
+      }
+    },
+    "plugins": [
+      "expo-camera"
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:5000/api"
+    }
+  }
+}

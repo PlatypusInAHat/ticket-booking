@@ -1,0 +1,5 @@
+<resources>
+  <string name="app_name">TicketBooking</string>
+  <string name="nfc_service_description">TicketBooking NFC pass</string>
+  <string name="nfc_aid_group_description">TicketBooking ticket pass</string>
+</resources>

@@ -1,0 +1,222 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  auth-mongo:
+    image: mongo:7
+    ports:
+      - "27018:27017"
+    volumes:
+      - auth-mongo-data:/data/db
+
+  catalog-mongo:
+    image: mongo:7
+    ports:
+      - "27019:27017"
+    volumes:
+      - catalog-mongo-data:/data/db
+
+  booking-mongo:
+    image: mongo:7
+    ports:
+      - "27020:27017"
+    volumes:
+      - booking-mongo-data:/data/db
+
+  checkin-mongo:
+    image: mongo:7
+    ports:
+      - "27021:27017"
+    volumes:
+      - checkin-mongo-data:/data/db
+
+  auth-service:
+    build:
+      context: ./backend
+    command: npm run start:auth-service
+    environment:
+      NODE_ENV: development
+      SERVICE_MODE: microservice
+      SERVICE_NAME: auth-service
+      AUTH_SERVICE_PORT: 5101
+      AUTH_MONGODB_URI: mongodb://auth-mongo:27017/ticket-auth
+      CATALOG_SERVICE_URL: http://catalog-service:5102
+      BOOKING_SERVICE_URL: http://booking-service:5103
+      CHECKIN_SERVICE_URL: http://checkin-service:5104
+      EVENT_BROKER_URL: amqp://rabbitmq:5672
+      EVENT_EXCHANGE: ticket-booking.events
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
+      SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      PASSWORD_HASH_ROUNDS: ${PASSWORD_HASH_ROUNDS:-12}
+      PASSWORD_PEPPER: ${PASSWORD_PEPPER:-dev_password_pepper_change_me}
+      MIN_PASSWORD_LENGTH: ${MIN_PASSWORD_LENGTH:-8}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ticketbooking.com}
+    depends_on:
+      - auth-mongo
+      - rabbitmq
+    ports:
+      - "5101:5101"
+
+  catalog-service:
+    build:
+      context: ./backend
+    command: npm run start:catalog-service
+    environment:
+      NODE_ENV: development
+      SERVICE_MODE: microservice
+      SERVICE_NAME: catalog-service
+      CATALOG_SERVICE_PORT: 5102
+      CATALOG_MONGODB_URI: mongodb://catalog-mongo:27017/ticket-catalog
+      EVENT_BROKER_URL: amqp://rabbitmq:5672
+      EVENT_EXCHANGE: ticket-booking.events
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
+      SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    depends_on:
+      - catalog-mongo
+      - rabbitmq
+    ports:
+      - "5102:5102"
+
+  booking-service:
+    build:
+      context: ./backend
+    command: npm run start:booking-service
+    environment:
+      NODE_ENV: development
+      SERVICE_MODE: microservice
+      SERVICE_NAME: booking-service
+      BOOKING_SERVICE_PORT: 5103
+      BOOKING_MONGODB_URI: mongodb://booking-mongo:27017/ticket-booking
+      CATALOG_SERVICE_URL: http://catalog-service:5102
+      EVENT_BROKER_URL: amqp://rabbitmq:5672
+      EVENT_EXCHANGE: ticket-booking.events
+      OUTBOX_ENABLED: ${OUTBOX_ENABLED:-true}
+      OUTBOX_PUBLISH_INTERVAL_MS: ${OUTBOX_PUBLISH_INTERVAL_MS:-5000}
+      OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-50}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
+      SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:5000}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY:-pk_test_placeholder}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-vnpay_placeholder}
+      VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-vnpay_secret_placeholder}
+      VNPAY_PAYMENT_URL: ${VNPAY_PAYMENT_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-http://localhost:5000/api/payment/return/vnpay}
+      VNPAY_IPN_URL: ${VNPAY_IPN_URL:-http://localhost:5000/api/payment/webhooks/vnpay}
+      MOMO_ENDPOINT: ${MOMO_ENDPOINT:-https://test-payment.momo.vn/v2/gateway/api/create}
+      MOMO_PARTNER_CODE: ${MOMO_PARTNER_CODE:-momo_placeholder}
+      MOMO_ACCESS_KEY: ${MOMO_ACCESS_KEY:-momo_access_placeholder}
+      MOMO_SECRET_KEY: ${MOMO_SECRET_KEY:-momo_secret_placeholder}
+      MOMO_REDIRECT_URL: ${MOMO_REDIRECT_URL:-http://localhost:3000/payment/result}
+      MOMO_IPN_URL: ${MOMO_IPN_URL:-http://localhost:5000/api/payment/webhooks/momo}
+      MOMO_REQUEST_TYPE: ${MOMO_REQUEST_TYPE:-captureWallet}
+      BOOKING_HOLD_MINUTES: ${BOOKING_HOLD_MINUTES:-15}
+      BOOKING_EXPIRATION_INTERVAL_MS: ${BOOKING_EXPIRATION_INTERVAL_MS:-30000}
+      BOOKING_EXPIRATION_BATCH_SIZE: ${BOOKING_EXPIRATION_BATCH_SIZE:-50}
+      BOOKING_QUEUE_ENABLED: ${BOOKING_QUEUE_ENABLED:-true}
+      BOOKING_QUEUE_CONCURRENCY: ${BOOKING_QUEUE_CONCURRENCY:-5}
+      BOOKING_QUEUE_MAX_SIZE: ${BOOKING_QUEUE_MAX_SIZE:-500}
+      BOOKING_QUEUE_WAIT_TIMEOUT_MS: ${BOOKING_QUEUE_WAIT_TIMEOUT_MS:-30000}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      BOOKING_CREATE_RATE_LIMIT_WINDOW_MS: ${BOOKING_CREATE_RATE_LIMIT_WINDOW_MS:-60000}
+      BOOKING_CREATE_RATE_LIMIT_MAX: ${BOOKING_CREATE_RATE_LIMIT_MAX:-8}
+      PAYMENT_RATE_LIMIT_WINDOW_MS: ${PAYMENT_RATE_LIMIT_WINDOW_MS:-60000}
+      PAYMENT_RATE_LIMIT_MAX: ${PAYMENT_RATE_LIMIT_MAX:-12}
+    depends_on:
+      - booking-mongo
+      - catalog-service
+      - rabbitmq
+    ports:
+      - "5103:5103"
+
+  checkin-service:
+    build:
+      context: ./backend
+    command: npm run start:checkin-service
+    environment:
+      NODE_ENV: development
+      SERVICE_MODE: microservice
+      SERVICE_NAME: checkin-service
+      CHECKIN_SERVICE_PORT: 5104
+      CHECKIN_MONGODB_URI: mongodb://checkin-mongo:27017/ticket-checkin
+      EVENT_BROKER_URL: amqp://rabbitmq:5672
+      EVENT_EXCHANGE: ticket-booking.events
+      OUTBOX_ENABLED: ${OUTBOX_ENABLED:-true}
+      OUTBOX_PUBLISH_INTERVAL_MS: ${OUTBOX_PUBLISH_INTERVAL_MS:-5000}
+      OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-50}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
+      SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    depends_on:
+      - checkin-mongo
+      - rabbitmq
+    ports:
+      - "5104:5104"
+
+  api-gateway:
+    build:
+      context: ./backend
+    command: npm run start:gateway
+    environment:
+      NODE_ENV: development
+      SERVICE_MODE: microservice
+      SERVICE_NAME: api-gateway
+      GATEWAY_PORT: 5000
+      AUTH_SERVICE_URL: http://auth-service:5101
+      CATALOG_SERVICE_URL: http://catalog-service:5102
+      BOOKING_SERVICE_URL: http://booking-service:5103
+      CHECKIN_SERVICE_URL: http://checkin-service:5104
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    depends_on:
+      - auth-service
+      - catalog-service
+      - booking-service
+      - checkin-service
+    ports:
+      - "5000:5000"
+
+  seed-microservices:
+    build:
+      context: ./backend
+    command: npm run seed:microservices
+    profiles:
+      - tools
+    environment:
+      AUTH_MONGODB_URI: mongodb://auth-mongo:27017/ticket-auth
+      CATALOG_MONGODB_URI: mongodb://catalog-mongo:27017/ticket-catalog
+      BOOKING_MONGODB_URI: mongodb://booking-mongo:27017/ticket-booking
+      CHECKIN_MONGODB_URI: mongodb://checkin-mongo:27017/ticket-checkin
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ticketbooking.com}
+      SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
+      PASSWORD_HASH_ROUNDS: ${PASSWORD_HASH_ROUNDS:-12}
+      PASSWORD_PEPPER: ${PASSWORD_PEPPER:-dev_password_pepper_change_me}
+      MIN_PASSWORD_LENGTH: ${MIN_PASSWORD_LENGTH:-8}
+    depends_on:
+      - auth-mongo
+      - catalog-mongo
+      - booking-mongo
+      - checkin-mongo
+
+volumes:
+  rabbitmq-data:
+  auth-mongo-data:
+  catalog-mongo-data:
+  booking-mongo-data:
+  checkin-mongo-data:
