@@ -25,13 +25,13 @@ export default function Screen({ title, subtitle, right, children, scroll = true
 
 const styles = StyleSheet.create({
   content: {
-    padding: 18
+    padding: 16
   },
   header: {
     alignItems: 'flex-start',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 18
+    marginBottom: 24
   },
   headerText: {
     flex: 1,
@@ -43,14 +43,15 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 5
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 6
   },
   title: {
     color: colors.text,
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '900',
-    lineHeight: 34
+    lineHeight: 38,
+    letterSpacing: -0.5
   }
 });

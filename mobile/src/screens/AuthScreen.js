@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ticket, User, LogIn, UserPlus } from 'lucide-react-native';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Field from '../components/Field';
@@ -51,14 +52,15 @@ export default function AuthScreen({ onAuthenticated }) {
 
   return (
     <Screen
-      title="TicketBooking"
+      title="TicketStage"
       subtitle="Ứng dụng đặt vé, quản lý vé điện tử và check-in tại cổng."
+      right={<Ticket color={colors.accent} size={36} />}
     >
-      <Card>
+      <Card style={styles.card}>
         <Tabs
           tabs={[
-            { key: 'login', label: 'Đăng nhập' },
-            { key: 'register', label: 'Đăng ký' }
+            { key: 'login', label: 'Đăng nhập', icon: LogIn },
+            { key: 'register', label: 'Đăng ký', icon: UserPlus }
           ]}
           activeTab={mode}
           onChange={setMode}
@@ -104,13 +106,15 @@ export default function AuthScreen({ onAuthenticated }) {
 
         <Button
           title={mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
+          icon={mode === 'login' ? LogIn : UserPlus}
           onPress={submit}
           loading={loading}
+          style={styles.mainButton}
         />
 
         <View style={styles.demoRow}>
-          <Button title="Demo khách" variant="secondary" onPress={() => useDemoAccount('user')} style={styles.demoButton} />
-          <Button title="Demo nhân viên" variant="secondary" onPress={() => useDemoAccount('staff')} style={styles.demoButton} />
+          <Button title="Khách" variant="secondary" icon={User} onPress={() => useDemoAccount('user')} style={styles.demoButton} />
+          <Button title="Nhân viên" variant="secondary" icon={User} onPress={() => useDemoAccount('staff')} style={styles.demoButton} />
         </View>
       </Card>
     </Screen>
@@ -118,13 +122,19 @@ export default function AuthScreen({ onAuthenticated }) {
 }
 
 const styles = StyleSheet.create({
+  card: {
+    marginTop: 8
+  },
+  mainButton: {
+    marginTop: 8
+  },
   demoButton: {
     flex: 1
   },
   demoRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 12
+    gap: 12,
+    marginTop: 16
   },
   errorText: {
     color: colors.red,

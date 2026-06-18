@@ -1,13 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors } from '../theme';
+import { colors, radius } from '../theme';
 
 export default function Field({ label, style, ...props }) {
   return (
     <View style={[styles.wrap, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor={colors.muted}
         style={styles.input}
         {...props}
       />
@@ -17,22 +17,22 @@ export default function Field({ label, style, ...props }) {
 
 const styles = StyleSheet.create({
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radius.md,
     borderWidth: 1,
     color: colors.text,
     fontSize: 15,
-    minHeight: 46,
-    paddingHorizontal: 14
+    minHeight: 48,
+    paddingHorizontal: 16
   },
   label: {
     color: colors.text,
     fontSize: 13,
     fontWeight: '800',
-    marginBottom: 7
+    marginBottom: 8
   },
   wrap: {
-    marginBottom: 14
+    marginBottom: 16
   }
 });

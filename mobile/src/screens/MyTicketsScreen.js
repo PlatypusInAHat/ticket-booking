@@ -1,9 +1,10 @@
 import React from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { QrCode, XCircle, CreditCard } from 'lucide-react-native';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Screen from '../components/Screen';
-import { colors } from '../theme';
+import { colors, radius } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 import { bookingStatusLabels, getLabel } from '../utils/labels';
 
@@ -25,9 +26,9 @@ function BookingCard({ booking, onOpenPasses, onCancel }) {
       ))}
 
       <View style={styles.actions}>
-        <Button title="Vé điện tử" onPress={() => onOpenPasses(booking)} style={styles.flexButton} />
+        <Button title="Vé điện tử" icon={QrCode} onPress={() => onOpenPasses(booking)} style={styles.flexButton} />
         {booking.bookingStatus !== 'cancelled' ? (
-          <Button title="Hủy đơn" variant="danger" onPress={() => onCancel(booking)} style={styles.flexButton} />
+          <Button title="Hủy đơn" icon={XCircle} variant="danger" onPress={() => onCancel(booking)} style={styles.flexButton} />
         ) : null}
       </View>
     </Card>
@@ -38,7 +39,7 @@ export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPass
   return (
     <Screen title="Vé của tôi" subtitle="Xem đơn đặt vé, QR, barcode và NFC payload.">
       <ScrollView
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.accent} />}
         scrollEnabled={false}
       >
         {bookings.map(booking => (
@@ -50,9 +51,10 @@ export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPass
           />
         ))}
         {!loading && bookings.length === 0 ? (
-          <Card>
-            <Text style={styles.title}>Bạn chưa có vé</Text>
-            <Text style={styles.muted}>Sau khi đặt vé thành công, vé điện tử sẽ xuất hiện ở đây.</Text>
+          <Card style={styles.emptyCard}>
+            <CreditCard size={48} color={colors.muted} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>Bạn chưa có vé</Text>
+            <Text style={styles.emptyMuted}>Sau khi đặt vé thành công, vé điện tử sẽ xuất hiện ở đây.</Text>
           </Card>
         ) : null}
       </ScrollView>
@@ -63,60 +65,81 @@ export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPass
 const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 12
+    gap: 12,
+    marginTop: 16
   },
   badge: {
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: radius.full,
     borderWidth: 1,
     color: colors.text,
     fontSize: 12,
     fontWeight: '800',
     overflow: 'hidden',
-    paddingHorizontal: 10,
-    paddingVertical: 5
+    paddingHorizontal: 12,
+    paddingVertical: 4
   },
   bookingItem: {
     backgroundColor: colors.surfaceMuted,
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
     marginTop: 12,
     padding: 12
   },
   card: {
-    marginBottom: 14
+    marginBottom: 16
+  },
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 32
+  },
+  emptyIcon: {
+    marginBottom: 16
+  },
+  emptyMuted: {
+    color: colors.muted,
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900'
   },
   flexButton: {
     flex: 1
   },
   itemTitle: {
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '800'
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4
   },
   muted: {
     color: colors.muted,
     fontSize: 14,
-    lineHeight: 21,
-    marginTop: 5
+    lineHeight: 20,
+    marginTop: 6
   },
   price: {
-    color: colors.orange,
-    fontSize: 17,
+    color: colors.accent,
+    fontSize: 18,
     fontWeight: '900',
     marginTop: 8
   },
   rowBetween: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    marginBottom: 4
   },
   title: {
     color: colors.text,
     fontSize: 18,
     fontWeight: '900',
-    lineHeight: 24,
-    marginTop: 8
+    lineHeight: 24
   }
 });
