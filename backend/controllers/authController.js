@@ -38,4 +38,13 @@ const resetPassword = asyncHandler(async (req, res) => {
   );
 });
 
-module.exports = { register, login, forgotPassword, resetPassword };
+const refreshToken = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+  const data = await authService.refreshAuthToken(refreshToken);
+
+  res.status(200).json(
+    new ApiResponse(200, data, 'Token refreshed successfully')
+  );
+});
+
+module.exports = { register, login, refreshToken, forgotPassword, resetPassword };

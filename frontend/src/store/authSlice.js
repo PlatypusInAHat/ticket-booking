@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const storageKeys = {
   token: 'token',
+  refreshToken: 'refreshToken',
   user: 'auth_user'
 };
 
@@ -15,11 +16,17 @@ const loadUser = () => {
   }
 };
 
-const persistAuth = (user, token) => {
+const persistAuth = (user, token, refreshToken) => {
   if (token) {
     localStorage.setItem(storageKeys.token, token);
   } else {
     localStorage.removeItem(storageKeys.token);
+  }
+
+  if (refreshToken) {
+    localStorage.setItem(storageKeys.refreshToken, refreshToken);
+  } else {
+    localStorage.removeItem(storageKeys.refreshToken);
   }
 
   if (user) {
@@ -34,6 +41,7 @@ const authSlice = createSlice({
   initialState: {
     user: loadUser(),
     token: localStorage.getItem(storageKeys.token) || null,
+    refreshToken: localStorage.getItem(storageKeys.refreshToken) || null,
     isLoading: false,
     error: null
   },
@@ -45,8 +53,9 @@ const authSlice = createSlice({
     loginSuccess: (state, action) => {
       state.user = action.payload.user;
       state.token = action.payload.token;
+      state.refreshToken = action.payload.refreshToken;
       state.isLoading = false;
-      persistAuth(action.payload.user, action.payload.token);
+      persistAuth(action.payload.user, action.payload.token, action.payload.refreshToken);
     },
     loginFailure: (state, action) => {
       state.isLoading = false;
@@ -55,14 +64,16 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
+      state.refreshToken = null;
       state.error = null;
-      persistAuth(null, null);
+      persistAuth(null, null, null);
     },
     registerSuccess: (state, action) => {
       state.user = action.payload.user;
       state.token = action.payload.token;
+      state.refreshToken = action.payload.refreshToken;
       state.isLoading = false;
-      persistAuth(action.payload.user, action.payload.token);
+      persistAuth(action.payload.user, action.payload.token, action.payload.refreshToken);
     },
     updateProfileSuccess: (state, action) => {
       state.user = {

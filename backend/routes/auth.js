@@ -45,4 +45,12 @@ router.put('/reset-password/:token', [
   validateRequest
 ], authController.resetPassword);
 
+router.post('/refresh-token', [
+  body('refreshToken')
+    .isString()
+    .notEmpty()
+    .withMessage('Refresh token is required'),
+  validateRequest
+], authController.refreshToken);
+
 module.exports = router;

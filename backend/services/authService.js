@@ -3,12 +3,20 @@ const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const { getMinimumPasswordLength } = require('../utils/cryptoUtils');
 
-const generateToken = (user) => {
-  return jwt.sign(
+const generateTokens = (user) => {
+  const accessToken = jwt.sign(
     { id: user._id, email: user.email, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    { expiresIn: '15m' }
   );
+
+  const refreshToken = jwt.sign(
+    { id: user._id },
+    process.env.JWT_REFRESH_SECRET || (process.env.JWT_SECRET + '_refresh'),
+    { expiresIn: '7d' }
+  );
+
+  return { accessToken, refreshToken };
 };
 
 const register = async (userData) => {
@@ -34,7 +42,7 @@ const register = async (userData) => {
   const user = new User({ name, email, password });
   await user.save();
 
-  const token = generateToken(user);
+  const { accessToken, refreshToken } = generateTokens(user);
 
   const { publishDomainEvent } = require('../shared/domainEventPublisher');
   const EVENTS = require('../shared/domainEvents');
@@ -42,7 +50,8 @@ const register = async (userData) => {
   await publishDomainEvent(EVENTS.USER_REGISTERED, { user: { id: user._id, name: user.name, email: user.email } }, { source: 'auth-service' });
 
   return {
-    token,
+    token: accessToken,
+    refreshToken,
     user: {
       id: user._id,
       name: user.name,
@@ -84,10 +93,11 @@ const login = async (email, password) => {
 
   await user.save({ validateBeforeSave: false });
 
-  const token = generateToken(user);
+  const { accessToken, refreshToken } = generateTokens(user);
 
   return {
-    token,
+    token: accessToken,
+    refreshToken,
     user: {
       id: user._id,
       name: user.name,
@@ -95,6 +105,41 @@ const login = async (email, password) => {
       role: user.role
     }
   };
+};
+
+const refreshAuthToken = async (oldRefreshToken) => {
+  if (!oldRefreshToken) {
+    throw new ApiError(401, 'Refresh token is required');
+  }
+
+  try {
+    const secret = process.env.JWT_REFRESH_SECRET || (process.env.JWT_SECRET + '_refresh');
+    const decoded = jwt.verify(oldRefreshToken, secret);
+    
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      throw new ApiError(401, 'Invalid refresh token: User not found');
+    }
+
+    if (user.status && user.status !== 'active') {
+      throw new ApiError(403, 'This account is not active');
+    }
+
+    const { accessToken, refreshToken } = generateTokens(user);
+
+    return {
+      token: accessToken,
+      refreshToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    };
+  } catch (err) {
+    throw new ApiError(401, 'Invalid or expired refresh token');
+  }
 };
 
 const forgotPassword = async (email) => {
@@ -138,4 +183,4 @@ const resetPassword = async (resetToken, newPassword) => {
   return { message: 'Password updated successfully' };
 };
 
-module.exports = { register, login, forgotPassword, resetPassword };
+module.exports = { register, login, refreshAuthToken, forgotPassword, resetPassword };
