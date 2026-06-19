@@ -14,10 +14,13 @@ import { usersAPI } from "@/services/api"
 // We will create these pages next
 import { Login } from "@/pages/Login"
 import { Register } from "@/pages/Register"
+import ForgotPassword from "@/pages/ForgotPassword"
+import ResetPassword from "@/pages/ResetPassword"
 import { Dashboard } from "@/pages/Dashboard"
 import { Checkout } from "@/pages/Checkout"
 import { PaymentResult } from "@/pages/PaymentResult"
 import { AdminDashboard } from "@/pages/AdminDashboard"
+import { ApiManagement } from "@/pages/ApiManagement"
 
 function PageLoader({ title = "Loading interface..." }) {
   return (
@@ -81,6 +84,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/cart" element={<Cart />} />
@@ -94,6 +99,7 @@ export default function App() {
         {user?.role === "admin" && (
           <Route element={<PrivateRoute requiredRole="admin" />}>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/api-management" element={<ApiManagement />} />
           </Route>
         )}
 

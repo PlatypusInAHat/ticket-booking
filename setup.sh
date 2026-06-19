@@ -15,8 +15,8 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
-echo "✅ Node.js: $(node -v)"
-echo "✅ npm: $(npm -v)"
+echo " Node.js: $(node -v)"
+echo " npm: $(npm -v)"
 echo ""
 
 # Cài đặt Backend
@@ -31,7 +31,7 @@ fi
 
 npm install
 
-echo "✅ Backend cài đặt xong!"
+echo " Backend cài đặt xong!"
 echo ""
 
 # Cài đặt Frontend
@@ -39,11 +39,11 @@ echo "📦 Cài đặt Frontend..."
 cd ../frontend
 npm install
 
-echo "✅ Frontend cài đặt xong!"
+echo " Frontend cài đặt xong!"
 echo ""
 
 echo "╔════════════════════════════════════════╗"
-echo "║   ✅ Cài đặt hoàn tất!                 ║"
+echo "║    Cài đặt hoàn tất!                 ║"
 echo "╚════════════════════════════════════════╝"
 echo ""
 echo "📝 Hướng dẫn chạy ứng dụng:"

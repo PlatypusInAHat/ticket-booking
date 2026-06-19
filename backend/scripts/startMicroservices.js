@@ -56,6 +56,14 @@ const serviceDefinitions = [
       SERVICE_NAME: 'api-gateway',
       GATEWAY_PORT: process.env.GATEWAY_PORT || process.env.PORT || '5000'
     }
+  },
+  {
+    name: 'notification-service',
+    script: 'microservices/notification-service/server.js',
+    env: {
+      SERVICE_MODE: 'microservice',
+      SERVICE_NAME: 'notification-service'
+    }
   }
 ];
 

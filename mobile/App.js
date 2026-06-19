@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Ticket, ShoppingBag, User, CheckCircle, CreditCard } from 'lucide-react-native';
 import Screen from './src/components/Screen';
 import Tabs from './src/components/Tabs';
 import {
@@ -38,11 +39,11 @@ export default function App() {
   const canCheckIn = auth?.user?.role === 'admin' || auth?.user?.role === 'staff';
 
   const tabs = useMemo(() => [
-    { key: 'tickets', label: 'Vé' },
-    { key: 'cart', label: `Giỏ (${cart.reduce((sum, item) => sum + item.quantity, 0)})` },
-    { key: 'bookings', label: 'Vé của tôi' },
-    ...(canCheckIn ? [{ key: 'checkin', label: 'Check-in' }] : []),
-    { key: 'profile', label: 'Tài khoản' }
+    { key: 'tickets', label: 'Vé', icon: Ticket },
+    { key: 'cart', label: `Giỏ (${cart.reduce((sum, item) => sum + item.quantity, 0)})`, icon: ShoppingBag },
+    { key: 'bookings', label: 'Vé của tôi', icon: CreditCard },
+    ...(canCheckIn ? [{ key: 'checkin', label: 'Check-in', icon: CheckCircle }] : []),
+    { key: 'profile', label: 'Tài khoản', icon: User }
   ], [canCheckIn, cart]);
 
   const loadTickets = useCallback(async () => {
@@ -209,7 +210,7 @@ export default function App() {
   if (booting) {
     return (
       <>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <Screen title="TicketBooking" subtitle="Đang tải ứng dụng..." />
       </>
     );
@@ -218,7 +219,7 @@ export default function App() {
   if (!auth) {
     return (
       <>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <AuthScreen onAuthenticated={handleAuthenticated} />
       </>
     );
@@ -226,10 +227,15 @@ export default function App() {
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <View style={styles.appWrap}>
         <View style={styles.topBar}>
-          <Text style={styles.brand}>TicketBooking</Text>
+          <View style={styles.brandContainer}>
+            <View style={styles.iconContainer}>
+              <Ticket color={colors.accentForeground} size={18} />
+            </View>
+            <Text style={styles.brand}>TicketBooking</Text>
+          </View>
           <Text style={styles.roleText}>{auth.user?.role === 'staff' ? 'Nhân viên' : auth.user?.name}</Text>
         </View>
         <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
@@ -289,30 +295,44 @@ const styles = StyleSheet.create({
   appWrap: {
     backgroundColor: colors.background,
     flex: 1,
-    paddingTop: 12
+    paddingTop: 48
+  },
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  iconContainer: {
+    backgroundColor: colors.accent,
+    padding: 6,
+    borderRadius: 8
   },
   brand: {
     color: colors.text,
-    fontSize: 19,
-    fontWeight: '900'
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.5
   },
   errorText: {
     color: colors.red,
     fontSize: 14,
     fontWeight: '800',
-    marginHorizontal: 18,
+    marginHorizontal: 16,
     marginBottom: 8
   },
   roleText: {
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: '700'
+    fontSize: 14,
+    fontWeight: '600'
   },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 10
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface
   }
 });

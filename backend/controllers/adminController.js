@@ -18,8 +18,21 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, booking, 'Payment status updated'));
 });
 
+const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await adminService.getAllUsers();
+  res.status(200).json(new ApiResponse(200, users, 'Users retrieved successfully'));
+});
+
+const updateUserRole = asyncHandler(async (req, res) => {
+  const { role } = req.body;
+  const user = await adminService.updateUserRole(req.params.id, role);
+  res.status(200).json(new ApiResponse(200, user, 'User role updated successfully'));
+});
+
 module.exports = {
   getDashboardStats,
   getAllBookings,
-  updatePaymentStatus
+  updatePaymentStatus,
+  getAllUsers,
+  updateUserRole
 };

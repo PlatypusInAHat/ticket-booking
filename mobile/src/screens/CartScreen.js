@@ -1,9 +1,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Trash2, MapPin, Calendar, CreditCard } from 'lucide-react-native';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Screen from '../components/Screen';
-import { colors } from '../theme';
+import { colors, radius } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 
 export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckout, loading }) {
@@ -22,8 +23,16 @@ export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckou
           {cart.map(item => (
             <Card key={item._id} style={styles.card}>
               <Text style={styles.title}>{item.eventName}</Text>
-              <Text style={styles.muted}>{item.location?.venue}, {item.location?.city}</Text>
-              <Text style={styles.muted}>{formatDate(item.date)} lúc {item.time}</Text>
+              
+              <View style={styles.infoRow}>
+                <MapPin size={14} color={colors.muted} />
+                <Text style={styles.muted}>{item.location?.venue}, {item.location?.city}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Calendar size={14} color={colors.muted} />
+                <Text style={styles.muted}>{formatDate(item.date)} lúc {item.time}</Text>
+              </View>
+
               <Text style={styles.price}>{formatCurrency(item.price)} / vé</Text>
 
               <View style={styles.cartActions}>
@@ -36,12 +45,12 @@ export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckou
                     <Text style={styles.stepText}>+</Text>
                   </Pressable>
                 </View>
-                <Button title="Xóa" variant="danger" onPress={() => onRemove(item._id)} style={styles.removeButton} />
+                <Button title="Xóa" icon={Trash2} variant="danger" onPress={() => onRemove(item._id)} style={styles.removeButton} />
               </View>
             </Card>
           ))}
 
-          <Card>
+          <Card style={styles.summaryCard}>
             <View style={styles.rowBetween}>
               <Text style={styles.muted}>Tổng số vé</Text>
               <Text style={styles.summaryValue}>{totalQuantity}</Text>
@@ -50,7 +59,7 @@ export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckou
               <Text style={styles.muted}>Tạm tính</Text>
               <Text style={styles.total}>{formatCurrency(total)}</Text>
             </View>
-            <Button title="Thanh toán" onPress={onCheckout} loading={loading} style={styles.checkoutButton} />
+            <Button title="Thanh toán" icon={CreditCard} onPress={onCheckout} loading={loading} style={styles.checkoutButton} />
           </Card>
         </>
       )}
@@ -60,28 +69,42 @@ export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckou
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 14
+    marginBottom: 16
+  },
+  summaryCard: {
+    marginTop: 8,
+    marginBottom: 32,
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border
   },
   cartActions: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 14
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border
   },
   checkoutButton: {
-    marginTop: 16
+    marginTop: 20
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6
   },
   muted: {
     color: colors.muted,
     fontSize: 14,
-    lineHeight: 21,
-    marginTop: 5
+    lineHeight: 20
   },
   price: {
-    color: colors.orange,
-    fontSize: 17,
+    color: colors.accent,
+    fontSize: 18,
     fontWeight: '900',
-    marginTop: 8
+    marginTop: 12
   },
   quantity: {
     color: colors.text,
@@ -92,29 +115,30 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     minHeight: 40,
-    paddingHorizontal: 14
+    paddingHorizontal: 16
   },
   rowBetween: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10
+    marginBottom: 12
   },
   stepButton: {
     alignItems: 'center',
-    height: 38,
+    height: 40,
     justifyContent: 'center',
-    width: 38
+    width: 40
   },
   stepText: {
-    color: colors.teal,
+    color: colors.accent,
     fontSize: 22,
     fontWeight: '900'
   },
   stepper: {
     alignItems: 'center',
     borderColor: colors.border,
-    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: 'row'
   },
@@ -127,11 +151,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 18,
     fontWeight: '900',
-    lineHeight: 24
+    lineHeight: 24,
+    marginBottom: 6
   },
   total: {
-    color: colors.orange,
-    fontSize: 20,
+    color: colors.accent,
+    fontSize: 22,
     fontWeight: '900'
   }
 });

@@ -66,8 +66,30 @@ const updatePaymentStatus = async (bookingId, paymentStatus) => {
   });
 };
 
+const getAllUsers = async () => {
+  // Exclude password and sensitive info
+  return User.find({}).select('-password -__v -security').sort({ createdAt: -1 });
+};
+
+const updateUserRole = async (userId, role) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+  
+  if (!['user', 'admin', 'staff', 'organizer'].includes(role)) {
+    throw new ApiError(400, 'Invalid role');
+  }
+
+  user.role = role;
+  await user.save({ validateBeforeSave: false });
+  return user;
+};
+
 module.exports = {
   getDashboardStats,
   getAllBookings,
-  updatePaymentStatus
+  updatePaymentStatus,
+  getAllUsers,
+  updateUserRole
 };

@@ -1,57 +1,59 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { colors, radius } from '../theme';
 
 export default function Tabs({ tabs, activeTab, onChange }) {
   return (
     <View style={styles.wrap}>
-      {tabs.map(tab => {
-        const active = activeTab === tab.key;
-        return (
-          <Pressable
-            key={tab.key}
-            onPress={() => onChange(tab.key)}
-            style={[styles.tab, active && styles.activeTab]}
-          >
-            <Text style={[styles.label, active && styles.activeLabel]}>{tab.label}</Text>
-          </Pressable>
-        );
-      })}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        {tabs.map(tab => {
+          const active = activeTab === tab.key;
+          return (
+            <Pressable
+              key={tab.key}
+              onPress={() => onChange(tab.key)}
+              style={[styles.tab, active && styles.activeTab]}
+            >
+              <Text style={[styles.label, active && styles.activeLabel]}>{tab.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   activeLabel: {
-    color: '#fff'
+    color: colors.accentForeground
   },
   activeTab: {
-    backgroundColor: colors.teal,
-    borderColor: colors.teal
+    backgroundColor: colors.accent,
+    borderColor: colors.accent
   },
   label: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: '800'
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  scroll: {
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12
   },
   tab: {
     alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radius.full,
     borderWidth: 1,
-    flex: 1,
     justifyContent: 'center',
-    minHeight: 42,
-    paddingHorizontal: 8
+    minHeight: 40,
+    paddingHorizontal: 16
   },
   wrap: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-    padding: 6
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: 16
   }
 });

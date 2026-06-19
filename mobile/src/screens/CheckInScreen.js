@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Alert, Modal, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Camera, Radio, Search, CheckCircle, XCircle } from 'lucide-react-native';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Field from '../components/Field';
 import Screen from '../components/Screen';
 import { checkinApi } from '../services/api';
 import { isNfcRuntimeAvailable, readNfcText } from '../services/nfc';
-import { colors } from '../theme';
+import { colors, radius } from '../theme';
 import { getLabel, passStatusLabels } from '../utils/labels';
 
 export default function CheckInScreen() {
@@ -84,27 +85,32 @@ export default function CheckInScreen() {
         />
 
         <View style={styles.actionRow}>
-          <Button title="Quét camera" variant="secondary" onPress={openScanner} style={styles.flexButton} />
-          <Button title="Đọc NFC" variant="secondary" onPress={readNfc} disabled={!isNfcRuntimeAvailable()} style={styles.flexButton} />
+          <Button title="Quét camera" icon={Camera} variant="secondary" onPress={openScanner} style={styles.flexButton} />
+          <Button title="Đọc NFC" icon={Radio} variant="secondary" onPress={readNfc} disabled={!isNfcRuntimeAvailable()} style={styles.flexButton} />
         </View>
         <View style={styles.actionRow}>
-          <Button title="Kiểm tra" variant="secondary" onPress={() => submit('validate')} loading={loading} style={styles.flexButton} />
-          <Button title="Check-in" onPress={() => submit('checkin')} loading={loading} style={styles.flexButton} />
+          <Button title="Kiểm tra" icon={Search} variant="secondary" onPress={() => submit('validate')} loading={loading} style={styles.flexButton} />
+          <Button title="Check-in" icon={CheckCircle} onPress={() => submit('checkin')} loading={loading} style={styles.flexButton} />
         </View>
       </Card>
 
       {result ? (
         <Card style={styles.resultCard}>
-          <Text style={[styles.title, result.valid ? styles.successText : styles.errorText]}>
-            {result.valid ? 'Vé hợp lệ' : 'Vé không hợp lệ'}
-          </Text>
-          <Text style={styles.muted}>{result.reason}</Text>
+          <View style={styles.resultHeader}>
+            {result.valid ? <CheckCircle color={colors.green} size={28} /> : <XCircle color={colors.red} size={28} />}
+            <Text style={[styles.title, result.valid ? styles.successText : styles.errorText]}>
+              {result.valid ? 'Vé hợp lệ' : 'Vé không hợp lệ'}
+            </Text>
+          </View>
+          <Text style={styles.reasonText}>{result.reason}</Text>
           {result.pass ? (
-            <>
+            <View style={styles.passDetails}>
               <Text style={styles.sectionTitle}>{result.pass.passCode}</Text>
               <Text style={styles.muted}>{result.pass.ticket?.eventName}</Text>
-              <Text style={styles.muted}>Trạng thái: {getLabel(passStatusLabels, result.pass.status)}</Text>
-            </>
+              <View style={styles.statusWrap}>
+                <Text style={styles.badge}>{getLabel(passStatusLabels, result.pass.status)}</Text>
+              </View>
+            </View>
           ) : null}
         </Card>
       ) : null}
@@ -122,7 +128,7 @@ export default function CheckInScreen() {
             }}
           />
           <View style={styles.cameraFooter}>
-            <Button title="Đóng máy quét" variant="secondary" onPress={() => setScannerOpen(false)} />
+            <Button title="Đóng máy quét" variant="ghost" onPress={() => setScannerOpen(false)} />
           </View>
         </View>
       </Modal>
@@ -133,7 +139,7 @@ export default function CheckInScreen() {
 const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
     marginTop: 12
   },
   camera: {
@@ -141,40 +147,74 @@ const styles = StyleSheet.create({
   },
   cameraFooter: {
     backgroundColor: colors.background,
-    padding: 16
+    padding: 24,
+    paddingBottom: 40
   },
   cameraWrap: {
     backgroundColor: '#000',
     flex: 1
   },
   errorText: {
-    color: colors.red
+    color: colors.red,
+    marginLeft: 10
   },
   flexButton: {
     flex: 1
   },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  reasonText: {
+    color: colors.muted,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 16
+  },
+  passDetails: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 16
+  },
   muted: {
     color: colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 22,
     marginTop: 6
   },
   resultCard: {
-    marginTop: 14
+    marginTop: 16
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '900',
-    marginTop: 16
+    fontSize: 18,
+    fontWeight: '900'
+  },
+  statusWrap: {
+    marginTop: 12,
+    alignItems: 'flex-start'
+  },
+  badge: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '800',
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 4
   },
   successText: {
-    color: colors.green
+    color: colors.green,
+    marginLeft: 10
   },
   title: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
-    lineHeight: 24
+    lineHeight: 26
   }
 });

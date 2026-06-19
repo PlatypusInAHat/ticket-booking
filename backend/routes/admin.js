@@ -20,4 +20,11 @@ router.put('/bookings/:id/payment', [
   validateRequest
 ], adminController.updatePaymentStatus);
 
+router.get('/users', adminController.getAllUsers);
+router.put('/users/:id/role', [
+  param('id').isMongoId().withMessage('ID người dùng không hợp lệ'),
+  body('role').isIn(['user', 'admin', 'staff', 'organizer']).withMessage('Quyền không hợp lệ'),
+  validateRequest
+], adminController.updateUserRole);
+
 module.exports = router;

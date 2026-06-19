@@ -33,4 +33,24 @@ router.post('/login', [
   validateRequest
 ], authController.login);
 
+router.post('/forgot-password', [
+  emailRule(),
+  validateRequest
+], authController.forgotPassword);
+
+router.put('/reset-password/:token', [
+  body('password')
+    .isLength({ min: 8, max: 128 })
+    .withMessage('Mật khẩu phải có từ 8 đến 128 ký tự'),
+  validateRequest
+], authController.resetPassword);
+
+router.post('/refresh-token', [
+  body('refreshToken')
+    .isString()
+    .notEmpty()
+    .withMessage('Refresh token is required'),
+  validateRequest
+], authController.refreshToken);
+
 module.exports = router;
