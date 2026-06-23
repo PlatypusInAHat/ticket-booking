@@ -16,6 +16,9 @@ import { Button } from "@/components/ui/Button"
 import { SectionTitle } from "@/components/ui/SectionTitle"
 import { TicketTierCard } from "@/components/TicketTierCard"
 import { EventCard } from "@/components/EventCard"
+import { SeatMap } from "@/components/SeatMap"
+import { ZoneMap } from "@/components/ZoneMap"
+import type { Zone } from "@/data/types"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
 import { useAppDispatch } from "@/store"
 import { addToCart } from "@/store/cartSlice"
@@ -29,9 +32,14 @@ export function EventDetail() {
   const [selectedTier, setSelectedTier] = useState(event?.tiers[0]?.id ?? "")
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
+  const [selectedSeatCodes, setSelectedSeatCodes] = useState<string[]>([])
+  const [selectedZoneId, setSelectedZoneId] = useState<string>("")
+
+  const isReserved = event?.seatMap?.mode === "reserved_seating"
+  const isZoneMap = !!event?.zoneMap
 
   const tier = useMemo(
-    () => event?.tiers.find((t) => t.id === selectedTier),
+    () => event?.tiers.find((t) => t.id === selectedTier) || event?.tiers[0],
     [event, selectedTier],
   )
 
@@ -46,12 +54,14 @@ export function EventDetail() {
   }
 
   const related = events.filter((e) => e.id !== event.id && e.category === event.category).slice(0, 3)
-  const total = (tier?.price ?? 0) * quantity
+  const effectiveQuantity = isReserved ? selectedSeatCodes.length : quantity
+  const total = (tier?.price ?? 0) * effectiveQuantity
 
   const handleAdd = () => {
-    if (!tier || soldOut) return
+    if (!tier || soldOut || effectiveQuantity === 0) return
     dispatch(
       addToCart({
+        _id: `${event.id}-${tier.id}`,
         eventId: event.id,
         eventTitle: event.title,
         eventImage: event.image,
@@ -60,7 +70,9 @@ export function EventDetail() {
         tierId: tier.id,
         tierName: tier.name,
         price: tier.price,
-        quantity,
+        availableSeats: tier.remaining || 100,
+        quantity: effectiveQuantity,
+        seatCodes: isReserved ? selectedSeatCodes : undefined,
       }),
     )
     setAdded(true)
@@ -145,25 +157,73 @@ export function EventDetail() {
             </div>
 
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">Choose your tickets</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight">
+                {isReserved || isZoneMap ? "Choose your seats" : "Choose your tickets"}
+              </h2>
               <p className="mt-2 text-sm text-muted">
-                Select a tier to compare what&apos;s included.
+                {isReserved
+                  ? "Select seats directly from the interactive venue map."
+                  : isZoneMap 
+                  ? "Click on a zone on the map to select your tickets."
+                  : "Select a tier to compare what's included."}
               </p>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {event.tiers.map((t) => (
-                  <TicketTierCard
-                    key={t.id}
-                    tier={t}
-                    selected={selectedTier === t.id}
-                    quantity={quantity}
-                    soldOut={soldOut}
-                    onSelect={() => {
-                      setSelectedTier(t.id)
-                      setQuantity(1)
-                    }}
-                    onQuantity={setQuantity}
+              <div className="mt-5">
+                {isReserved && event.seatMap ? (
+                  <SeatMap
+                    sections={event.seatMap.sections}
+                    onSelectionChange={setSelectedSeatCodes}
+                    maxSelectable={10}
                   />
-                ))}
+                ) : isZoneMap && event.zoneMap ? (
+                  <div className="flex flex-col gap-6">
+                    <ZoneMap
+                      zoneMap={event.zoneMap}
+                      selectedZoneId={selectedZoneId}
+                      onZoneSelect={(zone: Zone) => {
+                        setSelectedZoneId(zone.id);
+                        setSelectedTier(zone.tierId);
+                        setQuantity(1);
+                      }}
+                    />
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {event.tiers.map((t) => (
+                        <TicketTierCard
+                          key={t.id}
+                          tier={t}
+                          selected={selectedTier === t.id}
+                          quantity={quantity}
+                          soldOut={soldOut}
+                          onSelect={() => {
+                            setSelectedTier(t.id)
+                            setQuantity(1)
+                            
+                            // Auto-select zone if mapped
+                            const mappedZone = event.zoneMap?.zones.find(z => z.tierId === t.id);
+                            if (mappedZone) setSelectedZoneId(mappedZone.id);
+                          }}
+                          onQuantity={setQuantity}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {event.tiers.map((t) => (
+                      <TicketTierCard
+                        key={t.id}
+                        tier={t}
+                        selected={selectedTier === t.id}
+                        quantity={quantity}
+                        soldOut={soldOut}
+                        onSelect={() => {
+                          setSelectedTier(t.id)
+                          setQuantity(1)
+                        }}
+                        onQuantity={setQuantity}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -186,8 +246,14 @@ export function EventDetail() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Quantity</span>
-                  <span className="font-medium">{quantity}</span>
+                  <span className="font-medium">{effectiveQuantity}</span>
                 </div>
+                {isReserved && selectedSeatCodes.length > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted">Seats</span>
+                    <span className="font-medium">{selectedSeatCodes.join(", ")}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Price each</span>
                   <span className="font-medium">{formatCurrency(tier?.price ?? 0)}</span>

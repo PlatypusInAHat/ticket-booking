@@ -1,6 +1,6 @@
 const axios = require('axios');
-const crypto = require('crypto');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
 const ApiError = require('../utils/ApiError');
@@ -218,7 +218,7 @@ const createGatewayPayment = async (booking, provider) => {
   return payment;
 };
 
-const publishPaymentCompleted = async ({ booking, payment, transactionId }) => {
+const publishPaymentCompleted = async ({ booking, payment, transactionId }, options = {}) => {
   const eventPayload = {
     booking: serializeBookingForEvent(booking),
     bookingId: booking._id.toString(),
@@ -237,7 +237,8 @@ const publishPaymentCompleted = async ({ booking, payment, transactionId }) => {
   };
 
   const published = await publishDomainEvent(EVENTS.PAYMENT_COMPLETED, eventPayload, {
-    source: 'booking-service'
+    source: 'booking-service',
+    session: options.session
   });
 
   if (!published) {
@@ -274,110 +275,124 @@ const completeBookingPayment = async ({
     throw new ApiError(409, 'Booking hold expired. Please create a new booking.');
   }
 
-  const booking = await Booking.findOneAndUpdate(
-    {
-      _id: bookingId,
-      ...(userId ? { user: userId } : {}),
-      bookingStatus: 'pending',
-      paymentStatus: 'pending',
-      $or: [
-        { expiresAt: { $exists: false } },
-        { expiresAt: null },
-        { expiresAt: { $gt: processedAt } }
-      ]
-    },
-    {
-      $set: {
-        paymentStatus: 'completed',
-        transactionId,
-        bookingStatus: 'confirmed',
-        confirmedAt: processedAt,
-        updatedAt: processedAt
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const booking = await Booking.findOneAndUpdate(
+      {
+        _id: bookingId,
+        ...(userId ? { user: userId } : {}),
+        bookingStatus: 'pending',
+        paymentStatus: 'pending',
+        $or: [
+          { expiresAt: { $exists: false } },
+          { expiresAt: null },
+          { expiresAt: { $gt: processedAt } }
+        ]
       },
-      $unset: {
-        expiresAt: ''
-      },
-      $push: {
-        statusHistory: {
-          bookingStatus: 'confirmed',
+      {
+        $set: {
           paymentStatus: 'completed',
-          changedBy: userId,
-          reason: `Payment completed by ${provider}`,
-          changedAt: processedAt
+          transactionId,
+          bookingStatus: 'confirmed',
+          confirmedAt: processedAt,
+          updatedAt: processedAt
+        },
+        $unset: {
+          expiresAt: ''
+        },
+        $push: {
+          statusHistory: {
+            bookingStatus: 'confirmed',
+            paymentStatus: 'completed',
+            changedBy: userId,
+            reason: `Payment completed by ${provider}`,
+            changedAt: processedAt
+          }
         }
+      },
+      { new: true, session }
+    );
+
+    if (!booking) {
+      await session.abortTransaction();
+      session.endSession();
+      const latestBooking = await Booking.findById(bookingId);
+
+      if (latestBooking?.paymentStatus === 'completed') {
+        return {
+          booking: latestBooking,
+          payment: paymentId ? await Payment.findById(paymentId) : null,
+          alreadyProcessed: true
+        };
       }
-    },
-    { new: true }
-  );
 
-  if (!booking) {
-    const latestBooking = await Booking.findById(bookingId);
-
-    if (latestBooking?.paymentStatus === 'completed') {
-      return {
-        booking: latestBooking,
-        payment: paymentId ? await Payment.findById(paymentId) : null,
-        alreadyProcessed: true
-      };
+      throw new ApiError(409, 'Booking is no longer payable');
     }
 
-    throw new ApiError(409, 'Booking is no longer payable');
+    let payment = null;
+
+    if (paymentId) {
+      payment = await Payment.findById(paymentId).select('+clientSecret').session(session);
+    }
+
+    if (!payment && providerReference) {
+      payment = await Payment.findOne({ provider, providerReference }).select('+clientSecret').session(session);
+    }
+
+    if (!payment) {
+      payment = new Payment({
+        booking: booking._id,
+        user: booking.user,
+        provider,
+        method: method || booking.paymentMethod,
+        amount: amount ?? booking.totalAmount,
+        currency: currency || booking.currency || 'VND'
+      });
+    }
+
+    payment.provider = provider;
+    payment.method = method || payment.method || booking.paymentMethod;
+    payment.amount = amount ?? payment.amount ?? booking.totalAmount;
+    payment.currency = currency || payment.currency || booking.currency || 'VND';
+    payment.status = 'completed';
+    payment.transactionId = transactionId || payment.transactionId || providerReference || `TXN_${crypto.randomUUID()}`;
+    payment.providerReference = providerReference || payment.providerReference;
+    payment.paymentTokenHash = paymentToken ? hashSecret(paymentToken, 'payment-token') : payment.paymentTokenHash;
+    payment.gatewayResponse = gatewayResponse;
+    payment.processedAt = processedAt;
+    payment.metadata = {
+      ...(payment.metadata || {}),
+      ...metadata
+    };
+
+    await payment.save({ session });
+    await Booking.updateOne(
+      { _id: booking._id },
+      { $addToSet: { payments: payment._id } },
+      { session }
+    );
+
+    await publishPaymentCompleted({
+      booking,
+      payment,
+      transactionId: payment.transactionId
+    }, { session });
+
+    await session.commitTransaction();
+    return {
+      booking,
+      payment,
+      transactionId: payment.transactionId,
+      alreadyProcessed: false
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
-
-  let payment = null;
-
-  if (paymentId) {
-    payment = await Payment.findById(paymentId).select('+clientSecret');
-  }
-
-  if (!payment && providerReference) {
-    payment = await Payment.findOne({ provider, providerReference }).select('+clientSecret');
-  }
-
-  if (!payment) {
-    payment = new Payment({
-      booking: booking._id,
-      user: booking.user,
-      provider,
-      method: method || booking.paymentMethod,
-      amount: amount ?? booking.totalAmount,
-      currency: currency || booking.currency || 'VND'
-    });
-  }
-
-  payment.provider = provider;
-  payment.method = method || payment.method || booking.paymentMethod;
-  payment.amount = amount ?? payment.amount ?? booking.totalAmount;
-  payment.currency = currency || payment.currency || booking.currency || 'VND';
-  payment.status = 'completed';
-  payment.transactionId = transactionId || payment.transactionId || providerReference || `TXN_${crypto.randomUUID()}`;
-  payment.providerReference = providerReference || payment.providerReference;
-  payment.paymentTokenHash = paymentToken ? hashSecret(paymentToken, 'payment-token') : payment.paymentTokenHash;
-  payment.gatewayResponse = gatewayResponse;
-  payment.processedAt = processedAt;
-  payment.metadata = {
-    ...(payment.metadata || {}),
-    ...metadata
-  };
-
-  await payment.save();
-  await Booking.updateOne(
-    { _id: booking._id },
-    { $addToSet: { payments: payment._id } }
-  );
-
-  await publishPaymentCompleted({
-    booking,
-    payment,
-    transactionId: payment.transactionId
-  });
-
-  return {
-    booking,
-    payment,
-    transactionId: payment.transactionId,
-    alreadyProcessed: false
-  };
 };
 
 const markPaymentFailed = async (payment, reason, gatewayResponse = {}) => {

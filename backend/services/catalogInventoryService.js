@@ -34,7 +34,8 @@ const normalizeTicketSelection = (tickets = []) => {
 
   tickets.forEach((item) => {
     const ticketId = toTicketId(item);
-    const quantity = Number(item.quantity);
+    const seatCodes = Array.isArray(item.seatCodes) ? item.seatCodes : [];
+    const quantity = seatCodes.length > 0 ? seatCodes.length : Number(item.quantity);
 
     if (!ticketId || Number.isNaN(quantity) || quantity < 1) {
       return;
@@ -43,8 +44,11 @@ const normalizeTicketSelection = (tickets = []) => {
     const existingTicket = normalized.find(entry => entry.ticketId === ticketId);
     if (existingTicket) {
       existingTicket.quantity += quantity;
+      if (seatCodes.length > 0) {
+        existingTicket.seatCodes = [...(existingTicket.seatCodes || []), ...seatCodes];
+      }
     } else {
-      normalized.push({ ticketId, quantity });
+      normalized.push({ ticketId, quantity, seatCodes });
     }
   });
 
@@ -107,27 +111,44 @@ const releaseTickets = async (bookingTickets = [], { restoreRevenue = false } = 
       continue;
     }
 
-    const ticket = await Ticket.findOneAndUpdate(
-      { _id: ticketId },
-      [
-        {
-          $set: {
-            availableSeats: {
-              $min: ['$totalSeats', { $add: ['$availableSeats', quantity] }]
-            },
-            soldSeats: {
-              $max: [0, { $subtract: ['$soldSeats', quantity] }]
-            },
-            updatedAt: new Date()
-          }
-        }
-      ],
-      { new: true }
-    );
+    let ticket = await Ticket.findById(ticketId);
+    if (!ticket) continue;
 
-    if (!ticket) {
-      continue;
+    if (ticket.seatMap?.mode === 'reserved_seating' && Array.isArray(item.seatCodes)) {
+      item.seatCodes.forEach(seatCode => {
+        ticket.seatMap.sections.forEach(sec => {
+          sec.rows.forEach(row => {
+            row.seats.forEach(seat => {
+              if (seat.code === seatCode) seat.status = 'available';
+            });
+          });
+        });
+      });
+      ticket.availableSeats = Math.min(ticket.totalSeats, ticket.availableSeats + quantity);
+      ticket.soldSeats = Math.max(0, ticket.soldSeats - quantity);
+      ticket.updatedAt = new Date();
+      await ticket.save();
+    } else {
+      ticket = await Ticket.findOneAndUpdate(
+        { _id: ticketId },
+        [
+          {
+            $set: {
+              availableSeats: {
+                $min: ['$totalSeats', { $add: ['$availableSeats', quantity] }]
+              },
+              soldSeats: {
+                $max: [0, { $subtract: ['$soldSeats', quantity] }]
+              },
+              updatedAt: new Date()
+            }
+          }
+        ],
+        { new: true }
+      );
     }
+
+    if (!ticket) continue;
 
     if (ticket.availableSeats > 0 && ticket.status === 'sold_out') {
       await Ticket.findByIdAndUpdate(ticket._id, { $set: { status: 'published' } });
@@ -139,7 +160,7 @@ const releaseTickets = async (bookingTickets = [], { restoreRevenue = false } = 
     }
 
     await incrementEventStats(ticket.event, eventStats);
-    released.push({ ticketId, quantity });
+    released.push({ ticketId, quantity, seatCodes: item.seatCodes });
   }
 
   return { released };
@@ -165,24 +186,71 @@ const reserveTickets = async (tickets = []) => {
         throw new ApiError(400, `Ticket ${item.ticketId} allows maximum ${maxTicketsPerUser} tickets per order`);
       }
 
-      const ticket = await Ticket.findOneAndUpdate(
-        {
-          _id: item.ticketId,
-          isActive: true,
-          status: 'published',
-          visibility: 'public',
-          ...buildSaleWindowFilter(now),
-          availableSeats: { $gte: item.quantity }
-        },
-        {
-          $inc: {
-            availableSeats: -item.quantity,
-            soldSeats: item.quantity
+      let ticket;
+
+      const ticketDoc = await Ticket.findOne({
+        _id: item.ticketId,
+        isActive: true,
+        status: 'published',
+        visibility: 'public',
+        ...buildSaleWindowFilter(now)
+      });
+
+      if (!ticketDoc) {
+        throw new ApiError(400, `Ticket ${item.ticketId} is not available`);
+      }
+
+      if (ticketDoc.availableSeats < item.quantity) {
+        throw new ApiError(400, `Not enough seats available for ticket ${item.ticketId}`);
+      }
+
+      if (ticketDoc.seatMap?.mode === 'reserved_seating') {
+        if (!item.seatCodes || item.seatCodes.length !== item.quantity) {
+          throw new ApiError(400, `Must provide exactly ${item.quantity} seat codes for reserved seating`);
+        }
+
+        let availableCount = 0;
+        ticketDoc.seatMap.sections.forEach(sec => {
+          sec.rows.forEach(row => {
+            row.seats.forEach(seat => {
+              if (item.seatCodes.includes(seat.code) && seat.status === 'available') {
+                availableCount++;
+                seat.status = 'held';
+              }
+            });
+          });
+        });
+
+        if (availableCount !== item.quantity) {
+          throw new ApiError(400, 'Some selected seats are no longer available');
+        }
+
+        ticketDoc.availableSeats -= item.quantity;
+        ticketDoc.soldSeats += item.quantity;
+        if (ticketDoc.availableSeats === 0) ticketDoc.status = 'sold_out';
+        ticketDoc.updatedAt = new Date();
+        
+        ticket = await ticketDoc.save();
+      } else {
+        ticket = await Ticket.findOneAndUpdate(
+          {
+            _id: item.ticketId,
+            isActive: true,
+            status: 'published',
+            visibility: 'public',
+            ...buildSaleWindowFilter(now),
+            availableSeats: { $gte: item.quantity }
           },
-          $set: { updatedAt: new Date() }
-        },
-        { new: true }
-      );
+          {
+            $inc: {
+              availableSeats: -item.quantity,
+              soldSeats: item.quantity
+            },
+            $set: { updatedAt: new Date() }
+          },
+          { new: true }
+        );
+      }
 
       if (!ticket) {
         throw new ApiError(400, `Not enough seats available for ticket ${item.ticketId}`);
@@ -199,6 +267,7 @@ const reserveTickets = async (tickets = []) => {
         quantity: item.quantity,
         pricePerUnit: ticket.price,
         subtotal,
+        seatCodes: item.seatCodes,
         snapshot: toSnapshot(ticket)
       };
 

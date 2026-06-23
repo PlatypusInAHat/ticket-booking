@@ -3,6 +3,7 @@ const { body, param, query } = require('express-validator');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const eventController = require('../controllers/eventController');
 const validateRequest = require('../middleware/validateRequest');
+const { cacheMiddleware } = require('../utils/cache');
 
 const router = express.Router();
 
@@ -67,9 +68,10 @@ router.get('/', [
     .optional()
     .isInt({ min: 1, max: 100 })
     .withMessage('Giới hạn phải từ 1 đến 100'),
-  validateRequest
+  validateRequest,
+  cacheMiddleware(60) // Cache for 60 seconds
 ], eventController.getEvents);
-router.get('/:id', [eventIdParam(), validateRequest], eventController.getEventById);
+router.get('/:id', [eventIdParam(), validateRequest, cacheMiddleware(300)], eventController.getEventById);
 router.post('/', [
   authenticateToken,
   authorizeRole(['admin', 'organizer']),

@@ -154,6 +154,21 @@ const ticketSchema = new mongoose.Schema({
       }]
     }]
   },
+  zoneMap: {
+    backgroundImage: String,
+    zones: [{
+      id: String,
+      name: String,
+      tierId: String,
+      color: String,
+      coordinates: {
+        x: Number,
+        y: Number,
+        width: Number,
+        height: Number
+      }
+    }]
+  },
   policies: {
     refundPolicy: {
       type: String,
@@ -220,7 +235,7 @@ const ticketSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+}, { optimisticConcurrency: true });
 
 // Index for faster queries
 ticketSchema.index({ eventType: 1, date: 1, isActive: 1 });

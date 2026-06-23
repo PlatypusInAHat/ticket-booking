@@ -36,7 +36,8 @@ const getEvents = async (query = {}) => {
       .populate('company', 'name slug logo status')
       .skip(skip)
       .limit(parsedLimit)
-      .sort({ startsAt: 1 }),
+      .sort({ startsAt: 1 })
+      .lean(),
     Event.countDocuments(filter)
   ]);
 
@@ -53,7 +54,8 @@ const getEvents = async (query = {}) => {
 
 const getEventById = async (id) => {
   const event = await Event.findById(id)
-    .populate('company', 'name slug logo contact status');
+    .populate('company', 'name slug logo contact status')
+    .lean();
 
   if (!event) {
     throw new ApiError(404, 'Event not found');

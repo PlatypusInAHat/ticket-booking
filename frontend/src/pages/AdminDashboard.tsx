@@ -25,6 +25,11 @@ const emptyTicketForm = {
   category: "standard",
   image: "",
   description: "",
+  seatMapMode: "general_admission",
+  seatMapRows: 5,
+  seatMapCols: 10,
+  zoneMapImage: "",
+  zoneMapZones: [] as any[],
 }
 
 export function AdminDashboard() {
@@ -126,6 +131,40 @@ export function AdminDashboard() {
       },
     }
 
+    if (ticketForm.seatMapMode === "reserved_seating") {
+      const rows = [];
+      const rowLabels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      for (let i = 0; i < ticketForm.seatMapRows; i++) {
+        const rowLabel = i < rowLabels.length ? rowLabels[i] : `R${i}`;
+        const seats = [];
+        for (let j = 1; j <= ticketForm.seatMapCols; j++) {
+           seats.push({
+             code: `${rowLabel}-${j}`,
+             label: `${j}`,
+             status: 'available'
+           });
+        }
+        rows.push({ label: rowLabel, seats });
+      }
+      
+      const generatedSeatsCount = ticketForm.seatMapRows * ticketForm.seatMapCols;
+      payload.availableSeats = generatedSeatsCount;
+      payload.totalSeats = generatedSeatsCount;
+      (payload as any).seatMap = {
+        mode: 'reserved_seating',
+        sections: [{
+           name: 'Main Section',
+           code: 'MAIN',
+           rows
+        }]
+      };
+    } else if (ticketForm.seatMapMode === "zone_map") {
+      (payload as any).zoneMap = {
+        backgroundImage: ticketForm.zoneMapImage,
+        zones: ticketForm.zoneMapZones || []
+      };
+    }
+
     try {
       if (editingTicketId) {
         await ticketsAPI.update(editingTicketId, payload)
@@ -160,6 +199,11 @@ export function AdminDashboard() {
       category: ticket.category || "standard",
       image: ticket.image || "",
       description: ticket.description || "",
+      seatMapMode: ticket.seatMap?.mode || (ticket.zoneMap ? "zone_map" : "general_admission"),
+      seatMapRows: 5, 
+      seatMapCols: 10,
+      zoneMapImage: ticket.zoneMap?.backgroundImage || "",
+      zoneMapZones: ticket.zoneMap?.zones || [],
     })
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -283,6 +327,82 @@ export function AdminDashboard() {
                 ))}
               </select>
             </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Seating Mode</label>
+              <select
+                value={ticketForm.seatMapMode}
+                onChange={(event) => setTicketForm((current) => ({ ...current, seatMapMode: event.target.value }))}
+                className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              >
+                <option value="general_admission">General Admission (No Map)</option>
+                <option value="reserved_seating">Reserved Seating (Generate Grid)</option>
+                <option value="zone_map">Visual Zone Map (Custom Regions)</option>
+              </select>
+            </div>
+
+            {ticketForm.seatMapMode === "reserved_seating" && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Number of Rows</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={ticketForm.seatMapRows}
+                    onChange={(event) => setTicketForm((current) => ({ ...current, seatMapRows: Number(event.target.value) }))}
+                    className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Seats per Row</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={ticketForm.seatMapCols}
+                    onChange={(event) => setTicketForm((current) => ({ ...current, seatMapCols: Number(event.target.value) }))}
+                    className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            {ticketForm.seatMapMode === "zone_map" && (
+              <div className="md:col-span-2 space-y-4 rounded-xl border border-border bg-surface-3 p-5">
+                <h4 className="font-semibold text-foreground">Zone Map Configuration</h4>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Background Image URL</label>
+                  <input
+                    type="url"
+                    value={ticketForm.zoneMapImage}
+                    onChange={(event) => setTicketForm((current) => ({ ...current, zoneMapImage: event.target.value }))}
+                    className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    placeholder="https://... map background"
+                  />
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted">Zones will be configured in the visual editor after creating the base event.</span>
+                </div>
+              </div>
+            )}
+
+            {ticketForm.seatMapMode !== "reserved_seating" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Available Seats</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={ticketForm.availableSeats}
+                  onChange={(event) => setTicketForm((current) => ({ ...current, availableSeats: Number(event.target.value) }))}
+                  className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  required
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Price</label>
               <input
@@ -290,17 +410,6 @@ export function AdminDashboard() {
                 min="0"
                 value={ticketForm.price}
                 onChange={(event) => setTicketForm((current) => ({ ...current, price: Number(event.target.value) }))}
-                className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Available Seats</label>
-              <input
-                type="number"
-                min="1"
-                value={ticketForm.availableSeats}
-                onChange={(event) => setTicketForm((current) => ({ ...current, availableSeats: Number(event.target.value) }))}
                 className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
@@ -355,7 +464,7 @@ export function AdminDashboard() {
                   placeholder="https://..."
                 />
                 <label className="flex h-12 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-accent bg-accent/10 px-4 font-semibold text-accent transition-colors hover:bg-accent/20">
-                  <UploadCloud className="h-5 w-5" /> Tải ảnh
+                  <UploadCloud className="h-5 w-5" /> Upload Image
                   <input
                     type="file"
                     className="hidden"
@@ -366,9 +475,9 @@ export function AdminDashboard() {
                       try {
                         const res = await uploadAPI.uploadImage(file)
                         setTicketForm((current) => ({ ...current, image: res.data.url }))
-                        setMessage("Upload ảnh thành công.")
+                        setMessage("Image uploaded successfully.")
                       } catch (err: any) {
-                        setMessage(err.response?.data?.error || "Lỗi upload ảnh.")
+                        setMessage(err.response?.data?.error || "Image upload failed.")
                       }
                     }}
                   />

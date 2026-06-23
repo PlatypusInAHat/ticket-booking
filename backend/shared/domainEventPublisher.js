@@ -1,5 +1,6 @@
 const { publishEvent } = require('./eventBus');
 const { enqueueOutboxEvent } = require('./outboxPublisher');
+const logger = require('../utils/logger');
 
 const publishDomainEvent = async (type, payload = {}, options = {}) => {
   const useOutbox = process.env.OUTBOX_ENABLED !== 'false';
@@ -12,7 +13,7 @@ const publishDomainEvent = async (type, payload = {}, options = {}) => {
         return true;
       }
     } catch (error) {
-      console.error(`[outbox] failed to enqueue ${type}:`, error.message);
+      logger.error(`[outbox] failed to enqueue ${type}: ${error.message}`);
     }
   }
 

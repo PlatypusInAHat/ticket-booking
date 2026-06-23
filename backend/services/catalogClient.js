@@ -1,5 +1,6 @@
 const axios = require('axios');
 const ApiError = require('../utils/ApiError');
+const { getCorrelationId } = require('../middleware/correlationId');
 
 const getCatalogBaseUrl = () => {
   return process.env.CATALOG_SERVICE_URL || 'http://localhost:5102';
@@ -7,11 +8,16 @@ const getCatalogBaseUrl = () => {
 
 const requestCatalog = async (path, body = {}) => {
   try {
-    const response = await axios.post(`${getCatalogBaseUrl()}${path}`, body, {
-      headers: process.env.INTERNAL_API_KEY
-        ? { 'x-internal-api-key': process.env.INTERNAL_API_KEY }
-        : undefined
-    });
+    const headers = {};
+    if (process.env.INTERNAL_API_KEY) {
+      headers['x-internal-api-key'] = process.env.INTERNAL_API_KEY;
+    }
+    const correlationId = getCorrelationId();
+    if (correlationId) {
+      headers['x-correlation-id'] = correlationId;
+    }
+
+    const response = await axios.post(`${getCatalogBaseUrl()}${path}`, body, { headers });
 
     return response.data.data;
   } catch (error) {

@@ -18,10 +18,10 @@ export default function ResetPassword() {
     return (
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-destructive">Lỗi: Không tìm thấy Token</h2>
-          <p className="mt-2 text-muted">Liên kết đặt lại mật khẩu của bạn không hợp lệ hoặc đã thiếu token.</p>
+          <h2 className="text-2xl font-bold text-destructive">Error: Token Not Found</h2>
+          <p className="mt-2 text-muted">Your password reset link is invalid or missing a token.</p>
           <Link to="/forgot-password" className="mt-4 inline-block text-accent hover:underline">
-            Yêu cầu lại liên kết mới
+            Request a new link
           </Link>
         </div>
       </div>
@@ -33,11 +33,11 @@ export default function ResetPassword() {
     setError("")
 
     if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.")
+      setError("Passwords do not match.")
       return
     }
     if (password.length < 8) {
-      setError("Mật khẩu phải dài ít nhất 8 ký tự.")
+      setError("Password must be at least 8 characters long.")
       return
     }
 
@@ -48,7 +48,7 @@ export default function ResetPassword() {
       setSuccess(true)
       setTimeout(() => navigate("/login"), 3000)
     } catch (err: any) {
-      setError(err.response?.data?.message || "Token đã hết hạn hoặc không hợp lệ.")
+      setError(err.response?.data?.message || "Token expired or invalid.")
     } finally {
       setLoading(false)
     }
@@ -59,10 +59,10 @@ export default function ResetPassword() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground">
-            Tạo Mật Khẩu Mới
+            Create New Password
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Vui lòng nhập mật khẩu mới của bạn bên dưới.
+            Please enter your new password below.
           </p>
         </div>
 
@@ -70,8 +70,8 @@ export default function ResetPassword() {
           {success ? (
             <div className="text-center space-y-4">
               <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-              <h3 className="text-xl font-bold text-foreground">Đổi mật khẩu thành công!</h3>
-              <p className="text-muted">Hệ thống sẽ chuyển hướng bạn về trang Đăng nhập sau vài giây...</p>
+              <h3 className="text-xl font-bold text-foreground">Password Reset Successful!</h3>
+              <p className="text-muted">You will be redirected to the Login page in a few seconds...</p>
             </div>
           ) : (
             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -83,7 +83,7 @@ export default function ResetPassword() {
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-foreground">
-                  Mật khẩu mới
+                  New Password
                 </label>
                 <div className="relative mt-1">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -104,7 +104,7 @@ export default function ResetPassword() {
 
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground">
-                  Xác nhận mật khẩu mới
+                  Confirm New Password
                 </label>
                 <div className="relative mt-1">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -129,7 +129,7 @@ export default function ResetPassword() {
                   disabled={loading}
                   className="flex w-full justify-center rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground transition-colors hover:bg-accent-strong focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50"
                 >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Lưu Mật Khẩu"}
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Password"}
                 </button>
               </div>
             </form>

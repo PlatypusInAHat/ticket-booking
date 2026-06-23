@@ -18,6 +18,46 @@ export interface TicketTier {
   badge?: string
 }
 
+export interface Seat {
+  code: string;
+  label: string;
+  status: "available" | "held" | "sold" | "blocked";
+}
+
+export interface Row {
+  label: string;
+  seats: Seat[];
+}
+
+export interface Section {
+  name: string;
+  code: string;
+  rows: Row[];
+}
+
+export interface SeatMap {
+  mode: "general_admission" | "reserved_seating" | "zone_map";
+  sections: Section[];
+}
+
+export interface Zone {
+  id: string;
+  name: string;
+  tierId: string;
+  color: string;
+  coordinates: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+export interface ZoneMap {
+  backgroundImage: string;
+  zones: Zone[];
+}
+
 export interface EventItem {
   id: string
   slug: string
@@ -38,4 +78,6 @@ export interface EventItem {
   description: string
   lineup: string[]
   tiers: TicketTier[]
+  seatMap?: SeatMap
+  zoneMap?: ZoneMap
 }

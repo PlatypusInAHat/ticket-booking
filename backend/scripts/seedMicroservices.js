@@ -19,7 +19,7 @@ const connect = async (uri, label) => {
 };
 
 const seedAuthDb = async () => {
-  const authUri = process.env.AUTH_MONGODB_URI || 'mongodb://localhost:27017/ticket-auth';
+  const authUri = process.env.AUTH_MONGODB_URI || 'mongodb://127.0.0.1:27017/ticket-auth';
   await connect(authUri, 'auth');
 
   await User.deleteMany({});
@@ -31,7 +31,7 @@ const seedAuthDb = async () => {
 };
 
 const seedCatalogDb = async (adminUser) => {
-  const catalogUri = process.env.CATALOG_MONGODB_URI || 'mongodb://localhost:27017/ticket-catalog';
+  const catalogUri = process.env.CATALOG_MONGODB_URI || 'mongodb://127.0.0.1:27017/ticket-catalog';
   await connect(catalogUri, 'catalog');
 
   await SeatLock.deleteMany({});

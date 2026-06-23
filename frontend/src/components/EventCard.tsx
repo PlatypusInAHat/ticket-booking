@@ -1,10 +1,11 @@
+import { memo } from "react"
 import { Link } from "react-router-dom"
 import { Calendar, MapPin, Star } from "lucide-react"
 import type { EventItem } from "@/data/types"
 import { StatusBadge, Badge } from "@/components/ui/Badge"
 import { formatCurrency, formatDate } from "@/lib/utils"
 
-export function EventCard({ event }: { event: EventItem }) {
+export const EventCard = memo(function EventCard({ event }: { event: EventItem }) {
   return (
     <Link
       to={`/events/${event.slug}`}
@@ -65,4 +66,4 @@ export function EventCard({ event }: { event: EventItem }) {
       </div>
     </Link>
   )
-}
+})

@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
 const errorHandler = require('../middleware/error');
+const { correlationIdMiddleware } = require('../middleware/correlationId');
+const logger = require('../utils/logger');
 
 const DEFAULT_BODY_LIMIT = '10mb';
 
@@ -21,6 +23,13 @@ const createServiceApp = ({
   corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000'
 }) => {
   const app = express();
+
+  app.use(correlationIdMiddleware);
+  
+  app.use((req, res, next) => {
+    logger.info(`[${req.method}] ${req.url}`);
+    next();
+  });
 
   app.use(compression());
   app.use(express.json({ limit: DEFAULT_BODY_LIMIT, verify: captureRawBody }));
