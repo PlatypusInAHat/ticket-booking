@@ -5,6 +5,9 @@ export const eventTypeLabels = {
   movie: 'Phim',
   sports: 'Thể thao',
   theater: 'Sân khấu',
+  conference: 'Hội nghị',
+  festival: 'Lễ hội',
+  workshop: 'Workshop',
   other: 'Khác'
 };
 

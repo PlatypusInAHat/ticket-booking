@@ -57,7 +57,7 @@ services:
       PASSWORD_HASH_ROUNDS: ${PASSWORD_HASH_ROUNDS:-12}
       PASSWORD_PEPPER: ${PASSWORD_PEPPER:-dev_password_pepper_change_me}
       MIN_PASSWORD_LENGTH: ${MIN_PASSWORD_LENGTH:-8}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ticketbooking.com}
     depends_on:
       - auth-mongo
@@ -81,7 +81,7 @@ services:
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       - catalog-mongo
       - rabbitmq
@@ -108,7 +108,7 @@ services:
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:5000}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
       STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY:-pk_test_placeholder}
@@ -122,7 +122,7 @@ services:
       MOMO_PARTNER_CODE: ${MOMO_PARTNER_CODE:-momo_placeholder}
       MOMO_ACCESS_KEY: ${MOMO_ACCESS_KEY:-momo_access_placeholder}
       MOMO_SECRET_KEY: ${MOMO_SECRET_KEY:-momo_secret_placeholder}
-      MOMO_REDIRECT_URL: ${MOMO_REDIRECT_URL:-http://localhost:3000/payment/result}
+      MOMO_REDIRECT_URL: ${MOMO_REDIRECT_URL:-http://localhost:5173/payment/result}
       MOMO_IPN_URL: ${MOMO_IPN_URL:-http://localhost:5000/api/payment/webhooks/momo}
       MOMO_REQUEST_TYPE: ${MOMO_REQUEST_TYPE:-captureWallet}
       BOOKING_HOLD_MINUTES: ${BOOKING_HOLD_MINUTES:-15}
@@ -163,12 +163,28 @@ services:
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       - checkin-mongo
       - rabbitmq
     ports:
       - "5104:5104"
+
+  notification-service:
+    build:
+      context: ./backend
+    command: npm run start:notification-service
+    environment:
+      NODE_ENV: development
+      SERVICE_MODE: microservice
+      SERVICE_NAME: notification-service
+      EVENT_BROKER_URL: amqp://rabbitmq:5672
+      EVENT_EXCHANGE: ticket-booking.events
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASS: ${EMAIL_PASS:-}
+    depends_on:
+      - rabbitmq
 
   api-gateway:
     build:
@@ -183,7 +199,7 @@ services:
       CATALOG_SERVICE_URL: http://catalog-service:5102
       BOOKING_SERVICE_URL: http://booking-service:5103
       CHECKIN_SERVICE_URL: http://checkin-service:5104
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       - auth-service
       - catalog-service

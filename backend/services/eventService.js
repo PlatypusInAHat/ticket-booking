@@ -1,5 +1,8 @@
+const mongoose = require('mongoose');
 const Company = require('../models/Company');
 const Event = require('../models/Event');
+const Session = require('../models/Session');
+const Ticket = require('../models/Ticket');
 const ApiError = require('../utils/ApiError');
 const { canManageCompany } = require('./companyService');
 
@@ -97,6 +100,92 @@ const createEvent = async (eventData, user) => {
   return event;
 };
 
+const createEventBundle = async (bundleData, user) => {
+  const { eventData, sessionsData } = bundleData;
+  const { companyId, company, title, eventType, location } = eventData;
+  const companyRef = companyId || company || user.company; // Assume admin or organizer context
+  
+  if (!companyRef || !title || !eventType) {
+    throw new ApiError(400, 'Company, title, and event type are required');
+  }
+
+  const sess = await mongoose.startSession();
+  sess.startTransaction();
+
+  try {
+    // 1. Create Event
+    // We need to calculate earliest start and latest end across all sessions
+    let earliestStart = null;
+    let latestEnd = null;
+    
+    if (sessionsData && sessionsData.length > 0) {
+      sessionsData.forEach(s => {
+        const start = new Date(s.startDate);
+        const end = new Date(s.endDate);
+        if (!earliestStart || start < earliestStart) earliestStart = start;
+        if (!latestEnd || end > latestEnd) latestEnd = end;
+      });
+    }
+
+    const newEvent = new Event({
+      ...eventData,
+      company: companyRef,
+      organizer: user.id,
+      startsAt: earliestStart || new Date(),
+      endsAt: latestEnd
+    });
+    
+    await newEvent.save({ session: sess });
+
+    // 2. Create Sessions and Tickets
+    if (sessionsData && sessionsData.length > 0) {
+      for (const sessionItem of sessionsData) {
+        const newSession = new Session({
+          event: newEvent._id,
+          startsAt: new Date(sessionItem.startDate),
+          endsAt: new Date(sessionItem.endDate)
+        });
+        await newSession.save({ session: sess });
+
+        // 3. Create Tickets for this session
+        if (sessionItem.ticketTypes && sessionItem.ticketTypes.length > 0) {
+          const ticketsToCreate = sessionItem.ticketTypes.map(t => ({
+            event: newEvent._id,
+            session: newSession._id,
+            company: companyRef,
+            name: t.name,
+            price: t.isFree ? 0 : Number(t.price),
+            isFree: Boolean(t.isFree),
+            totalSeats: Number(t.totalQuantity),
+            availableSeats: Number(t.totalQuantity),
+            description: t.description || '',
+            image: t.image || '',
+            saleWindow: {
+              startsAt: t.saleStart ? new Date(t.saleStart) : null,
+              endsAt: t.saleEnd ? new Date(t.saleEnd) : null
+            },
+            policies: {
+              maxTicketsPerUser: t.maxPerOrder,
+              minTicketsPerUser: t.minPerOrder
+            }
+          }));
+
+          await Ticket.insertMany(ticketsToCreate, { session: sess });
+        }
+      }
+    }
+
+    await sess.commitTransaction();
+    sess.endSession();
+
+    return newEvent;
+  } catch (error) {
+    await sess.abortTransaction();
+    sess.endSession();
+    throw new ApiError(500, 'Failed to create event bundle: ' + error.message);
+  }
+};
+
 const updateEvent = async (id, updateData, user) => {
   const event = await Event.findById(id).populate('company');
 
@@ -114,8 +203,9 @@ const updateEvent = async (id, updateData, user) => {
 };
 
 module.exports = {
-  createEvent,
-  getEventById,
   getEvents,
+  getEventById,
+  createEvent,
+  createEventBundle,
   updateEvent
 };

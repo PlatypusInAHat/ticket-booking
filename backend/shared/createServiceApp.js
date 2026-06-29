@@ -20,7 +20,7 @@ const createServiceApp = ({
   serviceName,
   routes = [],
   healthPath = '/health',
-  corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000'
+  corsOrigin = process.env.FRONTEND_URL || 'http://localhost:5173'
 }) => {
   const app = express();
 

@@ -72,6 +72,11 @@ router.get('/', [
   cacheMiddleware(60) // Cache for 60 seconds
 ], eventController.getEvents);
 router.get('/:id', [eventIdParam(), validateRequest, cacheMiddleware(300)], eventController.getEventById);
+router.post('/bundle', [
+  authenticateToken,
+  authorizeRole(['admin', 'organizer'])
+], eventController.createEventBundle);
+
 router.post('/', [
   authenticateToken,
   authorizeRole(['admin', 'organizer']),

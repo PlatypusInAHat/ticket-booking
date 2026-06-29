@@ -39,6 +39,7 @@ export function Register() {
         registerSuccess({
           user: authData.user,
           token: authData.token,
+          refreshToken: authData.refreshToken,
         })
       )
 

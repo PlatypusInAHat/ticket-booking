@@ -13,8 +13,8 @@ import { colors } from '../theme';
 const initialForm = {
   name: '',
   email: 'user@ticketbooking.com',
-  password: 'user123',
-  confirmPassword: 'user123'
+  password: 'user12345',
+  confirmPassword: 'user12345'
 };
 
 export default function AuthScreen({ onAuthenticated }) {
@@ -43,10 +43,12 @@ export default function AuthScreen({ onAuthenticated }) {
   };
 
   const useDemoAccount = (type) => {
+    const isStaff = type === 'staff';
     setForm(current => ({
       ...current,
-      email: type === 'staff' ? 'staff@ticketbooking.com' : 'user@ticketbooking.com',
-      password: type === 'staff' ? 'staff123' : 'user123'
+      email: isStaff ? 'staff@ticketbooking.com' : 'user@ticketbooking.com',
+      password: isStaff ? 'staff12345' : 'user12345',
+      confirmPassword: isStaff ? 'staff12345' : 'user12345'
     }));
   };
 

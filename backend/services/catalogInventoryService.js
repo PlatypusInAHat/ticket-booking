@@ -48,7 +48,11 @@ const normalizeTicketSelection = (tickets = []) => {
         existingTicket.seatCodes = [...(existingTicket.seatCodes || []), ...seatCodes];
       }
     } else {
-      normalized.push({ ticketId, quantity, seatCodes });
+      const normalizedItem = { ticketId, quantity };
+      if (seatCodes.length > 0) {
+        normalizedItem.seatCodes = seatCodes;
+      }
+      normalized.push(normalizedItem);
     }
   });
 
@@ -267,9 +271,12 @@ const reserveTickets = async (tickets = []) => {
         quantity: item.quantity,
         pricePerUnit: ticket.price,
         subtotal,
-        seatCodes: item.seatCodes,
         snapshot: toSnapshot(ticket)
       };
+
+      if (item.seatCodes?.length > 0) {
+        reservedItem.seatCodes = item.seatCodes;
+      }
 
       reservedItems.push(reservedItem);
       await incrementEventStats(ticket.event, { 'stats.soldTickets': item.quantity });

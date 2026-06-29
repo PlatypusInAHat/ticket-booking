@@ -1,45 +1,45 @@
 export const eventTypeLabels = {
-  concert: 'Concert',
-  train: 'Train',
-  flight: 'Flight',
-  movie: 'Movie',
-  sports: 'Sports',
-  theater: 'Theater',
-  conference: 'Conference',
-  festival: 'Festival',
+  concert: 'Hòa nhạc',
+  train: 'Tàu hỏa',
+  flight: 'Máy bay',
+  movie: 'Phim',
+  sports: 'Thể thao',
+  theater: 'Sân khấu',
+  conference: 'Hội nghị',
+  festival: 'Lễ hội',
   workshop: 'Workshop',
-  other: 'Other'
+  other: 'Khác'
 };
 
 export const categoryLabels = {
-  standard: 'Standard',
-  premium: 'Premium',
+  standard: 'Tiêu chuẩn',
+  premium: 'Cao cấp',
   vip: 'VIP'
 };
 
 export const bookingStatusLabels = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  cancelled: 'Cancelled'
+  pending: 'Chờ xác nhận',
+  confirmed: 'Đã xác nhận',
+  cancelled: 'Đã hủy'
 };
 
 export const paymentStatusLabels = {
-  pending: 'Pending',
-  completed: 'Completed',
-  failed: 'Failed',
-  refunded: 'Refunded'
+  pending: 'Chờ thanh toán',
+  completed: 'Đã thanh toán',
+  failed: 'Thanh toán lỗi',
+  refunded: 'Đã hoàn tiền'
 };
 
 export const paymentMethodLabels = {
-  credit_card: 'Credit Card (demo)',
-  debit_card: 'Debit Card (demo)',
-  bank_transfer: 'Bank Transfer (demo)',
+  credit_card: 'Thẻ tín dụng (demo)',
+  debit_card: 'Thẻ ghi nợ (demo)',
+  bank_transfer: 'Chuyển khoản (demo)',
   vnpay: 'VNPay',
   momo: 'MoMo',
   zalopay: 'ZaloPay',
   paypal: 'PayPal',
-  cash: 'Cash',
-  other: 'Other'
+  cash: 'Tiền mặt',
+  other: 'Khác'
 };
 
-export const getLabel = (map, key, fallback = 'Unknown') => map[key] || fallback;
+export const getLabel = (map, key, fallback = 'Không rõ') => map[key] || fallback;

@@ -43,7 +43,7 @@ const getPublicApiUrl = () => {
 };
 
 const getFrontendUrl = () => {
-  return process.env.FRONTEND_URL || 'http://localhost:3000';
+  return process.env.FRONTEND_URL || 'http://localhost:5173';
 };
 
 const normalizeProvider = (providerOrMethod = '') => {

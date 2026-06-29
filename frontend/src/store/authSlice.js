@@ -80,7 +80,7 @@ const authSlice = createSlice({
         ...state.user,
         ...action.payload
       };
-      persistAuth(state.user, state.token);
+      persistAuth(state.user, state.token, state.refreshToken);
     },
     clearAuthError: (state) => {
       state.error = null;
