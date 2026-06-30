@@ -31,8 +31,7 @@ jobs:
         working-directory: backend
         run: |
           npm ci
-          # Uncomment to run tests when ready
-          # npm test
+          npm test
 
       - name: Configure AWS Credentials
         if: github.ref == 'refs/heads/main'

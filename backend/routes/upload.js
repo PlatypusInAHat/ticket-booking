@@ -1,6 +1,6 @@
 const express = require('express');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
-const { upload } = require('../utils/cloudinary');
+const { upload, uploadImageToCloudinary } = require('../utils/cloudinary');
 
 const router = express.Router();
 
@@ -20,10 +20,16 @@ router.post('/image', [
       return res.status(400).json({ error: 'No image file provided.' });
     }
 
-    res.status(200).json({
-      message: 'Image uploaded successfully',
-      url: req.file.path,
-      publicId: req.file.filename,
+    uploadImageToCloudinary(req, res, (uploadErr) => {
+      if (uploadErr) {
+        return next(uploadErr);
+      }
+
+      res.status(200).json({
+        message: 'Image uploaded successfully',
+        url: req.file.path,
+        publicId: req.file.filename,
+      });
     });
   });
 });

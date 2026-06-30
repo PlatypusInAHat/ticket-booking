@@ -20,11 +20,11 @@ export function Cart() {
           <ShoppingBag className="h-7 w-7" />
         </span>
         <div>
-          <h1 className="font-display text-2xl font-bold">Your cart is empty</h1>
-          <p className="mt-2 text-muted">Find your next unforgettable night out.</p>
+          <h1 className="font-display text-2xl font-bold">Giỏ vé đang trống</h1>
+          <p className="mt-2 text-muted">Chọn sự kiện bạn thích và vé sẽ xuất hiện ở đây.</p>
         </div>
         <Button to="/events" size="lg">
-          Browse events
+          Xem sự kiện
         </Button>
       </div>
     )
@@ -32,9 +32,9 @@ export function Cart() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="font-display text-4xl font-bold tracking-tight">Your cart</h1>
+      <h1 className="font-display text-4xl font-bold tracking-tight">Giỏ vé của bạn</h1>
       <p className="mt-2 text-muted">
-        {items.length} {items.length === 1 ? "item" : "items"} ready for checkout.
+        {items.length} loại vé đã sẵn sàng thanh toán.
       </p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
@@ -116,14 +116,14 @@ export function Cart() {
         {/* Summary */}
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
-            <h2 className="font-display text-lg font-semibold">Order summary</h2>
+            <h2 className="font-display text-lg font-semibold">Tóm tắt đơn hàng</h2>
             <div className="mt-5 flex flex-col gap-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted">Subtotal</span>
+                <span className="text-muted">Tạm tính</span>
                 <span className="font-medium">{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between border-t border-border pt-3 text-base">
-                <span className="font-semibold">Total</span>
+                <span className="font-semibold">Tổng cộng</span>
                 <span className="font-display text-xl font-bold text-accent">
                   {formatCurrency(subtotal)}
                 </span>
@@ -131,15 +131,15 @@ export function Cart() {
             </div>
 
             <Button to="/checkout" className="mt-6 w-full" size="lg">
-              Proceed to checkout
+              Thanh toán
             </Button>
             <Button to="/events" variant="ghost" size="sm" className="mt-2 w-full">
-              Continue browsing
+              Xem thêm sự kiện
             </Button>
 
             <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-muted-2">
               <ShieldCheck className="h-3.5 w-3.5 text-success" />
-              Secure, encrypted checkout
+              Thanh toán bảo mật, mã hoá
             </p>
           </div>
         </aside>

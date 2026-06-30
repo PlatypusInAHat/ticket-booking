@@ -11,12 +11,12 @@ const gatewayMethods = new Set(["vnpay", "momo"])
 
 const getPaymentActionText = (paymentMethod: string) => {
   if (paymentMethod === "vnpay") {
-    return "Pay with VNPay"
+    return "Thanh toán qua VNPay"
   }
   if (paymentMethod === "momo") {
-    return "Pay with MoMo"
+    return "Thanh toán qua MoMo"
   }
-  return "Confirm Demo Payment"
+  return "Xác nhận thanh toán thử"
 }
 
 export function Checkout() {
@@ -52,7 +52,7 @@ export function Checkout() {
     const redirectUrl = session.redirectUrl || session.paymentUrl || session.deeplink
 
     if (!redirectUrl) {
-      throw new Error("Payment gateway did not return a valid redirect URL.")
+      throw new Error("Cổng thanh toán chưa trả về đường dẫn hợp lệ.")
     }
 
     window.localStorage.setItem("lastPendingBookingId", session.bookingId || "")
@@ -74,7 +74,7 @@ export function Checkout() {
     event.preventDefault()
     setLoading(true)
     setError("")
-    setStatusText("Reserving your tickets...")
+    setStatusText("Đang giữ vé cho bạn...")
 
     try {
       const bookingResponse = await bookingsAPI.create(createBookingPayload())
@@ -83,7 +83,7 @@ export function Checkout() {
       window.localStorage.setItem("lastPendingBookingId", booking._id)
 
       if (gatewayMethods.has(paymentMethod)) {
-        setStatusText("Creating secure payment session...")
+        setStatusText("Đang tạo phiên thanh toán bảo mật...")
         const sessionResponse = await paymentAPI.createSession({
           bookingId: booking._id,
           provider: paymentMethod,
@@ -96,10 +96,10 @@ export function Checkout() {
         return
       }
 
-      setStatusText("Completing demo payment...")
+      setStatusText("Đang hoàn tất thanh toán thử...")
       await completeMockPayment(booking)
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Payment failed. Please try again.")
+      setError(err.response?.data?.message || err.message || "Thanh toán thất bại. Vui lòng thử lại.")
     } finally {
       setLoading(false)
       setStatusText("")
@@ -111,12 +111,12 @@ export function Checkout() {
       <div className="mx-auto flex min-h-[80vh] max-w-7xl items-center justify-center px-4 py-24">
         <div className="glass rounded-3xl border border-border p-10 text-center">
           <Receipt className="mx-auto mb-5 h-12 w-12 text-muted" />
-          <p className="font-bold text-foreground">Your cart is empty.</p>
+          <p className="font-bold text-foreground">Giỏ vé đang trống.</p>
           <button
             onClick={() => navigate("/events")}
             className="mt-6 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-foreground transition-colors hover:bg-accent-strong"
           >
-            Browse Events
+            Xem sự kiện
           </button>
         </div>
       </div>
@@ -138,11 +138,11 @@ export function Checkout() {
 
       <div className="mb-8 relative z-10">
         <span className="mb-3 inline-block rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-          Final Step
+          Bước cuối
         </span>
-        <h1 className="font-display text-4xl font-black text-foreground">Checkout</h1>
+        <h1 className="font-display text-4xl font-black text-foreground">Thanh toán</h1>
         <p className="mt-3 max-w-2xl text-sm text-muted">
-          Your tickets will be held for a short time. Choose VNPay or MoMo to redirect to the secure payment gateway.
+          Vé sẽ được giữ trong thời gian ngắn. Chọn VNPay hoặc MoMo để chuyển tới cổng thanh toán bảo mật.
         </p>
       </div>
 
@@ -153,9 +153,9 @@ export function Checkout() {
               <Lock className="h-6 w-6" />
             </span>
             <div>
-              <h2 className="text-xl font-black text-foreground">Delivery Information</h2>
+              <h2 className="text-xl font-black text-foreground">Thông tin nhận vé</h2>
               <p className="text-sm text-muted">
-                Your email and phone are used to confirm orders and send e-tickets.
+                Email và số điện thoại được dùng để xác nhận đơn hàng và gửi vé điện tử.
               </p>
             </div>
           </div>
@@ -174,7 +174,7 @@ export function Checkout() {
 
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Full Name</label>
+              <label className="text-sm font-medium text-foreground">Họ và tên</label>
               <input
                 type="text"
                 value={customerName}
@@ -184,7 +184,7 @@ export function Checkout() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Email Address</label>
+              <label className="text-sm font-medium text-foreground">Email</label>
               <input
                 type="email"
                 value={customerEmail}
@@ -194,7 +194,7 @@ export function Checkout() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Phone Number</label>
+              <label className="text-sm font-medium text-foreground">Số điện thoại</label>
               <input
                 type="tel"
                 value={customerPhone}
@@ -204,7 +204,7 @@ export function Checkout() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Payment Method</label>
+              <label className="text-sm font-medium text-foreground">Phương thức thanh toán</label>
               <select
                 value={paymentMethod}
                 onChange={(event) => setPaymentMethod(event.target.value)}
@@ -220,9 +220,9 @@ export function Checkout() {
           </div>
 
           <div className="mt-8 rounded-2xl border border-border bg-surface p-5 text-sm text-muted">
-            <p className="font-bold text-foreground">Payment Notice</p>
+            <p className="font-bold text-foreground">Lưu ý thanh toán</p>
             <p className="mt-2">
-              VNPay/MoMo require real merchant config in `.env`. If unconfigured, use Credit Card or Bank Transfer to run the demo flow.
+              VNPay/MoMo cần cấu hình merchant thật trong `.env`. Nếu chưa cấu hình, dùng thẻ hoặc chuyển khoản để chạy luồng demo.
             </p>
           </div>
 
@@ -232,18 +232,18 @@ export function Checkout() {
             className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-8 py-4 text-lg font-semibold text-accent-foreground transition-colors hover:bg-accent-strong disabled:opacity-50 md:w-auto"
           >
             <CreditCard className="h-5 w-5" />
-            {loading ? "Processing..." : getPaymentActionText(paymentMethod)}
+            {loading ? "Đang xử lý..." : getPaymentActionText(paymentMethod)}
           </button>
         </form>
 
         <aside className="glass rounded-3xl border border-border p-6 lg:sticky lg:top-28 lg:self-start">
-          <h2 className="text-xl font-black text-foreground">Order Summary</h2>
+          <h2 className="text-xl font-black text-foreground">Tóm tắt đơn hàng</h2>
           <div className="mt-6 space-y-4">
             {items.map((item: any) => (
               <div key={item._id || item.id} className="rounded-2xl border border-border bg-surface-2 p-4">
                 <p className="font-bold text-foreground">{item.eventName || item.title}</p>
                 <div className="mt-3 flex justify-between text-sm text-muted">
-                  <span>{item.quantity} tickets</span>
+                  <span>{item.quantity} vé</span>
                   <span className="font-bold text-green-500">{formatCurrency(item.price * item.quantity)}</span>
                 </div>
               </div>
@@ -252,18 +252,18 @@ export function Checkout() {
 
           <div className="mt-6 border-t border-border pt-6">
             <div className="flex justify-between text-sm text-muted">
-              <span>Subtotal</span>
+              <span>Tạm tính</span>
               <span>{formatCurrency(totalPrice)}</span>
             </div>
             <div className="mt-4 flex justify-between text-xl font-black text-foreground">
-              <span>Total</span>
+              <span>Tổng cộng</span>
               <span className="text-green-500">{formatCurrency(totalPrice)}</span>
             </div>
           </div>
 
           <div className="mt-6 flex items-start gap-3 rounded-2xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-500">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-            <p>Tickets are only confirmed after the booking status changes to paid.</p>
+            <p>Vé chỉ được xác nhận sau khi đơn hàng chuyển sang trạng thái đã thanh toán.</p>
           </div>
         </aside>
       </div>

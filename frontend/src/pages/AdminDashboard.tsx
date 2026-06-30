@@ -325,9 +325,8 @@ export function AdminDashboard() {
     }
 
     try {
-      // Assuming you have an eventsAPI.delete or just mock it for now if not implemented
-      // await eventsAPI.delete(eventId) 
-      setMessage("Event deleted.")
+      await eventsAPI.delete(eventId)
+      setMessage("Event deleted successfully.")
       fetchEvents()
       fetchStats()
     } catch (error: any) {
@@ -758,7 +757,7 @@ export function AdminDashboard() {
                   <div className="flex gap-3">
                     <button
                       type="button"
-                      onClick={() => console.log("Editing event", event._id)}
+                      onClick={() => setMessage("Chỉnh sửa trọn bộ sự kiện sẽ được tách thành màn quản trị riêng. Hiện tại bạn có thể xoá và tạo lại bundle sự kiện.")}
                       className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface-3"
                     >
                       <Edit className="h-4 w-4" /> Edit

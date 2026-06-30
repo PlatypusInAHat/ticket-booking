@@ -1,0 +1,153 @@
+name: App Code Audit
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'mobile/**'
+      - 'docker-compose.yml'
+      - 'sonar-project.properties'
+      - 'dependency-check-suppressions.xml'
+      - '.github/workflows/app-audit.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'mobile/**'
+      - 'docker-compose.yml'
+      - 'sonar-project.properties'
+      - 'dependency-check-suppressions.xml'
+      - '.github/workflows/app-audit.yml'
+
+jobs:
+  node-quality:
+    name: Node Quality (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: backend
+            path: backend
+            verify: npm test
+          - app: frontend
+            path: frontend
+            verify: npm run build
+          - app: mobile
+            path: mobile
+            verify: npx expo config --type public >/dev/null
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.path }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ${{ matrix.path }}/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: NPM Audit
+        run: npm audit --audit-level=high
+
+      - name: Verify App
+        run: ${{ matrix.verify }}
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy Filesystem Scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          format: sarif
+          output: trivy-app-results.sarif
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+          skip-dirs: backend/node_modules,frontend/node_modules,mobile/node_modules
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-app-results.sarif
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: ticket-booking-app
+          path: .
+          format: HTML
+          out: dependency-check-report
+          args: >
+            --enableExperimental
+            --failOnCVSS 7
+            --suppression dependency-check-suppressions.xml
+            --exclude "**/node_modules/**"
+
+      - name: Upload OWASP Dependency Check Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-report
+          path: dependency-check-report
+          if-no-files-found: ignore
+
+      - name: Build Backend Image For Scan
+        run: docker build -t ticket-booking-backend:audit backend
+
+      - name: Trivy Backend Image Scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ticket-booking-backend:audit
+          format: table
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+
+      - name: SonarQube Scan
+        if: env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+
+      - name: SonarQube Quality Gate
+        if: env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != ''
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}

@@ -1,87 +1,137 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useParams, Link } from "react-router-dom"
 import {
   Calendar,
+  Check,
+  ChevronLeft,
   Clock,
   MapPin,
+  ShoppingBag,
   Star,
   Users,
-  ChevronLeft,
-  ShoppingBag,
-  Check,
 } from "lucide-react"
-import { getEventBySlug, events } from "@/data/events"
+import type { EventItem } from "@/data/types"
 import { StatusBadge, Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { SectionTitle } from "@/components/ui/SectionTitle"
 import { TicketTierCard } from "@/components/TicketTierCard"
 import { EventCard } from "@/components/EventCard"
-import { SeatMap } from "@/components/SeatMap"
-import { ZoneMap } from "@/components/ZoneMap"
-import type { Zone } from "@/data/types"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
 import { useAppDispatch } from "@/store"
 import { addToCart } from "@/store/cartSlice"
+import { eventsAPI, ticketsAPI } from "@/services/api"
+import { mapApiEventToEventItem } from "@/utils/eventMapper"
 
 export function EventDetail() {
   const { slug } = useParams<{ slug: string }>()
-  const event = slug ? getEventBySlug(slug) : undefined
   const dispatch = useAppDispatch()
-  const soldOut = event?.status === "soldout"
 
-  const [selectedTier, setSelectedTier] = useState(event?.tiers[0]?.id ?? "")
+  const [event, setEvent] = useState<EventItem | null>(null)
+  const [related, setRelated] = useState<EventItem[]>([])
+  const [selectedTier, setSelectedTier] = useState("")
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
-  const [selectedSeatCodes, setSelectedSeatCodes] = useState<string[]>([])
-  const [selectedZoneId, setSelectedZoneId] = useState<string>("")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  const isReserved = event?.seatMap?.mode === "reserved_seating"
-  const isZoneMap = !!event?.zoneMap
+  useEffect(() => {
+    const controller = new AbortController()
 
+    const loadEvent = async () => {
+      if (!slug) {
+        setError("Không tìm thấy mã sự kiện.")
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      setError("")
+
+      try {
+        const eventResponse = await eventsAPI.getEventById(slug, { signal: controller.signal })
+        const apiEvent = eventResponse.data.data
+        const ticketsResponse = await ticketsAPI.getAll(
+          { eventId: apiEvent.id || apiEvent._id, limit: 100 },
+          { signal: controller.signal },
+        )
+        const apiTickets = ticketsResponse.data.data?.tickets || []
+        const mappedEvent = mapApiEventToEventItem(apiEvent, apiTickets)
+        setEvent(mappedEvent)
+        setSelectedTier(mappedEvent.tiers[0]?.id || "")
+
+        const relatedResponse = await eventsAPI.getEvents(
+          { eventType: apiEvent.eventType, limit: 4 },
+          { signal: controller.signal },
+        )
+        const relatedEvents = (relatedResponse.data.data?.events || [])
+          .filter((item: any) => String(item.id || item._id) !== String(mappedEvent.id))
+          .slice(0, 3)
+          .map((item: any) => mapApiEventToEventItem(item))
+        setRelated(relatedEvents)
+      } catch (err: any) {
+        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return
+        setError(err.response?.data?.message || "Không thể tải chi tiết sự kiện.")
+      } finally {
+        if (!controller.signal.aborted) setLoading(false)
+      }
+    }
+
+    loadEvent()
+    return () => controller.abort()
+  }, [slug])
+
+  const soldOut = event?.status === "soldout"
   const tier = useMemo(
-    () => event?.tiers.find((t) => t.id === selectedTier) || event?.tiers[0],
+    () => event?.tiers.find((item) => item.id === selectedTier) || event?.tiers[0],
     [event, selectedTier],
   )
-
-  if (!event) {
-    return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-32 text-center">
-        <h1 className="font-display text-2xl font-bold">Event not found</h1>
-        <p className="text-muted">We couldn&apos;t find the event you&apos;re looking for.</p>
-        <Button to="/events">Browse all events</Button>
-      </div>
-    )
-  }
-
-  const related = events.filter((e) => e.id !== event.id && e.category === event.category).slice(0, 3)
-  const effectiveQuantity = isReserved ? selectedSeatCodes.length : quantity
+  const effectiveQuantity = quantity
   const total = (tier?.price ?? 0) * effectiveQuantity
 
   const handleAdd = () => {
-    if (!tier || soldOut || effectiveQuantity === 0) return
+    if (!event || !tier || soldOut || effectiveQuantity === 0) return
     dispatch(
       addToCart({
-        _id: `${event.id}-${tier.id}`,
+        _id: tier.id,
+        ticketId: tier.id,
         eventId: event.id,
+        eventName: event.title,
         eventTitle: event.title,
         eventImage: event.image,
         eventDate: event.date,
         venue: `${event.venue}, ${event.city}`,
         tierId: tier.id,
         tierName: tier.name,
+        category: tier.name,
         price: tier.price,
-        availableSeats: tier.remaining || 100,
+        availableSeats: tier.remaining || 1,
         quantity: effectiveQuantity,
-        seatCodes: isReserved ? selectedSeatCodes : undefined,
       }),
     )
     setAdded(true)
     setTimeout(() => setAdded(false), 2200)
   }
 
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+        <div className="h-[520px] animate-pulse rounded-[var(--radius-card)] border border-border bg-surface" />
+      </div>
+    )
+  }
+
+  if (error || !event) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-32 text-center">
+        <h1 className="font-display text-2xl font-bold">Không tìm thấy sự kiện</h1>
+        <p className="text-muted">{error || "Sự kiện này không tồn tại hoặc đã ngừng bán."}</p>
+        <Button to="/events">Xem tất cả sự kiện</Button>
+      </div>
+    )
+  }
+
   return (
     <>
-      {/* Hero */}
       <section className="relative">
         <div className="absolute inset-0 h-full">
           <img src={event.heroImage || "/placeholder.svg"} alt="" className="h-full w-full object-cover" />
@@ -94,14 +144,14 @@ export function EventDetail() {
             className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to events
+            Quay lại danh sách
           </Link>
 
           <div className="mt-28 flex flex-wrap items-center gap-2 sm:mt-40">
             <Badge tone="neutral" className="bg-background/70">
               {event.category}
             </Badge>
-            {event.popular && <Badge tone="accent">Popular</Badge>}
+            {event.popular && <Badge tone="accent">Nổi bật</Badge>}
             <StatusBadge status={event.status} />
           </div>
 
@@ -117,7 +167,7 @@ export function EventDetail() {
             </span>
             <span className="flex items-center gap-2 text-muted">
               <Clock className="h-4 w-4 text-accent" />
-              Doors {formatTime(event.doorsTime)} &middot; Show {formatTime(event.date)}
+              Mở cửa {formatTime(event.doorsTime)} · Diễn ra {formatTime(event.date)}
             </span>
             <span className="flex items-center gap-2 text-muted">
               <MapPin className="h-4 w-4 text-accent" />
@@ -125,24 +175,22 @@ export function EventDetail() {
             </span>
             <span className="flex items-center gap-2 text-muted">
               <Star className="h-4 w-4 fill-accent text-accent" />
-              {event.rating} rating
+              {event.rating} đánh giá
             </span>
           </div>
         </div>
       </section>
 
-      {/* Content */}
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
-          {/* Left */}
           <div className="flex flex-col gap-10">
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">About this event</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight">Thông tin sự kiện</h2>
               <p className="mt-4 leading-relaxed text-pretty text-muted">{event.description}</p>
             </div>
 
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">Lineup</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight">Ban tổ chức</h2>
               <div className="mt-4 flex flex-wrap gap-2">
                 {event.lineup.map((act) => (
                   <span
@@ -157,82 +205,39 @@ export function EventDetail() {
             </div>
 
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">
-                {isReserved || isZoneMap ? "Choose your seats" : "Choose your tickets"}
-              </h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight">Chọn loại vé</h2>
               <p className="mt-2 text-sm text-muted">
-                {isReserved
-                  ? "Select seats directly from the interactive venue map."
-                  : isZoneMap 
-                  ? "Click on a zone on the map to select your tickets."
-                  : "Select a tier to compare what's included."}
+                Mỗi vé sau khi thanh toán sẽ có QR/barcode riêng để check-in.
               </p>
-              <div className="mt-5">
-                {isReserved && event.seatMap ? (
-                  <SeatMap
-                    sections={event.seatMap.sections}
-                    onSelectionChange={setSelectedSeatCodes}
-                    maxSelectable={10}
-                  />
-                ) : isZoneMap && event.zoneMap ? (
-                  <div className="flex flex-col gap-6">
-                    <ZoneMap
-                      zoneMap={event.zoneMap}
-                      selectedZoneId={selectedZoneId}
-                      onZoneSelect={(zone: Zone) => {
-                        setSelectedZoneId(zone.id);
-                        setSelectedTier(zone.tierId);
-                        setQuantity(1);
+              {event.tiers.length > 0 ? (
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {event.tiers.map((item) => (
+                    <TicketTierCard
+                      key={item.id}
+                      tier={item}
+                      selected={selectedTier === item.id}
+                      quantity={quantity}
+                      soldOut={soldOut || item.remaining <= 0}
+                      onSelect={() => {
+                        setSelectedTier(item.id)
+                        setQuantity(1)
                       }}
+                      onQuantity={setQuantity}
                     />
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                      {event.tiers.map((t) => (
-                        <TicketTierCard
-                          key={t.id}
-                          tier={t}
-                          selected={selectedTier === t.id}
-                          quantity={quantity}
-                          soldOut={soldOut}
-                          onSelect={() => {
-                            setSelectedTier(t.id)
-                            setQuantity(1)
-                            
-                            // Auto-select zone if mapped
-                            const mappedZone = event.zoneMap?.zones.find(z => z.tierId === t.id);
-                            if (mappedZone) setSelectedZoneId(mappedZone.id);
-                          }}
-                          onQuantity={setQuantity}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {event.tiers.map((t) => (
-                      <TicketTierCard
-                        key={t.id}
-                        tier={t}
-                        selected={selectedTier === t.id}
-                        quantity={quantity}
-                        soldOut={soldOut}
-                        onSelect={() => {
-                          setSelectedTier(t.id)
-                          setQuantity(1)
-                        }}
-                        onQuantity={setQuantity}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-border bg-surface p-8 text-center text-muted">
+                  Sự kiện này chưa mở bán vé.
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right — sticky summary */}
           <aside className="lg:sticky lg:top-24 lg:self-start">
             <div className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-2">Starting from</span>
+                <span className="text-sm text-muted-2">Giá từ</span>
                 <StatusBadge status={event.status} />
               </div>
               <p className="mt-1 font-display text-3xl font-bold">
@@ -241,25 +246,19 @@ export function EventDetail() {
 
               <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Selected</span>
-                  <span className="font-medium">{tier?.name ?? "—"}</span>
+                  <span className="text-muted">Đã chọn</span>
+                  <span className="font-medium">{tier?.name ?? "Chưa có vé"}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Quantity</span>
-                  <span className="font-medium">{effectiveQuantity}</span>
+                  <span className="text-muted">Số lượng</span>
+                  <span className="font-medium">{tier ? effectiveQuantity : 0}</span>
                 </div>
-                {isReserved && selectedSeatCodes.length > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted">Seats</span>
-                    <span className="font-medium">{selectedSeatCodes.join(", ")}</span>
-                  </div>
-                )}
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Price each</span>
+                  <span className="text-muted">Giá mỗi vé</span>
                   <span className="font-medium">{formatCurrency(tier?.price ?? 0)}</span>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3 text-base">
-                  <span className="font-semibold">Total</span>
+                  <span className="font-semibold">Tổng</span>
                   <span className="font-display text-xl font-bold text-accent">
                     {formatCurrency(total)}
                   </span>
@@ -270,41 +269,40 @@ export function EventDetail() {
                 className="mt-5 w-full"
                 size="lg"
                 onClick={handleAdd}
-                disabled={soldOut}
+                disabled={soldOut || !tier || tier.remaining <= 0}
               >
-                {soldOut ? (
-                  "Sold Out"
+                {soldOut || !tier || tier.remaining <= 0 ? (
+                  "Hết vé"
                 ) : added ? (
                   <>
                     <Check className="h-4 w-4" />
-                    Added to cart
+                    Đã thêm vào giỏ
                   </>
                 ) : (
                   <>
                     <ShoppingBag className="h-4 w-4" />
-                    Add to cart
+                    Thêm vào giỏ
                   </>
                 )}
               </Button>
-              {!soldOut && (
+              {!soldOut && tier && (
                 <Button to="/cart" variant="ghost" size="sm" className="mt-2 w-full">
-                  Go to checkout &rarr;
+                  Đi tới thanh toán →
                 </Button>
               )}
               <p className="mt-4 text-center text-xs text-muted-2">
-                Secure checkout &middot; Instant digital tickets
+                Thanh toán bảo mật · Vé điện tử tức thì
               </p>
             </div>
           </aside>
         </div>
 
-        {/* Related */}
         {related.length > 0 && (
           <div className="mt-20">
-            <SectionTitle eyebrow="You might also like" title="Similar events" />
+            <SectionTitle eyebrow="Có thể bạn quan tâm" title="Sự kiện tương tự" />
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {related.map((e) => (
-                <EventCard key={e.id} event={e} />
+              {related.map((item) => (
+                <EventCard key={item.id} event={item} />
               ))}
             </div>
           </div>

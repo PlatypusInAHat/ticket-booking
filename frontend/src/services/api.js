@@ -111,7 +111,9 @@ export const authAPI = {
 export const eventsAPI = {
   getEvents: (params, config = {}) => API.get('/events', { params, ...config }),
   getEventById: (id, config = {}) => API.get(`/events/${id}`, config),
-  createBundle: (data) => API.post('/events/bundle', data)
+  createBundle: (data) => API.post('/events/bundle', data),
+  update: (id, data) => API.put(`/events/${id}`, data),
+  delete: (id) => API.delete(`/events/${id}`)
 };
 
 // Tickets API

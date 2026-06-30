@@ -5,6 +5,9 @@ export type EventCategory =
   | "Sports"
   | "Comedy"
   | "Conference"
+  | "Movie"
+  | "Workshop"
+  | "Other"
 
 export type EventStatus = "available" | "limited" | "soldout"
 

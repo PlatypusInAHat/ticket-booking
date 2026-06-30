@@ -56,7 +56,11 @@ const getEvents = async (query = {}) => {
 };
 
 const getEventById = async (id) => {
-  const event = await Event.findById(id)
+  const lookup = mongoose.Types.ObjectId.isValid(id)
+    ? { _id: id }
+    : { slug: id };
+
+  const event = await Event.findOne(lookup)
     .populate('company', 'name slug logo contact status')
     .lean();
 
@@ -202,10 +206,39 @@ const updateEvent = async (id, updateData, user) => {
   return event;
 };
 
+const deleteEvent = async (id, user) => {
+  const event = await Event.findById(id).populate('company');
+
+  if (!event) {
+    throw new ApiError(404, 'Event not found');
+  }
+
+  if (!canManageCompany(event.company, user)) {
+    throw new ApiError(403, 'Not authorized to delete this event');
+  }
+
+  const sess = await mongoose.startSession();
+  sess.startTransaction();
+
+  try {
+    await Ticket.deleteMany({ event: event._id }, { session: sess });
+    await Session.deleteMany({ event: event._id }, { session: sess });
+    await Event.deleteOne({ _id: event._id }, { session: sess });
+
+    await sess.commitTransaction();
+    sess.endSession();
+  } catch (error) {
+    await sess.abortTransaction();
+    sess.endSession();
+    throw new ApiError(500, 'Failed to delete event: ' + error.message);
+  }
+};
+
 module.exports = {
   getEvents,
   getEventById,
   createEvent,
   createEventBundle,
-  updateEvent
+  updateEvent,
+  deleteEvent
 };
