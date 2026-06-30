@@ -39,7 +39,7 @@ export function EventDetail() {
 
     const loadEvent = async () => {
       if (!slug) {
-        setError("Không tìm thấy mã sự kiện.")
+        setError("Event code was not found.")
         setLoading(false)
         return
       }
@@ -70,7 +70,7 @@ export function EventDetail() {
         setRelated(relatedEvents)
       } catch (err: any) {
         if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return
-        setError(err.response?.data?.message || "Không thể tải chi tiết sự kiện.")
+        setError(err.response?.data?.message || "Could not load event details.")
       } finally {
         if (!controller.signal.aborted) setLoading(false)
       }
@@ -123,9 +123,9 @@ export function EventDetail() {
   if (error || !event) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-32 text-center">
-        <h1 className="font-display text-2xl font-bold">Không tìm thấy sự kiện</h1>
-        <p className="text-muted">{error || "Sự kiện này không tồn tại hoặc đã ngừng bán."}</p>
-        <Button to="/events">Xem tất cả sự kiện</Button>
+        <h1 className="font-display text-2xl font-bold">Event not found</h1>
+        <p className="text-muted">{error || "This event does not exist or is no longer on sale."}</p>
+        <Button to="/events">View all events</Button>
       </div>
     )
   }
@@ -144,14 +144,14 @@ export function EventDetail() {
             className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
-            Quay lại danh sách
+            Back to events
           </Link>
 
           <div className="mt-28 flex flex-wrap items-center gap-2 sm:mt-40">
             <Badge tone="neutral" className="bg-background/70">
               {event.category}
             </Badge>
-            {event.popular && <Badge tone="accent">Nổi bật</Badge>}
+            {event.popular && <Badge tone="accent">Featured</Badge>}
             <StatusBadge status={event.status} />
           </div>
 
@@ -167,7 +167,7 @@ export function EventDetail() {
             </span>
             <span className="flex items-center gap-2 text-muted">
               <Clock className="h-4 w-4 text-accent" />
-              Mở cửa {formatTime(event.doorsTime)} · Diễn ra {formatTime(event.date)}
+              Doors {formatTime(event.doorsTime)} · Starts {formatTime(event.date)}
             </span>
             <span className="flex items-center gap-2 text-muted">
               <MapPin className="h-4 w-4 text-accent" />
@@ -175,7 +175,7 @@ export function EventDetail() {
             </span>
             <span className="flex items-center gap-2 text-muted">
               <Star className="h-4 w-4 fill-accent text-accent" />
-              {event.rating} đánh giá
+              {event.rating} reviews
             </span>
           </div>
         </div>
@@ -185,12 +185,12 @@ export function EventDetail() {
         <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
           <div className="flex flex-col gap-10">
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">Thông tin sự kiện</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight">Event information</h2>
               <p className="mt-4 leading-relaxed text-pretty text-muted">{event.description}</p>
             </div>
 
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">Ban tổ chức</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight">Organizer</h2>
               <div className="mt-4 flex flex-wrap gap-2">
                 {event.lineup.map((act) => (
                   <span
@@ -205,9 +205,9 @@ export function EventDetail() {
             </div>
 
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">Chọn loại vé</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight">Choose your tickets</h2>
               <p className="mt-2 text-sm text-muted">
-                Mỗi vé sau khi thanh toán sẽ có QR/barcode riêng để check-in.
+                Every paid ticket includes its own QR code and barcode for check-in.
               </p>
               {event.tiers.length > 0 ? (
                 <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -228,7 +228,7 @@ export function EventDetail() {
                 </div>
               ) : (
                 <div className="mt-5 rounded-2xl border border-border bg-surface p-8 text-center text-muted">
-                  Sự kiện này chưa mở bán vé.
+                  This event is not selling tickets yet.
                 </div>
               )}
             </div>
@@ -237,7 +237,7 @@ export function EventDetail() {
           <aside className="lg:sticky lg:top-24 lg:self-start">
             <div className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-2">Giá từ</span>
+                <span className="text-sm text-muted-2">From</span>
                 <StatusBadge status={event.status} />
               </div>
               <p className="mt-1 font-display text-3xl font-bold">
@@ -246,19 +246,19 @@ export function EventDetail() {
 
               <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Đã chọn</span>
-                  <span className="font-medium">{tier?.name ?? "Chưa có vé"}</span>
+                  <span className="text-muted">Selected</span>
+                  <span className="font-medium">{tier?.name ?? "No ticket available"}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Số lượng</span>
+                  <span className="text-muted">Quantity</span>
                   <span className="font-medium">{tier ? effectiveQuantity : 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Giá mỗi vé</span>
+                  <span className="text-muted">Price per ticket</span>
                   <span className="font-medium">{formatCurrency(tier?.price ?? 0)}</span>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3 text-base">
-                  <span className="font-semibold">Tổng</span>
+                  <span className="font-semibold">Total</span>
                   <span className="font-display text-xl font-bold text-accent">
                     {formatCurrency(total)}
                   </span>
@@ -272,26 +272,26 @@ export function EventDetail() {
                 disabled={soldOut || !tier || tier.remaining <= 0}
               >
                 {soldOut || !tier || tier.remaining <= 0 ? (
-                  "Hết vé"
+                  "Sold out"
                 ) : added ? (
                   <>
                     <Check className="h-4 w-4" />
-                    Đã thêm vào giỏ
+                    Added to cart
                   </>
                 ) : (
                   <>
                     <ShoppingBag className="h-4 w-4" />
-                    Thêm vào giỏ
+                    Add to cart
                   </>
                 )}
               </Button>
               {!soldOut && tier && (
                 <Button to="/cart" variant="ghost" size="sm" className="mt-2 w-full">
-                  Đi tới thanh toán →
+                  Go to checkout
                 </Button>
               )}
               <p className="mt-4 text-center text-xs text-muted-2">
-                Thanh toán bảo mật · Vé điện tử tức thì
+                Secure checkout · Instant digital tickets
               </p>
             </div>
           </aside>
@@ -299,7 +299,7 @@ export function EventDetail() {
 
         {related.length > 0 && (
           <div className="mt-20">
-            <SectionTitle eyebrow="Có thể bạn quan tâm" title="Sự kiện tương tự" />
+            <SectionTitle eyebrow="You may also like" title="Similar events" />
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((item) => (
                 <EventCard key={item.id} event={item} />

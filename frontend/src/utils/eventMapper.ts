@@ -25,16 +25,16 @@ export function mapApiTicketToTier(ticket: any): TicketTier {
   const remaining = Number(ticket.availableSeats ?? 0)
   return {
     id: ticket.id || ticket._id,
-    name: ticket.name || ticket.ticketName || ticket.category || "Vé tiêu chuẩn",
-    description: stripHtml(ticket.description || "Vé điện tử, check-in bằng QR/barcode/NFC khi được hỗ trợ."),
+    name: ticket.name || ticket.ticketName || ticket.category || "Standard Ticket",
+    description: stripHtml(ticket.description || "Digital ticket with QR, barcode, and NFC check-in when supported."),
     price: Number(ticket.price || 0),
     perks: [
-      "Vé điện tử",
-      "QR/barcode riêng",
-      "Hỗ trợ check-in nhanh",
+      "Digital ticket",
+      "Unique QR/barcode",
+      "Fast check-in support",
     ],
     remaining,
-    badge: remaining <= 20 && remaining > 0 ? "Sắp hết" : undefined,
+    badge: remaining <= 20 && remaining > 0 ? "Almost sold out" : undefined,
   }
 }
 
@@ -52,21 +52,21 @@ export function mapApiEventToEventItem(apiEvent: any, apiTickets: any[] = []): E
   return {
     id: apiEvent.id || apiEvent._id,
     slug: apiEvent.slug || apiEvent.id || apiEvent._id,
-    title: apiEvent.title || apiEvent.eventName || "Sự kiện chưa đặt tên",
+    title: apiEvent.title || apiEvent.eventName || "Untitled event",
     artist: companyName,
     category: eventTypeToCategory[apiEvent.eventType] || "Other",
     date: startDate,
     doorsTime: apiEvent.admission?.gatesOpenAt || startDate,
-    venue: apiEvent.location?.venue || "Địa điểm đang cập nhật",
+    venue: apiEvent.location?.venue || "Venue to be announced",
     city: apiEvent.location?.city || "",
-    country: apiEvent.location?.country || "Việt Nam",
+    country: apiEvent.location?.country || "Vietnam",
     image: apiEvent.coverImage || apiEvent.image || "/placeholder.svg",
     heroImage: apiEvent.coverImage || apiEvent.image || "/placeholder.svg",
     status: statusToEventStatus(apiEvent.status, remaining),
     popular: Boolean(apiEvent.stats?.views > 100 || apiEvent.stats?.soldTickets > 20),
     priceFrom,
     rating: 4.8,
-    description: stripHtml(apiEvent.description || "Thông tin sự kiện đang được cập nhật."),
+    description: stripHtml(apiEvent.description || "Event information is being updated."),
     lineup: [companyName],
     tiers,
   }

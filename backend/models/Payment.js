@@ -11,7 +11,7 @@ const paymentSchema = new mongoose.Schema({
   },
   provider: {
     type: String,
-    enum: ['mock', 'vnpay', 'momo', 'zalopay', 'paypal', 'stripe', 'bank_transfer', 'cash', 'other'],
+    enum: ['mock', 'vnpay', 'momo', 'zalopay', 'paypal', 'bank_transfer', 'cash', 'other'],
     default: 'mock'
   },
   method: {

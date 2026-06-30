@@ -34,18 +34,18 @@ export function Badge({
 }
 
 export function StatusBadge({ status }: { status: EventStatus }) {
-  if (status === "soldout") return <Badge tone="danger">Hết vé</Badge>
+  if (status === "soldout") return <Badge tone="danger">Sold out</Badge>
   if (status === "limited")
     return (
       <Badge tone="accent">
         <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-        Sắp hết
+        Almost sold out
       </Badge>
     )
   return (
     <Badge tone="success">
       <span className="h-1.5 w-1.5 rounded-full bg-success" />
-      Đang bán
+      On sale
     </Badge>
   )
 }

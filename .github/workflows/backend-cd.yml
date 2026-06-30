@@ -4,17 +4,31 @@ on:
   push:
     branches:
       - main
+      - dev
+      - staging
+      - prod
+    tags:
+      - 'v*'
     paths:
       - 'backend/**'
+      - '.github/workflows/backend-cd.yml'
   pull_request:
     branches:
       - main
+      - dev
+      - staging
+      - prod
     paths:
       - 'backend/**'
+      - '.github/workflows/backend-cd.yml'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: backend-${{ github.ref_name }}
+      cancel-in-progress: true
 
     steps:
       - name: Checkout Repository
@@ -33,8 +47,49 @@ jobs:
           npm ci
           npm test
 
+      - name: Resolve deployment target
+        id: deploy-target
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+
+          deploy_allowed="true"
+          deploy_env=""
+          deploy_channel="branch"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == v* ]]; then
+            deploy_env="prod"
+            deploy_channel="release"
+          else
+            case "${GITHUB_REF_NAME}" in
+              dev)
+                deploy_env="dev"
+                ;;
+              staging)
+                deploy_env="staging"
+                ;;
+              main|prod)
+                deploy_env="prod"
+                ;;
+              *)
+                deploy_allowed="false"
+                ;;
+            esac
+          fi
+
+          {
+            echo "DEPLOY_ALLOWED=${deploy_allowed}"
+            echo "DEPLOY_ENV=${deploy_env}"
+            echo "DEPLOY_CHANNEL=${deploy_channel}"
+          } >> "$GITHUB_ENV"
+          {
+            echo "deploy_allowed=${deploy_allowed}"
+            echo "deploy_env=${deploy_env}"
+            echo "deploy_channel=${deploy_channel}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Configure AWS Credentials
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && steps.deploy-target.outputs.deploy_allowed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -42,44 +97,87 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && steps.deploy-target.outputs.deploy_allowed == 'true'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push Docker image to ECR
-        if: github.ref == 'refs/heads/main'
+      - name: Prepare Docker image tags
+        if: github.event_name != 'pull_request' && steps.deploy-target.outputs.deploy_allowed == 'true'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.BACKEND_ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ECR_REPOSITORY}" ]; then
+            echo "Missing required GitHub secret: BACKEND_ECR_REPOSITORY"
+            exit 1
+          fi
+
+          short_sha="${GITHUB_SHA::12}"
+          safe_ref="$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g')"
+          image_uri="${ECR_REGISTRY}/${ECR_REPOSITORY}"
+          primary_tag="${DEPLOY_ENV}-${short_sha}"
+
+          {
+            echo "IMAGE_URI=${image_uri}"
+            echo "IMAGE_TAG=${primary_tag}"
+            echo "IMAGE_TAGS<<EOF"
+            echo "${image_uri}:${primary_tag}"
+            if [[ "${safe_ref}" != "${DEPLOY_ENV}" ]]; then
+              echo "${image_uri}:${safe_ref}-${short_sha}"
+            fi
+            echo "${image_uri}:sha-${short_sha}"
+            if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == v* ]]; then
+              echo "${image_uri}:${GITHUB_REF_NAME}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and push Docker image to ECR
+        if: github.event_name != 'pull_request' && steps.deploy-target.outputs.deploy_allowed == 'true'
         working-directory: backend
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          
-          # Push latest tag as well for convenience
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          set -euo pipefail
+
+          build_args=()
+          while IFS= read -r tag; do
+            build_args+=("-t" "$tag")
+          done <<< "$IMAGE_TAGS"
+
+          docker build \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${IMAGE_TAG}" \
+            "${build_args[@]}" .
+
+          while IFS= read -r tag; do
+            docker push "$tag"
+          done <<< "$IMAGE_TAGS"
 
       - name: Update kubeconfig
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && steps.deploy-target.outputs.deploy_allowed == 'true'
         run: |
           aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
       - name: Deploy to EKS
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && steps.deploy-target.outputs.deploy_allowed == 'true'
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.BACKEND_ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}
+          K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE || 'ticketstage' }}
         run: |
-          # Use kubectl set image to update all backend deployments.
-          # Note: Make sure the container names in your K8s manifests match these array values.
-          # Change namespace from 'default' if you deploy to a specific namespace (e.g., 'production').
-          
+          set -euo pipefail
+
+          echo "Deploying backend channel=${DEPLOY_CHANNEL} env=${DEPLOY_ENV} image=${IMAGE_URI}:${IMAGE_TAG}"
+
           SERVICES=("api-gateway" "auth-service" "booking-service" "catalog-service" "checkin-service" "notification-service")
-          
+
           for service in "${SERVICES[@]}"; do
-            echo "Updating deployment for $service..."
-            kubectl set image deployment/$service $service=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -n default || echo "Failed to update $service (it might not exist yet)"
+            echo "Updating deployment for ${service} to ${IMAGE_URI}:${IMAGE_TAG}..."
+            kubectl -n "$K8S_NAMESPACE" set image "deployment/${service}" "${service}=${IMAGE_URI}:${IMAGE_TAG}"
+            if ! kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${service}" --timeout=180s; then
+              echo "Rollout failed for ${service}. Rolling back to previous ReplicaSet..."
+              kubectl -n "$K8S_NAMESPACE" rollout undo "deployment/${service}"
+              kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${service}" --timeout=180s
+              exit 1
+            fi
           done

@@ -23,7 +23,7 @@ export const EventCard = memo(function EventCard({ event }: { event: EventItem }
           <Badge tone="neutral" className="bg-background/70">
             {event.category}
           </Badge>
-          {event.popular && <Badge tone="accent">Nổi bật</Badge>}
+          {event.popular && <Badge tone="accent">Featured</Badge>}
         </div>
         <div className="absolute bottom-3 right-3">
           <StatusBadge status={event.status} />
@@ -54,13 +54,13 @@ export const EventCard = memo(function EventCard({ event }: { event: EventItem }
 
         <div className="mt-auto flex items-end justify-between border-t border-border pt-4">
           <div className="flex flex-col">
-            <span className="text-xs text-muted-2">Từ</span>
+            <span className="text-xs text-muted-2">From</span>
             <span className="font-display text-xl font-semibold text-foreground">
               {formatCurrency(event.priceFrom)}
             </span>
           </div>
           <span className="text-sm font-medium text-accent transition-transform duration-200 group-hover:translate-x-0.5">
-            Xem chi tiết &rarr;
+            View details &rarr;
           </span>
         </div>
       </div>

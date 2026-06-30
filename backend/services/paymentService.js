@@ -14,26 +14,10 @@ const {
 } = require('./bookingService');
 const { hashSecret } = require('../utils/cryptoUtils');
 
-const SUPPORTED_PROVIDERS = ['mock', 'stripe', 'vnpay', 'momo'];
-const ZERO_DECIMAL_CURRENCIES = new Set(['VND', 'JPY', 'KRW']);
-
-let stripeClient;
+const SUPPORTED_PROVIDERS = ['mock', 'vnpay', 'momo'];
 
 const isConfigured = (value) => {
   return Boolean(value && !/placeholder|change_this|your_/i.test(value));
-};
-
-const getStripe = () => {
-  if (!isConfigured(process.env.STRIPE_SECRET_KEY)) {
-    throw new ApiError(503, 'Stripe is not configured');
-  }
-
-  if (!stripeClient) {
-    // eslint-disable-next-line global-require
-    stripeClient = require('stripe')(process.env.STRIPE_SECRET_KEY);
-  }
-
-  return stripeClient;
 };
 
 const getPublicApiUrl = () => {
@@ -50,7 +34,7 @@ const normalizeProvider = (providerOrMethod = '') => {
   const value = providerOrMethod.toLowerCase();
 
   if (['credit_card', 'debit_card', 'card'].includes(value)) {
-    return 'stripe';
+    return 'mock';
   }
 
   if (SUPPORTED_PROVIDERS.includes(value)) {
@@ -58,12 +42,6 @@ const normalizeProvider = (providerOrMethod = '') => {
   }
 
   return 'mock';
-};
-
-const toMinorAmount = (amount, currency = 'VND') => {
-  const normalizedCurrency = currency.toUpperCase();
-  const multiplier = ZERO_DECIMAL_CURRENCIES.has(normalizedCurrency) ? 1 : 100;
-  return Math.round(Number(amount) * multiplier);
 };
 
 const toVnpayAmount = (amount) => {
@@ -407,57 +385,6 @@ const markPaymentFailed = async (payment, reason, gatewayResponse = {}) => {
   return payment;
 };
 
-const createStripePaymentSession = async (booking, payment) => {
-  if (payment.providerReference && payment.clientSecret) {
-    return {
-      provider: 'stripe',
-      paymentId: payment._id,
-      paymentIntentId: payment.providerReference,
-      clientSecret: payment.clientSecret,
-      publishableKey: process.env.STRIPE_PUBLIC_KEY || '',
-      status: payment.status
-    };
-  }
-
-  const stripe = getStripe();
-  const intent = await stripe.paymentIntents.create({
-    amount: toMinorAmount(booking.totalAmount, booking.currency),
-    currency: (booking.currency || 'VND').toLowerCase(),
-    description: `Ticket booking ${booking.bookingNumber}`,
-    metadata: {
-      bookingId: booking._id.toString(),
-      bookingNumber: booking.bookingNumber,
-      paymentId: payment._id.toString(),
-      userId: booking.user.toString()
-    },
-    automatic_payment_methods: {
-      enabled: true
-    }
-  }, {
-    idempotencyKey: payment.idempotencyKey
-  });
-
-  payment.status = intent.status === 'succeeded' ? 'completed' : 'processing';
-  payment.providerReference = intent.id;
-  payment.clientSecret = intent.client_secret;
-  payment.gatewayResponse = {
-    id: intent.id,
-    status: intent.status,
-    amount: intent.amount,
-    currency: intent.currency
-  };
-  await payment.save();
-
-  return {
-    provider: 'stripe',
-    paymentId: payment._id,
-    paymentIntentId: intent.id,
-    clientSecret: intent.client_secret,
-    publishableKey: process.env.STRIPE_PUBLIC_KEY || '',
-    status: intent.status
-  };
-};
-
 const createVnpayPaymentSession = async (booking, payment, request = {}) => {
   if (payment.checkoutUrl) {
     return {
@@ -624,10 +551,6 @@ const createPaymentSession = async (bookingId, providerOrMethod, user, request =
 
   const payment = await createGatewayPayment(booking, provider);
 
-  if (provider === 'stripe') {
-    return createStripePaymentSession(booking, payment);
-  }
-
   if (provider === 'vnpay') {
     return createVnpayPaymentSession(booking, payment, request);
   }
@@ -713,58 +636,6 @@ const getPaymentStatus = async (bookingId, user) => {
       processedAt: payment.processedAt,
       createdAt: payment.createdAt
     }))
-  };
-};
-
-const handleStripeWebhook = async ({ rawBody, signature }) => {
-  if (!isConfigured(process.env.STRIPE_WEBHOOK_SECRET)) {
-    throw new ApiError(503, 'Stripe webhook secret is not configured');
-  }
-
-  const stripe = getStripe();
-  const event = stripe.webhooks.constructEvent(rawBody, signature, process.env.STRIPE_WEBHOOK_SECRET);
-
-  if (event.type === 'payment_intent.succeeded') {
-    const intent = event.data.object;
-    const payment = await Payment.findOne({
-      provider: 'stripe',
-      providerReference: intent.id
-    });
-
-    if (!payment) {
-      return { received: true, ignored: true, reason: 'payment_not_found' };
-    }
-
-    await completeBookingPayment({
-      bookingId: intent.metadata?.bookingId || payment.booking,
-      userId: intent.metadata?.userId || payment.user,
-      paymentId: payment._id,
-      provider: 'stripe',
-      method: payment.method,
-      amount: payment.amount,
-      currency: payment.currency,
-      transactionId: intent.id,
-      providerReference: intent.id,
-      gatewayResponse: intent,
-      metadata: {
-        stripeEventId: event.id
-      }
-    });
-  }
-
-  if (event.type === 'payment_intent.payment_failed' || event.type === 'payment_intent.canceled') {
-    const intent = event.data.object;
-    const payment = await Payment.findOne({
-      provider: 'stripe',
-      providerReference: intent.id
-    });
-
-    await markPaymentFailed(payment, intent.last_payment_error?.message || event.type, intent);
-  }
-
-  return {
-    received: true,
-    type: event.type
   };
 };
 
@@ -932,7 +803,6 @@ module.exports = {
   createPaymentSession,
   getPaymentStatus,
   handleMomoWebhook,
-  handleStripeWebhook,
   handleVnpayResult,
   processPayment
 };

@@ -11,10 +11,10 @@ import { mapApiEventToEventItem } from "@/utils/eventMapper"
 type SortKey = "popular" | "price-asc" | "price-desc" | "date"
 
 const sortOptions: { key: SortKey; label: string }[] = [
-  { key: "popular", label: "Phổ biến" },
-  { key: "date", label: "Ngày diễn ra" },
-  { key: "price-asc", label: "Giá thấp đến cao" },
-  { key: "price-desc", label: "Giá cao đến thấp" },
+  { key: "popular", label: "Popular" },
+  { key: "date", label: "Event date" },
+  { key: "price-asc", label: "Price: low to high" },
+  { key: "price-desc", label: "Price: high to low" },
 ]
 
 const baseCategories: Array<EventCategory | "All"> = [
@@ -60,7 +60,7 @@ export function Events() {
         setEvents(apiEvents.map((event: any) => mapApiEventToEventItem(event, apiTickets)))
       } catch (err: any) {
         if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return
-        setError(err.response?.data?.message || "Không thể tải danh sách sự kiện.")
+        setError(err.response?.data?.message || "Could not load events.")
       } finally {
         if (!controller.signal.aborted) setLoading(false)
       }
@@ -115,13 +115,13 @@ export function Events() {
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-3">
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          {filtered.length} sự kiện
+          {filtered.length} event{filtered.length === 1 ? "" : "s"}
         </span>
         <h1 className="font-display text-4xl font-bold tracking-tight">
-          {activeCategory === "All" ? "Tất cả sự kiện" : activeCategory}
+          {activeCategory === "All" ? "All events" : activeCategory}
         </h1>
         <p className="max-w-xl leading-relaxed text-muted">
-          Khám phá sự kiện đang mở bán, lọc theo thể loại và đặt vé điện tử trong vài bước.
+          Discover events now on sale, filter by category, and book digital tickets in just a few steps.
         </p>
       </div>
 
@@ -132,14 +132,14 @@ export function Events() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Tìm theo sự kiện, ban tổ chức, thành phố..."
+              placeholder="Search by event, organizer, city..."
               className="h-11 w-full rounded-full border border-border bg-surface pl-11 pr-10 text-sm text-foreground placeholder:text-muted-2 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
             {query && (
               <button
                 onClick={() => setQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-2 hover:text-foreground"
-                aria-label="Xoá tìm kiếm"
+                aria-label="Clear search"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -149,7 +149,7 @@ export function Events() {
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="hidden h-4 w-4 text-muted-2 sm:block" />
             <label htmlFor="sort" className="sr-only">
-              Sắp xếp sự kiện
+              Sort events
             </label>
             <select
               id="sort"
@@ -178,7 +178,7 @@ export function Events() {
                   : "border-border text-muted hover:border-border-strong hover:text-foreground",
               )}
             >
-              {cat === "All" ? "Tất cả" : cat}
+              {cat}
             </button>
           ))}
         </div>
@@ -206,8 +206,8 @@ export function Events() {
             <Search className="h-6 w-6" />
           </span>
           <div>
-            <p className="font-display text-lg font-semibold">Không tìm thấy sự kiện</p>
-            <p className="mt-1 text-sm text-muted">Thử từ khoá hoặc thể loại khác nhé.</p>
+            <p className="font-display text-lg font-semibold">No events found</p>
+            <p className="mt-1 text-sm text-muted">Try another keyword or category.</p>
           </div>
           <Button
             variant="outline"
@@ -217,7 +217,7 @@ export function Events() {
               setCategory("All")
             }}
           >
-            Xoá bộ lọc
+            Clear filters
           </Button>
         </div>
       )}

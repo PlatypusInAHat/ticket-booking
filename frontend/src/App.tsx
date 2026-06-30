@@ -21,7 +21,7 @@ const PaymentResult = lazy(() => import("@/pages/PaymentResult").then((module) =
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then((module) => ({ default: module.AdminDashboard })))
 const ApiManagement = lazy(() => import("@/pages/ApiManagement").then((module) => ({ default: module.ApiManagement })))
 
-function PageLoader({ title = "Đang tải giao diện..." }) {
+function PageLoader({ title = "Loading interface..." }) {
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
       <div className="glass px-8 py-6 text-center">
@@ -72,7 +72,7 @@ export default function App() {
   if (isBootstrapping) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
-        <PageLoader title="Đang kiểm tra đăng nhập..." />
+        <PageLoader title="Checking your session..." />
       </div>
     )
   }

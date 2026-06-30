@@ -7,15 +7,6 @@ const logger = require('../utils/logger');
 
 const DEFAULT_BODY_LIMIT = '10mb';
 
-const captureRawBody = (req, res, buffer) => {
-  const isStripeWebhook = req.originalUrl?.includes('/api/payment/webhooks/stripe') ||
-    req.url?.includes('/api/payment/webhooks/stripe');
-
-  if (isStripeWebhook && buffer?.length) {
-    req.rawBody = Buffer.from(buffer);
-  }
-};
-
 const createServiceApp = ({
   serviceName,
   routes = [],
@@ -32,7 +23,7 @@ const createServiceApp = ({
   });
 
   app.use(compression());
-  app.use(express.json({ limit: DEFAULT_BODY_LIMIT, verify: captureRawBody }));
+  app.use(express.json({ limit: DEFAULT_BODY_LIMIT }));
   app.use(express.urlencoded({ limit: DEFAULT_BODY_LIMIT, extended: true }));
   app.use(cors({
     origin: corsOrigin,

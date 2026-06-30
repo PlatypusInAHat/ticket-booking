@@ -14,7 +14,7 @@
 
 ## 2. Công Nghệ
 
-- Backend: Node.js, Express, MongoDB, Mongoose, JWT, bcrypt, Stripe-ready, RabbitMQ.
+- Backend: Node.js, Express, MongoDB, Mongoose, JWT, bcrypt, VNPay/MoMo-ready, RabbitMQ.
 - Frontend web: React 18, Redux Toolkit, React Router, Axios, Tailwind CSS.
 - Mobile: Expo, React Native, expo-camera, react-native-nfc-manager, Android HCE native.
 - Hạ tầng local: Docker Compose, RabbitMQ Management UI, 4 MongoDB riêng cho service.
@@ -186,9 +186,6 @@ EVENT_BROKER_URL=amqp://localhost:5672
 EVENT_EXCHANGE=ticket-booking.events
 OUTBOX_ENABLED=true
 OUTBOX_PUBLISH_INTERVAL_MS=5000
-STRIPE_SECRET_KEY=sk_test_placeholder
-STRIPE_PUBLIC_KEY=pk_test_placeholder
-STRIPE_WEBHOOK_SECRET=whsec_placeholder
 VNPAY_TMN_CODE=change_me
 VNPAY_HASH_SECRET=change_me
 MOMO_PARTNER_CODE=change_me
@@ -257,10 +254,9 @@ Tất cả API public đi qua gateway ở prefix `http://localhost:5000/api`.
 
 ### Payments
 
-- `POST /api/payment/session`: tạo phiên thanh toán thật cho `stripe`, `vnpay` hoặc `momo`.
+- `POST /api/payment/session`: tạo phiên thanh toán thật cho `vnpay` hoặc `momo`; `credit_card`/`debit_card` chạy luồng demo nội bộ.
 - `POST /api/payment/process`: xử lý thanh toán mock/dev bằng `paymentToken`.
 - `GET /api/payment/:bookingId`: lấy trạng thái thanh toán theo booking.
-- `POST /api/payment/webhooks/stripe`: Stripe webhook, cần `STRIPE_WEBHOOK_SECRET`.
 - `POST /api/payment/webhooks/momo`: MoMo IPN webhook, xác thực bằng HMAC.
 - `GET /api/payment/webhooks/vnpay`: VNPay IPN webhook, xác thực `vnp_SecureHash`.
 - `GET /api/payment/return/vnpay`: URL người dùng quay về sau khi thanh toán VNPay.
