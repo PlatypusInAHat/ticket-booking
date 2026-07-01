@@ -62,7 +62,8 @@ const serviceDefinitions = [
     script: 'microservices/notification-service/server.js',
     env: {
       SERVICE_MODE: 'microservice',
-      SERVICE_NAME: 'notification-service'
+      SERVICE_NAME: 'notification-service',
+      NOTIFICATION_SERVICE_PORT: process.env.NOTIFICATION_SERVICE_PORT || '5105'
     }
   }
 ];
