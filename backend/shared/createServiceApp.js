@@ -4,6 +4,7 @@ const compression = require('compression');
 const errorHandler = require('../middleware/error');
 const { correlationIdMiddleware } = require('../middleware/correlationId');
 const logger = require('../utils/logger');
+const { createCorsOptions } = require('../utils/corsOptions');
 
 const DEFAULT_BODY_LIMIT = '10mb';
 
@@ -11,7 +12,7 @@ const createServiceApp = ({
   serviceName,
   routes = [],
   healthPath = '/health',
-  corsOrigin = process.env.FRONTEND_URL || 'http://localhost:5173'
+  corsOptions = createCorsOptions()
 }) => {
   const app = express();
 
@@ -25,10 +26,7 @@ const createServiceApp = ({
   app.use(compression());
   app.use(express.json({ limit: DEFAULT_BODY_LIMIT }));
   app.use(express.urlencoded({ limit: DEFAULT_BODY_LIMIT, extended: true }));
-  app.use(cors({
-    origin: corsOrigin,
-    credentials: true
-  }));
+  app.use(cors(corsOptions));
 
   app.get(healthPath, (req, res) => {
     res.json({

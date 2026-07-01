@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { constantTimeEqual } = require('../../utils/cryptoUtils');
+const { createCorsOptions } = require('../../utils/corsOptions');
 
 dotenv.config();
 
@@ -61,10 +62,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
+app.use(cors(createCorsOptions()));
 
 const stripHopByHopHeaders = (headers = {}) => {
   const blocked = new Set([
@@ -81,7 +79,10 @@ const stripHopByHopHeaders = (headers = {}) => {
   ]);
 
   return Object.fromEntries(
-    Object.entries(headers).filter(([key]) => !blocked.has(key.toLowerCase()))
+    Object.entries(headers).filter(([key]) => {
+      const normalizedKey = key.toLowerCase();
+      return !blocked.has(normalizedKey) && !normalizedKey.startsWith('access-control-');
+    })
   );
 };
 
