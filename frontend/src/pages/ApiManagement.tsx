@@ -15,7 +15,15 @@ export function ApiManagement() {
       const response = await adminAPI.getGatewayStatus()
       setData(response.data)
     } catch (err: any) {
-      setError("Cannot connect to API Gateway. Server might be down.")
+      if (err.response?.status === 401) {
+        setError("Your admin session has expired. Please log in again.")
+      } else if (err.response?.status === 403) {
+        setError("You do not have permission to view API Gateway status.")
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message)
+      } else {
+        setError("Cannot connect to API Gateway. Server might be down.")
+      }
     } finally {
       setLoading(false)
     }

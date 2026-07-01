@@ -35,13 +35,13 @@ function PageLoader({ title = "Loading interface..." }) {
 export default function App() {
   const dispatch = useAppDispatch()
   const { token, user } = useAppSelector((state: any) => state.auth || {})
-  const [isBootstrapping, setIsBootstrapping] = useState(Boolean(token && !user))
+  const [isBootstrapping, setIsBootstrapping] = useState(Boolean(token))
 
   useEffect(() => {
     let isMounted = true
 
     const bootstrapProfile = async () => {
-      if (!token || user) {
+      if (!token) {
         setIsBootstrapping(false)
         return
       }
@@ -67,7 +67,7 @@ export default function App() {
     return () => {
       isMounted = false
     }
-  }, [dispatch, token, user])
+  }, [dispatch, token])
 
   if (isBootstrapping) {
     return (
