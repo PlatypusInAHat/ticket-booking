@@ -13,7 +13,7 @@ import { getLabel, passStatusLabels } from '../utils/labels';
 
 export default function CheckInScreen() {
   const [scanCode, setScanCode] = useState('');
-  const [gate, setGate] = useState('Cổng A');
+  const [gate, setGate] = useState('Gate A');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -21,7 +21,7 @@ export default function CheckInScreen() {
 
   const submit = async (mode) => {
     if (!scanCode.trim()) {
-      Alert.alert('Thiếu mã vé', 'Vui lòng nhập hoặc quét mã vé.');
+      Alert.alert('Ticket code required', 'Enter or scan a QR, barcode, or NFC payload.');
       return;
     }
 
@@ -50,7 +50,7 @@ export default function CheckInScreen() {
     if (!permission?.granted) {
       const nextPermission = await requestPermission();
       if (!nextPermission.granted) {
-        Alert.alert('Chưa có quyền camera', 'App cần camera để quét QR hoặc barcode.');
+        Alert.alert('Camera permission required', 'Camera access is needed to scan QR codes and barcodes.');
         return;
       }
     }
@@ -63,34 +63,34 @@ export default function CheckInScreen() {
       const value = await readNfcText();
       setScanCode(value);
     } catch (error) {
-      Alert.alert('Không đọc được NFC', error.message);
+      Alert.alert('Could not read NFC', error.message);
     }
   };
 
   return (
-    <Screen title="Check-in" subtitle="Dành cho nhân viên và quản trị viên tại cổng.">
+    <Screen title="Check-in" subtitle="For gate staff and admins. Scan QR, barcode, or NFC tickets.">
       <Card>
         <Field
-          label="Mã QR / barcode / NFC payload"
+          label="QR / barcode / NFC payload"
           value={scanCode}
           onChangeText={setScanCode}
           placeholder="TICKETBOOKING:..."
           autoCapitalize="none"
         />
         <Field
-          label="Cổng check-in"
+          label="Check-in gate"
           value={gate}
           onChangeText={setGate}
-          placeholder="Cổng A"
+          placeholder="Gate A"
         />
 
         <View style={styles.actionRow}>
-          <Button title="Quét camera" icon={Camera} variant="secondary" onPress={openScanner} style={styles.flexButton} />
-          <Button title="Đọc NFC" icon={Radio} variant="secondary" onPress={readNfc} disabled={!isNfcRuntimeAvailable()} style={styles.flexButton} />
+          <Button title="Scan camera" icon={Camera} variant="secondary" onPress={openScanner} style={styles.flexButton} />
+          <Button title="Read NFC" icon={Radio} variant="secondary" onPress={readNfc} disabled={!isNfcRuntimeAvailable()} style={styles.flexButton} />
         </View>
         <View style={styles.actionRow}>
-          <Button title="Kiểm tra" icon={Search} variant="secondary" onPress={() => submit('validate')} loading={loading} style={styles.flexButton} />
-          <Button title="Check-in" icon={CheckCircle} onPress={() => submit('checkin')} loading={loading} style={styles.flexButton} />
+          <Button title="Validate" icon={Search} variant="secondary" onPress={() => submit('validate')} loading={loading} style={styles.flexButton} />
+          <Button title="Check in" icon={CheckCircle} onPress={() => submit('checkin')} loading={loading} style={styles.flexButton} />
         </View>
       </Card>
 
@@ -99,10 +99,10 @@ export default function CheckInScreen() {
           <View style={styles.resultHeader}>
             {result.valid ? <CheckCircle color={colors.green} size={28} /> : <XCircle color={colors.red} size={28} />}
             <Text style={[styles.title, result.valid ? styles.successText : styles.errorText]}>
-              {result.valid ? 'Vé hợp lệ' : 'Vé không hợp lệ'}
+              {result.valid ? 'Ticket is valid' : 'Ticket is not valid'}
             </Text>
           </View>
-          <Text style={styles.reasonText}>{result.reason || 'Không có thông tin bổ sung.'}</Text>
+          <Text style={styles.reasonText}>{result.reason || 'No additional information.'}</Text>
           {result.pass ? (
             <View style={styles.passDetails}>
               <Text style={styles.sectionTitle}>{result.pass.passCode}</Text>
@@ -128,7 +128,7 @@ export default function CheckInScreen() {
             }}
           />
           <View style={styles.cameraFooter}>
-            <Button title="Đóng máy quét" variant="ghost" onPress={() => setScannerOpen(false)} />
+            <Button title="Close scanner" variant="ghost" onPress={() => setScannerOpen(false)} />
           </View>
         </View>
       </Modal>

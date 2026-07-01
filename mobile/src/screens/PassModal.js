@@ -29,26 +29,26 @@ export default function PassModal({ booking, passes, onClose }) {
 
   const copyPayload = async () => {
     if (!selectedPass?.nfcPayload) {
-      Alert.alert('Chưa có NFC payload', 'Vui lòng tải lại vé điện tử.');
+      Alert.alert('No NFC payload', 'Refresh this booking and try again.');
       return;
     }
 
     await Clipboard.setStringAsync(selectedPass.nfcPayload);
-    Alert.alert('Đã sao chép', 'NFC payload đã được sao chép vào bộ nhớ tạm.');
+    Alert.alert('Copied', 'NFC payload copied to clipboard.');
   };
 
   const enableNfcForPass = async () => {
     if (!selectedPass?.nfcPayload) {
-      Alert.alert('Chưa có NFC payload', 'Vui lòng tải lại vé điện tử.');
+      Alert.alert('No NFC payload', 'Refresh this booking and try again.');
       return;
     }
 
     try {
       await setHostCardPayload(selectedPass.nfcPayload);
       setActiveNfcPassCode(selectedPass.passCode);
-      Alert.alert('Đã bật NFC', 'Giữ màn hình này mở và chạm điện thoại vào máy quét NFC tại cổng.');
+      Alert.alert('NFC enabled', 'Keep this screen open and tap the phone to the NFC scanner at the gate.');
     } catch (error) {
-      Alert.alert('Không bật được NFC', error.message);
+      Alert.alert('Could not enable NFC', error.message);
     }
   };
 
@@ -61,9 +61,9 @@ export default function PassModal({ booking, passes, onClose }) {
     <Modal visible={Boolean(booking)} animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalWrap}>
         <Screen
-          title="Vé điện tử"
-          subtitle={booking ? `Đơn ${booking.bookingNumber}` : ''}
-          right={<Button title="Đóng" icon={X} variant="ghost" onPress={onClose} style={styles.closeBtn} />}
+          title="Mobile Passes"
+          subtitle={booking ? `Booking ${booking.bookingNumber}` : ''}
+          right={<Button title="Close" icon={X} variant="ghost" onPress={onClose} style={styles.closeBtn} />}
         >
           {passes?.length ? (
             <>
@@ -103,25 +103,25 @@ export default function PassModal({ booking, passes, onClose }) {
                   </View>
 
                   <Text style={styles.sectionTitle}>NFC payload</Text>
-                  <Text style={styles.payloadText}>{selectedPass.nfcPayload || 'Chưa tải được payload'}</Text>
-                  
+                  <Text style={styles.payloadText}>{selectedPass.nfcPayload || 'Payload not loaded yet'}</Text>
+
                   <View style={styles.actionsGrid}>
-                    <Button title="Copy Payload" icon={Copy} variant="secondary" onPress={copyPayload} style={styles.flexButton} />
+                    <Button title="Copy payload" icon={Copy} variant="secondary" onPress={copyPayload} style={styles.flexButton} />
                   </View>
-                  
+
                   {isHostCardEmulationAvailable() ? (
                     <View style={styles.nfcSection}>
-                      <Button title="Bật NFC" icon={Radio} onPress={enableNfcForPass} />
+                      <Button title="Enable NFC pass" icon={Radio} onPress={enableNfcForPass} />
                       {activeNfcPassCode ? (
                         <View style={styles.nfcActiveBox}>
-                          <Text style={styles.nfcActiveText}>Đang phát NFC: {activeNfcPassCode}</Text>
-                          <Button title="Tắt NFC" variant="danger" onPress={disableNfc} style={styles.spacedTop} />
+                          <Text style={styles.nfcActiveText}>NFC active: {activeNfcPassCode}</Text>
+                          <Button title="Disable NFC" variant="danger" onPress={disableNfc} style={styles.spacedTop} />
                         </View>
                       ) : null}
                     </View>
                   ) : (
                     <Text style={styles.helperText}>
-                      Phát vé qua NFC cần Android development build có HCE. Expo Go chỉ hỗ trợ hiển thị/copy payload.
+                      NFC pass emulation requires an Android development build with HCE support. Expo Go can display and copy payloads only.
                     </Text>
                   )}
                 </Card>
@@ -129,8 +129,8 @@ export default function PassModal({ booking, passes, onClose }) {
             </>
           ) : (
             <Card>
-              <Text style={styles.title}>Chưa có vé điện tử</Text>
-              <Text style={styles.muted}>Đơn này chưa phát hành pass.</Text>
+              <Text style={styles.title}>No mobile passes</Text>
+              <Text style={styles.muted}>This booking has not issued passes yet.</Text>
             </Card>
           )}
         </Screen>
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   nfcActiveBox: {
     marginTop: 16,
-    backgroundColor: colorMix(colors.green, 0.1),
+    backgroundColor: colors.surfaceMuted,
     padding: 16,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -286,8 +286,3 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5
   }
 });
-
-function colorMix(hex, opacity) {
-  // simple mock for background color mix
-  return hex; // In React Native we can just use the color directly or add an opacity suffix to hex.
-}

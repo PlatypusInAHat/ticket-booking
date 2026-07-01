@@ -15,20 +15,20 @@ function BookingCard({ booking, onOpenPasses, onCancel }) {
         <Text style={styles.title}>{booking.bookingNumber}</Text>
         <Text style={styles.badge}>{getLabel(bookingStatusLabels, booking.bookingStatus)}</Text>
       </View>
-      <Text style={styles.muted}>Ngày đặt: {formatDate(booking.createdAt)}</Text>
+      <Text style={styles.muted}>Booked on: {formatDate(booking.createdAt)}</Text>
       <Text style={styles.price}>{formatCurrency(booking.totalAmount)}</Text>
 
       {booking.tickets?.map(item => (
         <View key={`${booking._id}-${item.ticket?._id || item._id}`} style={styles.bookingItem}>
-          <Text style={styles.itemTitle}>{item.ticket?.eventName || 'Vé không còn tồn tại'}</Text>
-          <Text style={styles.muted}>Số lượng: {item.quantity}</Text>
+          <Text style={styles.itemTitle}>{item.ticket?.eventName || 'Ticket no longer available'}</Text>
+          <Text style={styles.muted}>Quantity: {item.quantity}</Text>
         </View>
       ))}
 
       <View style={styles.actions}>
-        <Button title="Vé điện tử" icon={QrCode} onPress={() => onOpenPasses(booking)} style={styles.flexButton} />
+        <Button title="Mobile passes" icon={QrCode} onPress={() => onOpenPasses(booking)} style={styles.flexButton} />
         {booking.bookingStatus !== 'cancelled' ? (
-          <Button title="Hủy đơn" icon={XCircle} variant="danger" onPress={() => onCancel(booking)} style={styles.flexButton} />
+          <Button title="Cancel" icon={XCircle} variant="danger" onPress={() => onCancel(booking)} style={styles.flexButton} />
         ) : null}
       </View>
     </Card>
@@ -37,7 +37,7 @@ function BookingCard({ booking, onOpenPasses, onCancel }) {
 
 export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPasses, onCancelBooking }) {
   return (
-    <Screen title="Vé của tôi" subtitle="Xem đơn đặt vé, QR, barcode và NFC payload.">
+    <Screen title="My Tickets" subtitle="View bookings, QR codes, barcodes, and NFC payloads.">
       <ScrollView
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.accent} />}
         scrollEnabled={false}
@@ -53,8 +53,8 @@ export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPass
         {!loading && bookings.length === 0 ? (
           <Card style={styles.emptyCard}>
             <CreditCard size={48} color={colors.muted} style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>Bạn chưa có vé</Text>
-            <Text style={styles.emptyMuted}>Sau khi đặt vé thành công, vé điện tử sẽ xuất hiện ở đây.</Text>
+            <Text style={styles.emptyTitle}>No tickets yet</Text>
+            <Text style={styles.emptyMuted}>After checkout, your mobile passes will appear here.</Text>
           </Card>
         ) : null}
       </ScrollView>

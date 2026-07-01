@@ -8,19 +8,19 @@ import { colors, radius } from '../theme';
 
 export default function ProfileScreen({ auth, onLogout }) {
   const roleLabel = auth.user?.role === 'staff'
-    ? 'Nhân viên check-in'
+    ? 'Check-in staff'
     : auth.user?.role === 'admin'
-      ? 'Quản trị'
-      : 'Khách hàng';
+      ? 'Administrator'
+      : 'Customer';
 
   return (
-    <Screen title="Tài khoản" subtitle="Thông tin đăng nhập trên app mobile.">
+    <Screen title="Profile" subtitle="Your signed-in mobile account.">
       <Card style={styles.card}>
         <User size={48} color={colors.muted} style={styles.icon} />
         <Text style={styles.title}>{auth.user?.name}</Text>
         <Text style={styles.muted}>{auth.user?.email}</Text>
-        <Text style={styles.badge}>Vai trò: {roleLabel}</Text>
-        <Button title="Đăng xuất" icon={LogOut} variant="danger" onPress={onLogout} style={styles.spacedTop} />
+        <Text style={styles.badge}>Role: {roleLabel}</Text>
+        <Button title="Log out" icon={LogOut} variant="danger" onPress={onLogout} style={styles.spacedTop} />
       </Card>
     </Screen>
   );

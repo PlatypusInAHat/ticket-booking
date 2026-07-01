@@ -39,11 +39,11 @@ export default function App() {
   const canCheckIn = auth?.user?.role === 'admin' || auth?.user?.role === 'staff';
 
   const tabs = useMemo(() => [
-    { key: 'tickets', label: 'Vé', icon: Ticket },
-    { key: 'cart', label: `Giỏ (${cart.reduce((sum, item) => sum + item.quantity, 0)})`, icon: ShoppingBag },
-    { key: 'bookings', label: 'Vé của tôi', icon: CreditCard },
+    { key: 'tickets', label: 'Tickets', icon: Ticket },
+    { key: 'cart', label: `Cart (${cart.reduce((sum, item) => sum + item.quantity, 0)})`, icon: ShoppingBag },
+    { key: 'bookings', label: 'My Tickets', icon: CreditCard },
     ...(canCheckIn ? [{ key: 'checkin', label: 'Check-in', icon: CheckCircle }] : []),
-    { key: 'profile', label: 'Tài khoản', icon: User }
+    { key: 'profile', label: 'Profile', icon: User }
   ], [canCheckIn, cart]);
 
   const loadTickets = useCallback(async () => {
@@ -146,7 +146,7 @@ export default function App() {
 
   const checkoutCart = async () => {
     if (cart.length === 0) {
-      Alert.alert('Giỏ hàng trống', 'Vui lòng thêm vé trước khi thanh toán.');
+      Alert.alert('Cart is empty', 'Add tickets before checkout.');
       return;
     }
 
@@ -166,13 +166,13 @@ export default function App() {
         bookingId: booking._id,
         paymentToken: `mobile_demo_${Date.now()}`
       });
-      Alert.alert('Đặt vé thành công', 'Vé điện tử đã được phát hành trong mục Vé của tôi.');
+      Alert.alert('Booking confirmed', 'Your mobile passes are now available in My Tickets.');
       setCart([]);
       setActiveTab('bookings');
       await loadBookings();
       await loadTickets();
     } catch (error) {
-      Alert.alert('Không thể đặt vé', error.message);
+      Alert.alert('Could not book tickets', error.message);
     } finally {
       setCheckingOut(false);
     }
@@ -184,15 +184,15 @@ export default function App() {
       setSelectedBooking(booking);
       setPasses(data.passes || []);
     } catch (error) {
-      Alert.alert('Không thể tải vé điện tử', error.message);
+      Alert.alert('Could not load mobile passes', error.message);
     }
   };
 
   const cancelBooking = (booking) => {
-    Alert.alert('Hủy đơn đặt vé', 'Bạn có chắc chắn muốn hủy đơn này?', [
-      { text: 'Không' },
+    Alert.alert('Cancel booking', 'Are you sure you want to cancel this booking?', [
+      { text: 'No' },
       {
-        text: 'Hủy đơn',
+        text: 'Cancel booking',
         style: 'destructive',
         onPress: async () => {
           try {
@@ -200,7 +200,7 @@ export default function App() {
             await loadBookings();
             await loadTickets();
           } catch (error) {
-            Alert.alert('Không thể hủy đơn', error.message);
+            Alert.alert('Could not cancel booking', error.message);
           }
         }
       }
@@ -211,7 +211,7 @@ export default function App() {
     return (
       <>
         <StatusBar style="light" />
-        <Screen title="TicketBooking" subtitle="Đang tải ứng dụng..." />
+        <Screen title="TicketStage" subtitle="Loading mobile app..." />
       </>
     );
   }
@@ -234,9 +234,9 @@ export default function App() {
             <View style={styles.iconContainer}>
               <Ticket color={colors.accentForeground} size={18} />
             </View>
-            <Text style={styles.brand}>TicketBooking</Text>
+            <Text style={styles.brand}>TicketStage</Text>
           </View>
-          <Text style={styles.roleText}>{auth.user?.role === 'staff' ? 'Nhân viên' : auth.user?.name}</Text>
+          <Text style={styles.roleText}>{auth.user?.role === 'staff' ? 'Staff' : auth.user?.name}</Text>
         </View>
         <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 

@@ -12,28 +12,28 @@ export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckou
   const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <Screen title="Giỏ hàng" subtitle="Kiểm tra vé trước khi thanh toán.">
+    <Screen title="Cart" subtitle="Review your tickets before checkout.">
       {cart.length === 0 ? (
         <Card>
-          <Text style={styles.title}>Giỏ hàng đang trống</Text>
-          <Text style={styles.muted}>Hãy thêm vé từ danh sách sự kiện.</Text>
+          <Text style={styles.title}>Your cart is empty</Text>
+          <Text style={styles.muted}>Add tickets from the event list to continue.</Text>
         </Card>
       ) : (
         <>
           {cart.map(item => (
             <Card key={item._id} style={styles.card}>
               <Text style={styles.title}>{item.eventName}</Text>
-              
+
               <View style={styles.infoRow}>
                 <MapPin size={14} color={colors.muted} />
                 <Text style={styles.muted}>{item.location?.venue}, {item.location?.city}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Calendar size={14} color={colors.muted} />
-                <Text style={styles.muted}>{formatDate(item.date)} lúc {item.time}</Text>
+                <Text style={styles.muted}>{formatDate(item.date)} at {item.time}</Text>
               </View>
 
-              <Text style={styles.price}>{formatCurrency(item.price)} / vé</Text>
+              <Text style={styles.price}>{formatCurrency(item.price)} / ticket</Text>
 
               <View style={styles.cartActions}>
                 <View style={styles.stepper}>
@@ -45,21 +45,21 @@ export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckou
                     <Text style={styles.stepText}>+</Text>
                   </Pressable>
                 </View>
-                <Button title="Xóa" icon={Trash2} variant="danger" onPress={() => onRemove(item._id)} style={styles.removeButton} />
+                <Button title="Remove" icon={Trash2} variant="danger" onPress={() => onRemove(item._id)} style={styles.removeButton} />
               </View>
             </Card>
           ))}
 
           <Card style={styles.summaryCard}>
             <View style={styles.rowBetween}>
-              <Text style={styles.muted}>Tổng số vé</Text>
+              <Text style={styles.muted}>Total tickets</Text>
               <Text style={styles.summaryValue}>{totalQuantity}</Text>
             </View>
             <View style={styles.rowBetween}>
-              <Text style={styles.muted}>Tạm tính</Text>
+              <Text style={styles.muted}>Subtotal</Text>
               <Text style={styles.total}>{formatCurrency(total)}</Text>
             </View>
-            <Button title="Thanh toán" icon={CreditCard} onPress={onCheckout} loading={loading} style={styles.checkoutButton} />
+            <Button title="Checkout" icon={CreditCard} onPress={onCheckout} loading={loading} style={styles.checkoutButton} />
           </Card>
         </>
       )}

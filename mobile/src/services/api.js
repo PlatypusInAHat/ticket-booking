@@ -43,7 +43,7 @@ const request = async (path, options = {}) => {
   const payload = contentType.includes('application/json') ? await response.json() : await response.text();
 
   if (!response.ok) {
-    throw new Error(payload?.message || 'Không thể kết nối máy chủ.');
+    throw new Error(payload?.message || payload?.error || 'Cannot connect to the API server.');
   }
 
   return payload?.data ?? payload;

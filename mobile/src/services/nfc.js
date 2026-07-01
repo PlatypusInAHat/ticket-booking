@@ -30,7 +30,7 @@ export const isHostCardEmulationAvailable = () => {
 
 export const setHostCardPayload = async (payload) => {
   if (!isHostCardEmulationAvailable()) {
-    throw new Error('Thiết bị hoặc bản build chưa hỗ trợ phát vé qua NFC.');
+    throw new Error('This device or build does not support NFC ticket emulation.');
   }
 
   return NativeModules.TicketNfcHost.setPayload(payload);
@@ -54,7 +54,7 @@ export const getHostCardPayload = async () => {
 
 const ensureNfcReady = async () => {
   if (!NfcManager) {
-    throw new Error('NFC native chưa khả dụng. Hãy dùng development build.');
+    throw new Error('NFC native runtime is not available. Use a development build.');
   }
 
   await NfcManager.start();
@@ -62,7 +62,7 @@ const ensureNfcReady = async () => {
   const enabled = await NfcManager.isEnabled();
 
   if (!supported || !enabled) {
-    throw new Error('Thiết bị chưa bật hoặc không hỗ trợ NFC.');
+    throw new Error('NFC is disabled or not supported on this device.');
   }
 };
 
@@ -79,7 +79,7 @@ const readHostCardPayload = async () => {
   const status = response.slice(-2).map(value => value.toString(16).padStart(2, '0')).join('').toUpperCase();
 
   if (status !== '9000') {
-    throw new Error('Không đọc được vé NFC từ thiết bị khách.');
+    throw new Error('Could not read NFC ticket from the customer device.');
   }
 
   return decodeAsciiPayload(response);

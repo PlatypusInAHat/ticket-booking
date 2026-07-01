@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "TicketBooking",
+    "name": "TicketStage",
     "slug": "ticket-booking-mobile",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -19,8 +19,8 @@
     "ios": {
       "bundleIdentifier": "com.ticketbooking.mobile",
       "infoPlist": {
-        "NSCameraUsageDescription": "TicketBooking cần camera để quét mã QR và barcode khi check-in.",
-        "NFCReaderUsageDescription": "TicketBooking dùng NFC để đọc hoặc phát payload vé khi thiết bị hỗ trợ."
+        "NSCameraUsageDescription": "TicketStage uses the camera to scan ticket QR codes and barcodes at check-in.",
+        "NFCReaderUsageDescription": "TicketStage uses NFC to read and present mobile ticket payloads when supported by the device."
       }
     },
     "plugins": [
