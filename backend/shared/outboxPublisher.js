@@ -4,6 +4,7 @@ const {
   buildEnvelope,
   publishEnvelope
 } = require('./eventBus');
+const logger = require('../utils/logger');
 
 let workerTimer = null;
 let isDraining = false;
@@ -32,14 +33,14 @@ const enqueueOutboxEvent = async (type, payload = {}, options = {}) => {
 
   const envelope = buildEnvelope(type, payload, options.source);
 
-  await EventOutbox.create({
+  await EventOutbox.create([{
     eventId: envelope.id,
     type,
     source: envelope.source,
     envelope,
     status: 'pending',
     nextAttemptAt: new Date()
-  });
+  }], { session: options.session });
 
   return true;
 };
@@ -151,13 +152,13 @@ const startOutboxPublisher = ({ serviceName = process.env.SERVICE_NAME || 'unkno
 
   const tick = () => {
     publishOutboxBatch().catch((error) => {
-      console.error(`[outbox] ${serviceName} publish failed:`, error.message);
+      logger.error(`[outbox] ${serviceName} publish failed: ${error.message}`);
     });
   };
 
   workerTimer = setInterval(tick, intervalMs);
   setTimeout(tick, 1000);
-  console.log(`[outbox] ${serviceName} publisher started (${intervalMs}ms)`);
+  logger.info(`[outbox] ${serviceName} publisher started (${intervalMs}ms)`);
 
   return workerTimer;
 };

@@ -29,10 +29,10 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground">
-            Quên Mật Khẩu
+            Forgot Password
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Nhập email của bạn để nhận liên kết đặt lại mật khẩu.
+            Enter your email to receive a password reset link.
           </p>
         </div>
 
@@ -40,13 +40,13 @@ export default function ForgotPassword() {
           {success ? (
             <div className="text-center space-y-4">
               <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-              <h3 className="text-xl font-bold text-foreground">Đã gửi email!</h3>
+              <h3 className="text-xl font-bold text-foreground">Email sent!</h3>
               <p className="text-muted">
-                Chúng tôi đã gửi một email chứa liên kết đặt lại mật khẩu đến <strong>{email}</strong>. Vui lòng kiểm tra hộp thư của bạn.
+                We have sent a password reset link to <strong>{email}</strong>. Please check your inbox.
               </p>
               <div className="pt-4">
                 <Link to="/login" className="text-accent hover:underline font-medium">
-                  Quay lại đăng nhập
+                  Back to Login
                 </Link>
               </div>
             </div>
@@ -60,7 +60,7 @@ export default function ForgotPassword() {
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-foreground">
-                  Địa chỉ Email
+                  Email Address
                 </label>
                 <div className="relative mt-1">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -86,7 +86,7 @@ export default function ForgotPassword() {
                   disabled={loading}
                   className="flex w-full justify-center rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground transition-colors hover:bg-accent-strong focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50"
                 >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Gửi Liên Kết"}
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send Reset Link"}
                 </button>
               </div>
             </form>
@@ -96,7 +96,7 @@ export default function ForgotPassword() {
             <div className="mt-6 text-center">
               <Link to="/login" className="inline-flex items-center text-sm font-medium text-muted hover:text-foreground">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Quay lại đăng nhập
+                Back to Login
               </Link>
             </div>
           )}

@@ -3,12 +3,17 @@ const { body, param, query } = require('express-validator');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const eventController = require('../controllers/eventController');
 const validateRequest = require('../middleware/validateRequest');
+const { cacheMiddleware } = require('../utils/cache');
 
 const router = express.Router();
 
 const eventIdParam = () => param('id')
   .isMongoId()
   .withMessage('Mã sự kiện không hợp lệ');
+
+const eventLookupParam = () => param('id')
+  .custom((value) => /^[a-z0-9-]+$/i.test(value))
+  .withMessage('Ma hoac slug su kien khong hop le');
 
 const eventTypeRule = () => body('eventType')
   .optional()
@@ -67,9 +72,15 @@ router.get('/', [
     .optional()
     .isInt({ min: 1, max: 100 })
     .withMessage('Giới hạn phải từ 1 đến 100'),
-  validateRequest
+  validateRequest,
+  cacheMiddleware(60) // Cache for 60 seconds
 ], eventController.getEvents);
-router.get('/:id', [eventIdParam(), validateRequest], eventController.getEventById);
+router.get('/:id', [eventLookupParam(), validateRequest, cacheMiddleware(300)], eventController.getEventById);
+router.post('/bundle', [
+  authenticateToken,
+  authorizeRole(['admin', 'organizer'])
+], eventController.createEventBundle);
+
 router.post('/', [
   authenticateToken,
   authorizeRole(['admin', 'organizer']),
@@ -83,5 +94,11 @@ router.put('/:id', [
   ...eventWriteRules(),
   validateRequest
 ], eventController.updateEvent);
+router.delete('/:id', [
+  authenticateToken,
+  authorizeRole(['admin', 'organizer']),
+  eventIdParam(),
+  validateRequest
+], eventController.deleteEvent);
 
 module.exports = router;

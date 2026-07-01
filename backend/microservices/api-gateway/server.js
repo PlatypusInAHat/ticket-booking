@@ -3,6 +3,9 @@ const compression = require('compression');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const { constantTimeEqual } = require('../../utils/cryptoUtils');
+const { createCorsOptions } = require('../../utils/corsOptions');
 
 dotenv.config();
 
@@ -11,6 +14,7 @@ const swaggerJsdoc = require('swagger-jsdoc');
 
 const SERVICE_NAME = 'api-gateway';
 const PORT = process.env.GATEWAY_PORT || process.env.PORT || 5000;
+const UPSTREAM_TIMEOUT_MS = Number(process.env.GATEWAY_UPSTREAM_TIMEOUT_MS || 10000);
 
 const SERVICE_ROUTES = [
   {
@@ -56,13 +60,9 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(compression());
-app.use('/api/payment/webhooks/stripe', express.raw({ type: 'application/json', limit: '2mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
+app.use(cors(createCorsOptions()));
 
 const stripHopByHopHeaders = (headers = {}) => {
   const blocked = new Set([
@@ -79,7 +79,10 @@ const stripHopByHopHeaders = (headers = {}) => {
   ]);
 
   return Object.fromEntries(
-    Object.entries(headers).filter(([key]) => !blocked.has(key.toLowerCase()))
+    Object.entries(headers).filter(([key]) => {
+      const normalizedKey = key.toLowerCase();
+      return !blocked.has(normalizedKey) && !normalizedKey.startsWith('access-control-');
+    })
   );
 };
 
@@ -96,6 +99,7 @@ const forwardRequest = (service) => async (req, res) => {
       },
       data: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
       responseType: 'arraybuffer',
+      timeout: UPSTREAM_TIMEOUT_MS,
       validateStatus: () => true
     });
 
@@ -115,6 +119,48 @@ const forwardRequest = (service) => async (req, res) => {
   }
 };
 
+const requireGatewayAdmin = (req, res, next) => {
+  const internalKey = process.env.INTERNAL_API_KEY;
+  const providedInternalKey = req.get('x-internal-api-key');
+
+  if (internalKey && providedInternalKey && constantTimeEqual(providedInternalKey, internalKey)) {
+    return next();
+  }
+
+  const token = req.headers.authorization?.startsWith('Bearer ')
+    ? req.headers.authorization.slice('Bearer '.length)
+    : '';
+
+  if (!token || !process.env.JWT_SECRET) {
+    return res.status(401).json({
+      success: false,
+      service: SERVICE_NAME,
+      message: 'Gateway admin access required'
+    });
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (payload.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        service: SERVICE_NAME,
+        message: 'Admin role required'
+      });
+    }
+
+    req.user = payload;
+    return next();
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      service: SERVICE_NAME,
+      message: 'Invalid or expired token'
+    });
+  }
+};
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -124,7 +170,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/api/admin/gateway/status', async (req, res) => {
+app.get('/api/admin/gateway/status', requireGatewayAdmin, async (req, res) => {
   const statusPromises = SERVICE_ROUTES.map(async (service) => {
     try {
       const response = await axios.get(`${service.target}/health`, { timeout: 3000 });

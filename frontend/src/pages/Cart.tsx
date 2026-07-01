@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom"
 import { Minus, Plus, Trash2, ShoppingBag, ShieldCheck, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { useAppDispatch, useAppSelector } from "@/store"
@@ -10,8 +9,6 @@ export function Cart() {
   const dispatch = useAppDispatch()
 
   const subtotal = items.reduce((n: number, l: any) => n + l.price * l.quantity, 0)
-  const fees = Math.round(subtotal * 0.12)
-  const total = subtotal + fees
 
   if (items.length === 0) {
     return (
@@ -21,7 +18,7 @@ export function Cart() {
         </span>
         <div>
           <h1 className="font-display text-2xl font-bold">Your cart is empty</h1>
-          <p className="mt-2 text-muted">Find your next unforgettable night out.</p>
+          <p className="mt-2 text-muted">Pick an event you love and your tickets will appear here.</p>
         </div>
         <Button to="/events" size="lg">
           Browse events
@@ -32,13 +29,12 @@ export function Cart() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="font-display text-4xl font-bold tracking-tight">Your cart</h1>
+      <h1 className="font-display text-4xl font-bold tracking-tight">Your ticket cart</h1>
       <p className="mt-2 text-muted">
-        {items.length} {items.length === 1 ? "item" : "items"} ready for checkout.
+        {items.length} ticket type{items.length === 1 ? "" : "s"} ready for checkout.
       </p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
-        {/* Items */}
         <div className="flex flex-col gap-4">
           {items.map((line: any) => (
             <div
@@ -57,9 +53,7 @@ export function Cart() {
                     <p className="text-sm text-accent">{line.category || line.tierName}</p>
                   </div>
                   <button
-                    onClick={() =>
-                      dispatch(removeFromCart(line._id || line.id))
-                    }
+                    onClick={() => dispatch(removeFromCart(line._id || line.id))}
                     className="flex h-8 w-8 items-center justify-center rounded-full text-muted-2 transition-colors hover:bg-surface-2 hover:text-danger"
                     aria-label="Remove item"
                   >
@@ -113,7 +107,6 @@ export function Cart() {
           ))}
         </div>
 
-        {/* Summary */}
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
             <h2 className="font-display text-lg font-semibold">Order summary</h2>
@@ -131,15 +124,15 @@ export function Cart() {
             </div>
 
             <Button to="/checkout" className="mt-6 w-full" size="lg">
-              Proceed to checkout
+              Checkout
             </Button>
             <Button to="/events" variant="ghost" size="sm" className="mt-2 w-full">
-              Continue browsing
+              Browse more events
             </Button>
 
             <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-muted-2">
               <ShieldCheck className="h-3.5 w-3.5 text-success" />
-              Secure, encrypted checkout
+              Secure encrypted checkout
             </p>
           </div>
         </aside>

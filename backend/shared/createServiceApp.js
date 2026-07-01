@@ -2,33 +2,31 @@ const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
 const errorHandler = require('../middleware/error');
+const { correlationIdMiddleware } = require('../middleware/correlationId');
+const logger = require('../utils/logger');
+const { createCorsOptions } = require('../utils/corsOptions');
 
 const DEFAULT_BODY_LIMIT = '10mb';
-
-const captureRawBody = (req, res, buffer) => {
-  const isStripeWebhook = req.originalUrl?.includes('/api/payment/webhooks/stripe') ||
-    req.url?.includes('/api/payment/webhooks/stripe');
-
-  if (isStripeWebhook && buffer?.length) {
-    req.rawBody = Buffer.from(buffer);
-  }
-};
 
 const createServiceApp = ({
   serviceName,
   routes = [],
   healthPath = '/health',
-  corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000'
+  corsOptions = createCorsOptions()
 }) => {
   const app = express();
 
+  app.use(correlationIdMiddleware);
+  
+  app.use((req, res, next) => {
+    logger.info(`[${req.method}] ${req.url}`);
+    next();
+  });
+
   app.use(compression());
-  app.use(express.json({ limit: DEFAULT_BODY_LIMIT, verify: captureRawBody }));
+  app.use(express.json({ limit: DEFAULT_BODY_LIMIT }));
   app.use(express.urlencoded({ limit: DEFAULT_BODY_LIMIT, extended: true }));
-  app.use(cors({
-    origin: corsOrigin,
-    credentials: true
-  }));
+  app.use(cors(corsOptions));
 
   app.get(healthPath, (req, res) => {
     res.json({

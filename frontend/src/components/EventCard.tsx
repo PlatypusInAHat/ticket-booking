@@ -1,10 +1,11 @@
+import { memo } from "react"
 import { Link } from "react-router-dom"
 import { Calendar, MapPin, Star } from "lucide-react"
 import type { EventItem } from "@/data/types"
 import { StatusBadge, Badge } from "@/components/ui/Badge"
 import { formatCurrency, formatDate } from "@/lib/utils"
 
-export function EventCard({ event }: { event: EventItem }) {
+export const EventCard = memo(function EventCard({ event }: { event: EventItem }) {
   return (
     <Link
       to={`/events/${event.slug}`}
@@ -22,7 +23,7 @@ export function EventCard({ event }: { event: EventItem }) {
           <Badge tone="neutral" className="bg-background/70">
             {event.category}
           </Badge>
-          {event.popular && <Badge tone="accent">Popular</Badge>}
+          {event.popular && <Badge tone="accent">Featured</Badge>}
         </div>
         <div className="absolute bottom-3 right-3">
           <StatusBadge status={event.status} />
@@ -59,10 +60,10 @@ export function EventCard({ event }: { event: EventItem }) {
             </span>
           </div>
           <span className="text-sm font-medium text-accent transition-transform duration-200 group-hover:translate-x-0.5">
-            View event &rarr;
+            View details &rarr;
           </span>
         </div>
       </div>
     </Link>
   )
-}
+})

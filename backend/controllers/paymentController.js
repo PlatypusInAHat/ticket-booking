@@ -19,15 +19,6 @@ const getPaymentStatus = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, data));
 });
 
-const handleStripeWebhook = asyncHandler(async (req, res) => {
-  const data = await paymentService.handleStripeWebhook({
-    rawBody: req.rawBody || Buffer.from(JSON.stringify(req.body || {})),
-    signature: req.headers['stripe-signature']
-  });
-
-  res.status(200).json(new ApiResponse(200, data));
-});
-
 const handleMomoWebhook = asyncHandler(async (req, res) => {
   await paymentService.handleMomoWebhook(req.body);
   res.status(204).send();
@@ -46,7 +37,6 @@ const handleVnpayReturn = asyncHandler(async (req, res) => {
 module.exports = {
   createPaymentSession,
   handleMomoWebhook,
-  handleStripeWebhook,
   handleVnpayReturn,
   handleVnpayWebhook,
   processPayment,

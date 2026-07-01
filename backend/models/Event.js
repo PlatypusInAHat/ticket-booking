@@ -7,9 +7,10 @@ const eventSchema = new mongoose.Schema({
     ref: 'Company',
     required: true
   },
-  organizer: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true
+  organizerDetails: {
+    name: { type: String, default: '' },
+    info: { type: String, default: '' },
+    logo: { type: String, default: '' }
   },
   title: {
     type: String,
@@ -146,7 +147,7 @@ eventSchema.pre('validate', function(next) {
 });
 
 eventSchema.index({ company: 1, startsAt: 1 });
-eventSchema.index({ organizer: 1, startsAt: 1 });
+
 eventSchema.index({ eventType: 1, status: 1, startsAt: 1 });
 eventSchema.index({ title: 'text', description: 'text', tags: 'text' });
 

@@ -1,26 +1,25 @@
-import { useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { Routes, Route } from "react-router-dom"
 import { Layout } from "@/components/layout/Layout"
-import { Home } from "@/pages/Home"
-import { Events } from "@/pages/Events"
-import { EventDetail } from "@/pages/EventDetail"
-import { Cart } from "@/pages/Cart"
 
 import PrivateRoute from "@/components/PrivateRoute"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { logout, updateProfileSuccess } from "@/store/authSlice"
 import { usersAPI } from "@/services/api"
 
-// We will create these pages next
-import { Login } from "@/pages/Login"
-import { Register } from "@/pages/Register"
-import ForgotPassword from "@/pages/ForgotPassword"
-import ResetPassword from "@/pages/ResetPassword"
-import { Dashboard } from "@/pages/Dashboard"
-import { Checkout } from "@/pages/Checkout"
-import { PaymentResult } from "@/pages/PaymentResult"
-import { AdminDashboard } from "@/pages/AdminDashboard"
-import { ApiManagement } from "@/pages/ApiManagement"
+const Home = lazy(() => import("@/pages/Home").then((module) => ({ default: module.Home })))
+const Events = lazy(() => import("@/pages/Events").then((module) => ({ default: module.Events })))
+const EventDetail = lazy(() => import("@/pages/EventDetail").then((module) => ({ default: module.EventDetail })))
+const Cart = lazy(() => import("@/pages/Cart").then((module) => ({ default: module.Cart })))
+const Login = lazy(() => import("@/pages/Login").then((module) => ({ default: module.Login })))
+const Register = lazy(() => import("@/pages/Register").then((module) => ({ default: module.Register })))
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"))
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"))
+const Dashboard = lazy(() => import("@/pages/Dashboard").then((module) => ({ default: module.Dashboard })))
+const Checkout = lazy(() => import("@/pages/Checkout").then((module) => ({ default: module.Checkout })))
+const PaymentResult = lazy(() => import("@/pages/PaymentResult").then((module) => ({ default: module.PaymentResult })))
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then((module) => ({ default: module.AdminDashboard })))
+const ApiManagement = lazy(() => import("@/pages/ApiManagement").then((module) => ({ default: module.ApiManagement })))
 
 function PageLoader({ title = "Loading interface..." }) {
   return (
@@ -73,38 +72,40 @@ export default function App() {
   if (isBootstrapping) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
-        <PageLoader title="Checking authentication..." />
+        <PageLoader title="Checking your session..." />
       </div>
     )
   }
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/events" element={<Events />} />
-        <Route path="/events/:id" element={<EventDetail />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/payment/result" element={<PaymentResult />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/events/:id" element={<EventDetail />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/payment/result" element={<PaymentResult />} />
 
-        <Route element={<PrivateRoute />}>
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Route>
-
-        {user?.role === "admin" && (
-          <Route element={<PrivateRoute requiredRole="admin" />}>
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/api-management" element={<ApiManagement />} />
+          <Route element={<PrivateRoute />}>
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/dashboard" element={<Dashboard />} />
           </Route>
-        )}
 
-        <Route path="*" element={<Home />} />
-      </Route>
-    </Routes>
+          {user?.role === "admin" && (
+            <Route element={<PrivateRoute requiredRole="admin" />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/api-management" element={<ApiManagement />} />
+            </Route>
+          )}
+
+          <Route path="*" element={<Home />} />
+        </Route>
+      </Routes>
+    </Suspense>
   )
 }

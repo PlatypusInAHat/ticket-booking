@@ -1,4 +1,5 @@
 const dotenv = require('dotenv');
+const express = require('express');
 const { subscribeToDomainEvents } = require('../../shared/domainEventSubscriber');
 const EVENTS = require('../../shared/domainEvents');
 const { sendEmail } = require('../../utils/emailService');
@@ -6,6 +7,30 @@ const { sendEmail } = require('../../utils/emailService');
 dotenv.config();
 
 const SERVICE_NAME = 'notification-service';
+const PORT = process.env.NOTIFICATION_SERVICE_PORT || process.env.PORT || 5105;
+let startedAt = new Date();
+
+const startHealthServer = () => {
+  if (process.env.NODE_ENV === 'test') {
+    return null;
+  }
+
+  const app = express();
+
+  app.get('/health', (req, res) => {
+    res.json({
+      status: 'OK',
+      service: SERVICE_NAME,
+      uptime: process.uptime(),
+      startedAt: startedAt.toISOString(),
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  return app.listen(PORT, () => {
+    console.log(`[${SERVICE_NAME}] health endpoint running on port ${PORT}`);
+  });
+};
 
 const handlePaymentCompleted = async (payload) => {
   const { booking, payment } = payload;
@@ -75,7 +100,9 @@ const handlePasswordResetRequested = async (payload) => {
 
 const startNotificationService = async () => {
   try {
+    startedAt = new Date();
     console.log(`[${SERVICE_NAME}] Starting...`);
+    startHealthServer();
     
     await subscribeToDomainEvents({
       group: SERVICE_NAME,

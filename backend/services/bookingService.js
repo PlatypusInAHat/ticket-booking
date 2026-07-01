@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const ApiError = require('../utils/ApiError');
 const { buildPassSecrets, generatePassCode } = require('../utils/passUtils');
@@ -30,11 +31,14 @@ const createAdmissionPasses = (bookingTickets, holder = {}) => {
   const passes = [];
 
   bookingTickets.forEach((item) => {
+    const seatCodes = Array.isArray(item.seatCodes) ? item.seatCodes : [];
+    
     for (let index = 0; index < item.quantity; index += 1) {
       const passCode = generatePassCode();
       const passSecrets = buildPassSecrets(passCode);
-
-      passes.push({
+      const seatCode = seatCodes[index] || '';
+      
+      const passObj = {
         ticket: item.ticket,
         passCode,
         barcodeValue: passCode,
@@ -47,7 +51,18 @@ const createAdmissionPasses = (bookingTickets, holder = {}) => {
           phone: holder.phone || ''
         },
         status: 'issued'
-      });
+      };
+
+      if (seatCode) {
+        passObj.seat = {
+          code: seatCode,
+          section: '', // Optional: can parse section from code if formatted like "VIP-A1"
+          row: '',
+          number: ''
+        };
+      }
+
+      passes.push(passObj);
     }
   });
 
@@ -81,7 +96,7 @@ const attachTicketSnapshots = (booking) => {
   return plainBooking;
 };
 
-const publishBookingCreated = async (booking) => {
+const publishBookingCreated = async (booking, options = {}) => {
   const payload = {
     booking: serializeBookingForEvent(booking),
     bookingId: booking._id.toString(),
@@ -89,11 +104,12 @@ const publishBookingCreated = async (booking) => {
   };
 
   await publishDomainEvent(EVENTS.BOOKING_CREATED, payload, {
-    source: 'booking-service'
+    source: 'booking-service',
+    session: options.session
   });
 };
 
-const publishBookingReleased = async (eventType, booking, extraPayload = {}) => {
+const publishBookingReleased = async (eventType, booking, extraPayload = {}, options = {}) => {
   const payload = {
     booking: serializeBookingForEvent(booking),
     bookingId: booking._id.toString(),
@@ -103,7 +119,8 @@ const publishBookingReleased = async (eventType, booking, extraPayload = {}) => 
   };
 
   const published = await publishDomainEvent(eventType, payload, {
-    source: 'booking-service'
+    source: 'booking-service',
+    session: options.session
   });
 
   if (!published) {
@@ -138,6 +155,7 @@ const createBooking = async (bookingData, user) => {
     quantity: item.quantity,
     pricePerUnit: item.pricePerUnit,
     subtotal: item.subtotal,
+    seatCodes: item.seatCodes || [],
     snapshot: item.snapshot
   }));
 
@@ -177,63 +195,82 @@ const createBooking = async (bookingData, user) => {
     customerInfo
   });
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    await booking.save();
+    await booking.save({ session });
+    await publishBookingCreated(booking, { session });
+    await session.commitTransaction();
+    return booking;
   } catch (error) {
+    await session.abortTransaction();
     await catalogClient.releaseTickets(bookingTickets);
     throw error;
+  } finally {
+    session.endSession();
   }
-
-  await publishBookingCreated(booking);
-  return booking;
 };
 
 const expirePendingBooking = async (bookingId, options = {}) => {
   const now = options.now || new Date();
   const reason = options.reason || 'Booking hold expired before payment';
 
-  const booking = await Booking.findOneAndUpdate(
-    {
-      _id: bookingId,
-      bookingStatus: 'pending',
-      paymentStatus: 'pending',
-      expiresAt: { $lte: now }
-    },
-    {
-      $set: {
-        bookingStatus: 'cancelled',
-        paymentStatus: 'failed',
-        cancelledAt: now,
-        updatedAt: now,
-        'passes.$[pass].status': 'cancelled'
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const booking = await Booking.findOneAndUpdate(
+      {
+        _id: bookingId,
+        bookingStatus: 'pending',
+        paymentStatus: 'pending',
+        expiresAt: { $lte: now }
       },
-      $unset: {
-        expiresAt: ''
-      },
-      $push: {
-        statusHistory: {
+      {
+        $set: {
           bookingStatus: 'cancelled',
           paymentStatus: 'failed',
-          reason,
-          changedAt: now
+          cancelledAt: now,
+          updatedAt: now,
+          'passes.$[pass].status': 'cancelled'
+        },
+        $unset: {
+          expiresAt: ''
+        },
+        $push: {
+          statusHistory: {
+            bookingStatus: 'cancelled',
+            paymentStatus: 'failed',
+            reason,
+            changedAt: now
+          }
         }
+      },
+      {
+        new: true,
+        arrayFilters: [{ 'pass.status': { $ne: 'checked_in' } }],
+        session
       }
-    },
-    {
-      new: true,
-      arrayFilters: [{ 'pass.status': { $ne: 'checked_in' } }]
+    );
+
+    if (!booking) {
+      await session.abortTransaction();
+      return null;
     }
-  );
 
-  if (!booking) {
-    return null;
+    await publishBookingReleased(EVENTS.BOOKING_EXPIRED, booking, {
+      reason
+    }, { session });
+
+    await session.commitTransaction();
+    return booking;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
-
-  await publishBookingReleased(EVENTS.BOOKING_EXPIRED, booking, {
-    reason
-  });
-
-  return booking;
 };
 
 const expirePendingBookings = async (options = {}) => {
@@ -334,27 +371,40 @@ const cancelBooking = async (id, user) => {
     reason: 'Booking cancelled'
   });
   booking.updatedAt = new Date();
-  await booking.save();
 
-  const payload = {
-    booking: serializeBookingForEvent(booking),
-    bookingId: booking._id.toString(),
-    userId: booking.user.toString(),
-    previousPaymentStatus,
-    restoreRevenue: previousPaymentStatus === 'completed'
-  };
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  const published = await publishDomainEvent(EVENTS.BOOKING_CANCELLED, payload, {
-    source: 'booking-service'
-  });
+  try {
+    await booking.save({ session });
 
-  if (!published) {
-    await catalogClient.releaseTickets(booking.tickets, {
+    const payload = {
+      booking: serializeBookingForEvent(booking),
+      bookingId: booking._id.toString(),
+      userId: booking.user.toString(),
+      previousPaymentStatus,
       restoreRevenue: previousPaymentStatus === 'completed'
-    });
-  }
+    };
 
-  return booking;
+    const published = await publishDomainEvent(EVENTS.BOOKING_CANCELLED, payload, {
+      source: 'booking-service',
+      session
+    });
+
+    if (!published) {
+      await catalogClient.releaseTickets(booking.tickets, {
+        restoreRevenue: previousPaymentStatus === 'completed'
+      });
+    }
+
+    await session.commitTransaction();
+    return booking;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };
 
 module.exports = {

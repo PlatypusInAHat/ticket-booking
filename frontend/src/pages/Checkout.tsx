@@ -16,7 +16,7 @@ const getPaymentActionText = (paymentMethod: string) => {
   if (paymentMethod === "momo") {
     return "Pay with MoMo"
   }
-  return "Confirm Demo Payment"
+  return "Confirm demo payment"
 }
 
 export function Checkout() {
@@ -38,7 +38,7 @@ export function Checkout() {
 
   const createBookingPayload = () => ({
     tickets: items.map((item: any) => ({
-      ticketId: item._id || item.id, // Support both new and old structures
+      ticketId: item._id || item.id,
       quantity: item.quantity,
     })),
     paymentMethod,
@@ -52,7 +52,7 @@ export function Checkout() {
     const redirectUrl = session.redirectUrl || session.paymentUrl || session.deeplink
 
     if (!redirectUrl) {
-      throw new Error("Payment gateway did not return a valid redirect URL.")
+      throw new Error("The payment gateway did not return a valid checkout URL.")
     }
 
     window.localStorage.setItem("lastPendingBookingId", session.bookingId || "")
@@ -74,7 +74,7 @@ export function Checkout() {
     event.preventDefault()
     setLoading(true)
     setError("")
-    setStatusText("Reserving your tickets...")
+    setStatusText("Holding your tickets...")
 
     try {
       const bookingResponse = await bookingsAPI.create(createBookingPayload())
@@ -83,7 +83,7 @@ export function Checkout() {
       window.localStorage.setItem("lastPendingBookingId", booking._id)
 
       if (gatewayMethods.has(paymentMethod)) {
-        setStatusText("Creating secure payment session...")
+        setStatusText("Creating a secure payment session...")
         const sessionResponse = await paymentAPI.createSession({
           bookingId: booking._id,
           provider: paymentMethod,
@@ -116,7 +116,7 @@ export function Checkout() {
             onClick={() => navigate("/events")}
             className="mt-6 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-foreground transition-colors hover:bg-accent-strong"
           >
-            Browse Events
+            Browse events
           </button>
         </div>
       </div>
@@ -133,16 +133,16 @@ export function Checkout() {
         onClick={() => navigate("/cart")}
         className="mb-8 flex items-center gap-2 text-sm font-semibold text-muted transition-colors hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to Cart
+        <ArrowLeft className="h-4 w-4" /> Back to cart
       </button>
 
       <div className="mb-8 relative z-10">
         <span className="mb-3 inline-block rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-          Final Step
+          Final step
         </span>
         <h1 className="font-display text-4xl font-black text-foreground">Checkout</h1>
         <p className="mt-3 max-w-2xl text-sm text-muted">
-          Your tickets will be held for a short time. Choose VNPay or MoMo to redirect to the secure payment gateway.
+          Your tickets will be held for a short time. Choose VNPay or MoMo to continue to a secure payment gateway.
         </p>
       </div>
 
@@ -153,9 +153,9 @@ export function Checkout() {
               <Lock className="h-6 w-6" />
             </span>
             <div>
-              <h2 className="text-xl font-black text-foreground">Delivery Information</h2>
+              <h2 className="text-xl font-black text-foreground">Ticket delivery details</h2>
               <p className="text-sm text-muted">
-                Your email and phone are used to confirm orders and send e-tickets.
+                We use your email and phone number to confirm the order and deliver digital tickets.
               </p>
             </div>
           </div>
@@ -174,7 +174,7 @@ export function Checkout() {
 
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Full Name</label>
+              <label className="text-sm font-medium text-foreground">Full name</label>
               <input
                 type="text"
                 value={customerName}
@@ -184,7 +184,7 @@ export function Checkout() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Email Address</label>
+              <label className="text-sm font-medium text-foreground">Email</label>
               <input
                 type="email"
                 value={customerEmail}
@@ -194,7 +194,7 @@ export function Checkout() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Phone Number</label>
+              <label className="text-sm font-medium text-foreground">Phone number</label>
               <input
                 type="tel"
                 value={customerPhone}
@@ -204,7 +204,7 @@ export function Checkout() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Payment Method</label>
+              <label className="text-sm font-medium text-foreground">Payment method</label>
               <select
                 value={paymentMethod}
                 onChange={(event) => setPaymentMethod(event.target.value)}
@@ -220,9 +220,9 @@ export function Checkout() {
           </div>
 
           <div className="mt-8 rounded-2xl border border-border bg-surface p-5 text-sm text-muted">
-            <p className="font-bold text-foreground">Payment Notice</p>
+            <p className="font-bold text-foreground">Payment note</p>
             <p className="mt-2">
-              VNPay/MoMo require real merchant config in `.env`. If unconfigured, use Credit Card or Bank Transfer to run the demo flow.
+              VNPay and MoMo require real merchant credentials in `.env`. If they are not configured yet, use card or bank transfer to run the demo flow.
             </p>
           </div>
 
@@ -237,13 +237,13 @@ export function Checkout() {
         </form>
 
         <aside className="glass rounded-3xl border border-border p-6 lg:sticky lg:top-28 lg:self-start">
-          <h2 className="text-xl font-black text-foreground">Order Summary</h2>
+          <h2 className="text-xl font-black text-foreground">Order summary</h2>
           <div className="mt-6 space-y-4">
             {items.map((item: any) => (
               <div key={item._id || item.id} className="rounded-2xl border border-border bg-surface-2 p-4">
                 <p className="font-bold text-foreground">{item.eventName || item.title}</p>
                 <div className="mt-3 flex justify-between text-sm text-muted">
-                  <span>{item.quantity} tickets</span>
+                  <span>{item.quantity} ticket{item.quantity === 1 ? "" : "s"}</span>
                   <span className="font-bold text-green-500">{formatCurrency(item.price * item.quantity)}</span>
                 </div>
               </div>
@@ -263,7 +263,7 @@ export function Checkout() {
 
           <div className="mt-6 flex items-start gap-3 rounded-2xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-500">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-            <p>Tickets are only confirmed after the booking status changes to paid.</p>
+            <p>Your tickets are confirmed only after the order status changes to paid.</p>
           </div>
         </aside>
       </div>

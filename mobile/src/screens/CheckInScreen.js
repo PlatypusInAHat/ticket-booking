@@ -102,7 +102,7 @@ export default function CheckInScreen() {
               {result.valid ? 'Vé hợp lệ' : 'Vé không hợp lệ'}
             </Text>
           </View>
-          <Text style={styles.reasonText}>{result.reason}</Text>
+          <Text style={styles.reasonText}>{result.reason || 'Không có thông tin bổ sung.'}</Text>
           {result.pass ? (
             <View style={styles.passDetails}>
               <Text style={styles.sectionTitle}>{result.pass.passCode}</Text>

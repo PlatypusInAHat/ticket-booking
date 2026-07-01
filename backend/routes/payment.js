@@ -7,7 +7,6 @@ const { createEnvRateLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
-router.post('/webhooks/stripe', paymentController.handleStripeWebhook);
 router.post('/webhooks/momo', paymentController.handleMomoWebhook);
 router.get('/webhooks/vnpay', paymentController.handleVnpayWebhook);
 router.get('/return/vnpay', paymentController.handleVnpayReturn);
@@ -31,7 +30,7 @@ router.post('/session', [
     .withMessage('Ma don dat ve khong hop le'),
   body('provider')
     .optional()
-    .isIn(['mock', 'stripe', 'vnpay', 'momo', 'credit_card', 'debit_card'])
+    .isIn(['mock', 'vnpay', 'momo', 'credit_card', 'debit_card'])
     .withMessage('Cong thanh toan khong hop le'),
   validateRequest
 ], paymentController.createPaymentSession);

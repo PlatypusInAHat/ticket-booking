@@ -5,6 +5,9 @@ export type EventCategory =
   | "Sports"
   | "Comedy"
   | "Conference"
+  | "Movie"
+  | "Workshop"
+  | "Other"
 
 export type EventStatus = "available" | "limited" | "soldout"
 
@@ -16,6 +19,46 @@ export interface TicketTier {
   perks: string[]
   remaining: number
   badge?: string
+}
+
+export interface Seat {
+  code: string;
+  label: string;
+  status: "available" | "held" | "sold" | "blocked";
+}
+
+export interface Row {
+  label: string;
+  seats: Seat[];
+}
+
+export interface Section {
+  name: string;
+  code: string;
+  rows: Row[];
+}
+
+export interface SeatMap {
+  mode: "general_admission" | "reserved_seating" | "zone_map";
+  sections: Section[];
+}
+
+export interface Zone {
+  id: string;
+  name: string;
+  tierId: string;
+  color: string;
+  coordinates: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+export interface ZoneMap {
+  backgroundImage: string;
+  zones: Zone[];
 }
 
 export interface EventItem {
@@ -38,4 +81,6 @@ export interface EventItem {
   description: string
   lineup: string[]
   tiers: TicketTier[]
+  seatMap?: SeatMap
+  zoneMap?: ZoneMap
 }

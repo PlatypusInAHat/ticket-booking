@@ -89,21 +89,29 @@ const toPublicTicket = (ticket, { detail = false } = {}) => {
     return null;
   }
 
+  const event = plainTicket.event && typeof plainTicket.event === 'object'
+    ? plainTicket.event
+    : null;
+  const company = plainTicket.company && typeof plainTicket.company === 'object'
+    ? plainTicket.company
+    : null;
+
   const publicTicket = {
     _id: plainTicket._id,
     id: toId(plainTicket),
     eventId: toId(plainTicket.event),
     companyId: toId(plainTicket.company),
-    eventName: plainTicket.eventName,
-    eventType: plainTicket.eventType,
-    ticketName: plainTicket.ticketName || '',
-    ticketType: plainTicket.ticketType,
-    category: plainTicket.category,
+    eventName: plainTicket.eventName || event?.title || '',
+    eventType: plainTicket.eventType || event?.eventType || '',
+    name: plainTicket.name || plainTicket.ticketName || '',
+    ticketName: plainTicket.ticketName || plainTicket.name || '',
+    ticketType: plainTicket.ticketType || plainTicket.name || '',
+    category: plainTicket.category || plainTicket.name || 'standard',
     description: plainTicket.description || '',
-    image: plainTicket.image,
-    location: plainTicket.location,
-    date: plainTicket.date,
-    time: plainTicket.time,
+    image: plainTicket.image || event?.coverImage || '',
+    location: plainTicket.location || event?.location,
+    date: plainTicket.date || event?.startsAt,
+    time: plainTicket.time || (event?.startsAt ? new Date(event.startsAt).toISOString().slice(11, 16) : ''),
     price: plainTicket.price,
     currency: plainTicket.currency || 'VND',
     availableSeats: plainTicket.availableSeats,
@@ -114,12 +122,12 @@ const toPublicTicket = (ticket, { detail = false } = {}) => {
     visibility: plainTicket.visibility
   };
 
-  if (plainTicket.company && plainTicket.company.name) {
-    publicTicket.company = toPublicCompany(plainTicket.company, { detail });
+  if (company?.name) {
+    publicTicket.company = toPublicCompany(company, { detail });
   }
 
-  if (plainTicket.event && plainTicket.event.title) {
-    publicTicket.event = toPublicEvent(plainTicket.event, { detail });
+  if (event?.title) {
+    publicTicket.event = toPublicEvent(event, { detail });
   }
 
   if (detail) {

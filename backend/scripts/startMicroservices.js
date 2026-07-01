@@ -11,10 +11,10 @@ const serviceDefinitions = [
       SERVICE_MODE: 'microservice',
       SERVICE_NAME: 'auth-service',
       AUTH_SERVICE_PORT: process.env.AUTH_SERVICE_PORT || '5101',
-      AUTH_MONGODB_URI: process.env.AUTH_MONGODB_URI || 'mongodb://localhost:27017/ticket-auth',
-      CATALOG_SERVICE_URL: process.env.CATALOG_SERVICE_URL || 'http://localhost:5102',
-      BOOKING_SERVICE_URL: process.env.BOOKING_SERVICE_URL || 'http://localhost:5103',
-      CHECKIN_SERVICE_URL: process.env.CHECKIN_SERVICE_URL || 'http://localhost:5104'
+      AUTH_MONGODB_URI: process.env.AUTH_MONGODB_URI || 'mongodb://127.0.0.1:27017/ticket-auth',
+      CATALOG_SERVICE_URL: process.env.CATALOG_SERVICE_URL || 'http://127.0.0.1:5102',
+      BOOKING_SERVICE_URL: process.env.BOOKING_SERVICE_URL || 'http://127.0.0.1:5103',
+      CHECKIN_SERVICE_URL: process.env.CHECKIN_SERVICE_URL || 'http://127.0.0.1:5104'
     }
   },
   {
@@ -24,7 +24,7 @@ const serviceDefinitions = [
       SERVICE_MODE: 'microservice',
       SERVICE_NAME: 'catalog-service',
       CATALOG_SERVICE_PORT: process.env.CATALOG_SERVICE_PORT || '5102',
-      CATALOG_MONGODB_URI: process.env.CATALOG_MONGODB_URI || 'mongodb://localhost:27017/ticket-catalog'
+      CATALOG_MONGODB_URI: process.env.CATALOG_MONGODB_URI || 'mongodb://127.0.0.1:27017/ticket-catalog'
     }
   },
   {
@@ -34,8 +34,8 @@ const serviceDefinitions = [
       SERVICE_MODE: 'microservice',
       SERVICE_NAME: 'booking-service',
       BOOKING_SERVICE_PORT: process.env.BOOKING_SERVICE_PORT || '5103',
-      BOOKING_MONGODB_URI: process.env.BOOKING_MONGODB_URI || 'mongodb://localhost:27017/ticket-booking',
-      CATALOG_SERVICE_URL: process.env.CATALOG_SERVICE_URL || 'http://localhost:5102'
+      BOOKING_MONGODB_URI: process.env.BOOKING_MONGODB_URI || 'mongodb://127.0.0.1:27017/ticket-booking',
+      CATALOG_SERVICE_URL: process.env.CATALOG_SERVICE_URL || 'http://127.0.0.1:5102'
     }
   },
   {
@@ -45,7 +45,7 @@ const serviceDefinitions = [
       SERVICE_MODE: 'microservice',
       SERVICE_NAME: 'checkin-service',
       CHECKIN_SERVICE_PORT: process.env.CHECKIN_SERVICE_PORT || '5104',
-      CHECKIN_MONGODB_URI: process.env.CHECKIN_MONGODB_URI || 'mongodb://localhost:27017/ticket-checkin'
+      CHECKIN_MONGODB_URI: process.env.CHECKIN_MONGODB_URI || 'mongodb://127.0.0.1:27017/ticket-checkin'
     }
   },
   {
@@ -62,7 +62,8 @@ const serviceDefinitions = [
     script: 'microservices/notification-service/server.js',
     env: {
       SERVICE_MODE: 'microservice',
-      SERVICE_NAME: 'notification-service'
+      SERVICE_NAME: 'notification-service',
+      NOTIFICATION_SERVICE_PORT: process.env.NOTIFICATION_SERVICE_PORT || '5105'
     }
   }
 ];

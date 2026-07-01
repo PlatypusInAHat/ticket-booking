@@ -59,6 +59,39 @@ export const events: EventItem[] = [
       "Three stages, forty artists, and one unforgettable night under the city skyline. Neon Nights brings together the biggest names in electronic and indie music for a sensory experience like no other.",
     lineup: ["Aurora Collective", "Midnight Pulse", "Velvet Sky", "The Lumens", "Echo Park"],
     tiers: tiers(89, 1800),
+    seatMap: {
+      mode: "reserved_seating",
+      sections: [
+        {
+          name: "Main Section",
+          code: "MAIN",
+          rows: [
+            {
+              label: "A",
+              seats: [
+                { code: "A-1", label: "1", status: "available" },
+                { code: "A-2", label: "2", status: "available" },
+                { code: "A-3", label: "3", status: "available" },
+                { code: "A-4", label: "4", status: "sold" },
+                { code: "A-5", label: "5", status: "sold" },
+                { code: "A-6", label: "6", status: "available" },
+              ]
+            },
+            {
+              label: "B",
+              seats: [
+                { code: "B-1", label: "1", status: "available" },
+                { code: "B-2", label: "2", status: "available" },
+                { code: "B-3", label: "3", status: "held" },
+                { code: "B-4", label: "4", status: "available" },
+                { code: "B-5", label: "5", status: "available" },
+                { code: "B-6", label: "6", status: "available" },
+              ]
+            }
+          ]
+        }
+      ]
+    }
   },
   {
     id: "2",
@@ -81,6 +114,32 @@ export const events: EventItem[] = [
       "A two-day open-air celebration of music, art, and community set against a golden-hour backdrop. Camp under the stars and wake up to sunrise sets from world-class performers.",
     lineup: ["The Wildwoods", "Sahara Bloom", "Northern Lights", "Solstice", "Field Theory"],
     tiers: tiers(120, 5000),
+    zoneMap: {
+      backgroundImage: "/events/golden-fields.png",
+      zones: [
+        {
+          id: "z-ga",
+          name: "General Admission",
+          tierId: "ga",
+          color: "#22c55e",
+          coordinates: { x: 10, y: 50, width: 80, height: 40 }
+        },
+        {
+          id: "z-premium",
+          name: "Premium Viewing",
+          tierId: "premium",
+          color: "#eab308",
+          coordinates: { x: 25, y: 30, width: 50, height: 18 }
+        },
+        {
+          id: "z-vip",
+          name: "VIP Pit",
+          tierId: "vip",
+          color: "#a855f7",
+          coordinates: { x: 40, y: 15, width: 20, height: 13 }
+        }
+      ]
+    }
   },
   {
     id: "3",

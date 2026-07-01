@@ -15,7 +15,7 @@ export function ApiManagement() {
       const response = await adminAPI.getGatewayStatus()
       setData(response.data)
     } catch (err: any) {
-      setError("Không thể kết nối đến API Gateway. Server có thể đang tắt.")
+      setError("Cannot connect to API Gateway. Server might be down.")
     } finally {
       setLoading(false)
     }
@@ -43,7 +43,7 @@ export function ApiManagement() {
           className="flex items-center gap-2 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-foreground hover:bg-accent-strong disabled:opacity-50"
         >
           <RefreshCw className={cn("h-5 w-5", loading && "animate-spin")} />
-          Làm mới
+          Refresh
         </button>
       </div>
 
@@ -78,7 +78,7 @@ export function ApiManagement() {
               <div>
                 <p className="text-sm font-bold uppercase tracking-wider text-muted">Uptime</p>
                 <p className="mt-1 text-2xl font-black text-foreground">
-                  {Math.floor(data.gateway.uptime / 60)} phút
+                  {Math.floor(data.gateway.uptime / 60)} minutes
                 </p>
               </div>
               <a
@@ -116,13 +116,13 @@ export function ApiManagement() {
                   </div>
                   {isUp ? (
                     <div className="text-sm text-muted">
-                      <p> Phản hồi API: OK</p>
+                      <p> API Response: OK</p>
                       <p> Timestamp: {new Date(service.detail?.timestamp).toLocaleTimeString()}</p>
                     </div>
                   ) : (
                     <div className="text-sm text-red-400">
-                      <p>❌ Lỗi kết nối: {service.error}</p>
-                      <p>Hãy kiểm tra lại terminal.</p>
+                      <p>❌ Connection Error: {service.error}</p>
+                      <p>Please check the terminal.</p>
                     </div>
                   )}
                 </div>

@@ -60,7 +60,7 @@ export function TicketTierCard({
         <div className="flex flex-col">
           <span className="font-display text-2xl font-bold">{formatCurrency(tier.price)}</span>
           <span className="text-xs text-muted-2">
-            {soldOut ? "Sold out" : `${tier.remaining} left`}
+            {soldOut ? "Sold out" : `${tier.remaining} tickets left`}
           </span>
         </div>
 

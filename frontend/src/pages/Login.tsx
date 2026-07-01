@@ -26,6 +26,7 @@ export function Login() {
         loginSuccess({
           user: authData.user,
           token: authData.token,
+          refreshToken: authData.refreshToken,
         })
       )
       navigate("/")

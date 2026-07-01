@@ -1,11 +1,25 @@
 const axios = require('axios');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
+const { getCorrelationId } = require('../middleware/correlationId');
+
+const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || 'http://localhost:5102';
+const BOOKING_SERVICE_URL = process.env.BOOKING_SERVICE_URL || 'http://localhost:5103';
+const CHECKIN_SERVICE_URL = process.env.CHECKIN_SERVICE_URL || 'http://localhost:5104';
 
 const getInternalHeaders = () => {
-  return process.env.INTERNAL_API_KEY
-    ? { 'x-internal-api-key': process.env.INTERNAL_API_KEY }
-    : {};
+  const headers = {};
+  
+  if (process.env.INTERNAL_API_KEY) {
+    headers['x-internal-api-key'] = process.env.INTERNAL_API_KEY;
+  }
+  
+  const correlationId = getCorrelationId();
+  if (correlationId) {
+    headers['x-correlation-id'] = correlationId;
+  }
+  
+  return headers;
 };
 
 const requestInternal = async ({ baseUrl, path, method = 'get', data }) => {
@@ -29,15 +43,15 @@ const getDashboardStats = async () => {
   const totalUsers = await User.countDocuments({ role: 'user' });
   const [catalogStats, bookingStats, checkinStats] = await Promise.all([
     requestInternal({
-      baseUrl: process.env.CATALOG_SERVICE_URL || 'http://localhost:5102',
+      baseUrl: CATALOG_SERVICE_URL,
       path: '/internal/catalog/stats'
     }),
     requestInternal({
-      baseUrl: process.env.BOOKING_SERVICE_URL || 'http://localhost:5103',
+      baseUrl: BOOKING_SERVICE_URL,
       path: '/internal/booking/stats'
     }),
     requestInternal({
-      baseUrl: process.env.CHECKIN_SERVICE_URL || 'http://localhost:5104',
+      baseUrl: CHECKIN_SERVICE_URL,
       path: '/internal/checkin/stats'
     })
   ]);
@@ -52,14 +66,14 @@ const getDashboardStats = async () => {
 
 const getAllBookings = async () => {
   return requestInternal({
-    baseUrl: process.env.BOOKING_SERVICE_URL || 'http://localhost:5103',
+    baseUrl: BOOKING_SERVICE_URL,
     path: '/internal/booking/bookings'
   });
 };
 
 const updatePaymentStatus = async (bookingId, paymentStatus) => {
   return requestInternal({
-    baseUrl: process.env.BOOKING_SERVICE_URL || 'http://localhost:5103',
+    baseUrl: BOOKING_SERVICE_URL,
     path: `/internal/booking/bookings/${bookingId}/payment`,
     method: 'put',
     data: { paymentStatus }

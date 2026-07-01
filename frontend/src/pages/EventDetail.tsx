@@ -1,16 +1,16 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useParams, Link } from "react-router-dom"
 import {
   Calendar,
+  Check,
+  ChevronLeft,
   Clock,
   MapPin,
+  ShoppingBag,
   Star,
   Users,
-  ChevronLeft,
-  ShoppingBag,
-  Check,
 } from "lucide-react"
-import { getEventBySlug, events } from "@/data/events"
+import type { EventItem } from "@/data/types"
 import { StatusBadge, Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { SectionTitle } from "@/components/ui/SectionTitle"
@@ -19,57 +19,119 @@ import { EventCard } from "@/components/EventCard"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
 import { useAppDispatch } from "@/store"
 import { addToCart } from "@/store/cartSlice"
+import { eventsAPI, ticketsAPI } from "@/services/api"
+import { mapApiEventToEventItem } from "@/utils/eventMapper"
 
 export function EventDetail() {
   const { slug } = useParams<{ slug: string }>()
-  const event = slug ? getEventBySlug(slug) : undefined
   const dispatch = useAppDispatch()
-  const soldOut = event?.status === "soldout"
 
-  const [selectedTier, setSelectedTier] = useState(event?.tiers[0]?.id ?? "")
+  const [event, setEvent] = useState<EventItem | null>(null)
+  const [related, setRelated] = useState<EventItem[]>([])
+  const [selectedTier, setSelectedTier] = useState("")
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const loadEvent = async () => {
+      if (!slug) {
+        setError("Event code was not found.")
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      setError("")
+
+      try {
+        const eventResponse = await eventsAPI.getEventById(slug, { signal: controller.signal })
+        const apiEvent = eventResponse.data.data
+        const ticketsResponse = await ticketsAPI.getAll(
+          { eventId: apiEvent.id || apiEvent._id, limit: 100 },
+          { signal: controller.signal },
+        )
+        const apiTickets = ticketsResponse.data.data?.tickets || []
+        const mappedEvent = mapApiEventToEventItem(apiEvent, apiTickets)
+        setEvent(mappedEvent)
+        setSelectedTier(mappedEvent.tiers[0]?.id || "")
+
+        const relatedResponse = await eventsAPI.getEvents(
+          { eventType: apiEvent.eventType, limit: 4 },
+          { signal: controller.signal },
+        )
+        const relatedEvents = (relatedResponse.data.data?.events || [])
+          .filter((item: any) => String(item.id || item._id) !== String(mappedEvent.id))
+          .slice(0, 3)
+          .map((item: any) => mapApiEventToEventItem(item))
+        setRelated(relatedEvents)
+      } catch (err: any) {
+        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return
+        setError(err.response?.data?.message || "Could not load event details.")
+      } finally {
+        if (!controller.signal.aborted) setLoading(false)
+      }
+    }
+
+    loadEvent()
+    return () => controller.abort()
+  }, [slug])
+
+  const soldOut = event?.status === "soldout"
   const tier = useMemo(
-    () => event?.tiers.find((t) => t.id === selectedTier),
+    () => event?.tiers.find((item) => item.id === selectedTier) || event?.tiers[0],
     [event, selectedTier],
   )
-
-  if (!event) {
-    return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-32 text-center">
-        <h1 className="font-display text-2xl font-bold">Event not found</h1>
-        <p className="text-muted">We couldn&apos;t find the event you&apos;re looking for.</p>
-        <Button to="/events">Browse all events</Button>
-      </div>
-    )
-  }
-
-  const related = events.filter((e) => e.id !== event.id && e.category === event.category).slice(0, 3)
-  const total = (tier?.price ?? 0) * quantity
+  const effectiveQuantity = quantity
+  const total = (tier?.price ?? 0) * effectiveQuantity
 
   const handleAdd = () => {
-    if (!tier || soldOut) return
+    if (!event || !tier || soldOut || effectiveQuantity === 0) return
     dispatch(
       addToCart({
+        _id: tier.id,
+        ticketId: tier.id,
         eventId: event.id,
+        eventName: event.title,
         eventTitle: event.title,
         eventImage: event.image,
         eventDate: event.date,
         venue: `${event.venue}, ${event.city}`,
         tierId: tier.id,
         tierName: tier.name,
+        category: tier.name,
         price: tier.price,
-        quantity,
+        availableSeats: tier.remaining || 1,
+        quantity: effectiveQuantity,
       }),
     )
     setAdded(true)
     setTimeout(() => setAdded(false), 2200)
   }
 
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+        <div className="h-[520px] animate-pulse rounded-[var(--radius-card)] border border-border bg-surface" />
+      </div>
+    )
+  }
+
+  if (error || !event) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-32 text-center">
+        <h1 className="font-display text-2xl font-bold">Event not found</h1>
+        <p className="text-muted">{error || "This event does not exist or is no longer on sale."}</p>
+        <Button to="/events">View all events</Button>
+      </div>
+    )
+  }
+
   return (
     <>
-      {/* Hero */}
       <section className="relative">
         <div className="absolute inset-0 h-full">
           <img src={event.heroImage || "/placeholder.svg"} alt="" className="h-full w-full object-cover" />
@@ -89,7 +151,7 @@ export function EventDetail() {
             <Badge tone="neutral" className="bg-background/70">
               {event.category}
             </Badge>
-            {event.popular && <Badge tone="accent">Popular</Badge>}
+            {event.popular && <Badge tone="accent">Featured</Badge>}
             <StatusBadge status={event.status} />
           </div>
 
@@ -105,7 +167,7 @@ export function EventDetail() {
             </span>
             <span className="flex items-center gap-2 text-muted">
               <Clock className="h-4 w-4 text-accent" />
-              Doors {formatTime(event.doorsTime)} &middot; Show {formatTime(event.date)}
+              Doors {formatTime(event.doorsTime)} · Starts {formatTime(event.date)}
             </span>
             <span className="flex items-center gap-2 text-muted">
               <MapPin className="h-4 w-4 text-accent" />
@@ -113,24 +175,22 @@ export function EventDetail() {
             </span>
             <span className="flex items-center gap-2 text-muted">
               <Star className="h-4 w-4 fill-accent text-accent" />
-              {event.rating} rating
+              {event.rating} reviews
             </span>
           </div>
         </div>
       </section>
 
-      {/* Content */}
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
-          {/* Left */}
           <div className="flex flex-col gap-10">
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">About this event</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight">Event information</h2>
               <p className="mt-4 leading-relaxed text-pretty text-muted">{event.description}</p>
             </div>
 
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">Lineup</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight">Organizer</h2>
               <div className="mt-4 flex flex-wrap gap-2">
                 {event.lineup.map((act) => (
                   <span
@@ -147,32 +207,37 @@ export function EventDetail() {
             <div>
               <h2 className="font-display text-2xl font-bold tracking-tight">Choose your tickets</h2>
               <p className="mt-2 text-sm text-muted">
-                Select a tier to compare what&apos;s included.
+                Every paid ticket includes its own QR code and barcode for check-in.
               </p>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {event.tiers.map((t) => (
-                  <TicketTierCard
-                    key={t.id}
-                    tier={t}
-                    selected={selectedTier === t.id}
-                    quantity={quantity}
-                    soldOut={soldOut}
-                    onSelect={() => {
-                      setSelectedTier(t.id)
-                      setQuantity(1)
-                    }}
-                    onQuantity={setQuantity}
-                  />
-                ))}
-              </div>
+              {event.tiers.length > 0 ? (
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {event.tiers.map((item) => (
+                    <TicketTierCard
+                      key={item.id}
+                      tier={item}
+                      selected={selectedTier === item.id}
+                      quantity={quantity}
+                      soldOut={soldOut || item.remaining <= 0}
+                      onSelect={() => {
+                        setSelectedTier(item.id)
+                        setQuantity(1)
+                      }}
+                      onQuantity={setQuantity}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-border bg-surface p-8 text-center text-muted">
+                  This event is not selling tickets yet.
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right — sticky summary */}
           <aside className="lg:sticky lg:top-24 lg:self-start">
             <div className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-2">Starting from</span>
+                <span className="text-sm text-muted-2">From</span>
                 <StatusBadge status={event.status} />
               </div>
               <p className="mt-1 font-display text-3xl font-bold">
@@ -182,14 +247,14 @@ export function EventDetail() {
               <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Selected</span>
-                  <span className="font-medium">{tier?.name ?? "—"}</span>
+                  <span className="font-medium">{tier?.name ?? "No ticket available"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Quantity</span>
-                  <span className="font-medium">{quantity}</span>
+                  <span className="font-medium">{tier ? effectiveQuantity : 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Price each</span>
+                  <span className="text-muted">Price per ticket</span>
                   <span className="font-medium">{formatCurrency(tier?.price ?? 0)}</span>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3 text-base">
@@ -204,10 +269,10 @@ export function EventDetail() {
                 className="mt-5 w-full"
                 size="lg"
                 onClick={handleAdd}
-                disabled={soldOut}
+                disabled={soldOut || !tier || tier.remaining <= 0}
               >
-                {soldOut ? (
-                  "Sold Out"
+                {soldOut || !tier || tier.remaining <= 0 ? (
+                  "Sold out"
                 ) : added ? (
                   <>
                     <Check className="h-4 w-4" />
@@ -220,25 +285,24 @@ export function EventDetail() {
                   </>
                 )}
               </Button>
-              {!soldOut && (
+              {!soldOut && tier && (
                 <Button to="/cart" variant="ghost" size="sm" className="mt-2 w-full">
-                  Go to checkout &rarr;
+                  Go to checkout
                 </Button>
               )}
               <p className="mt-4 text-center text-xs text-muted-2">
-                Secure checkout &middot; Instant digital tickets
+                Secure checkout · Instant digital tickets
               </p>
             </div>
           </aside>
         </div>
 
-        {/* Related */}
         {related.length > 0 && (
           <div className="mt-20">
-            <SectionTitle eyebrow="You might also like" title="Similar events" />
+            <SectionTitle eyebrow="You may also like" title="Similar events" />
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {related.map((e) => (
-                <EventCard key={e.id} event={e} />
+              {related.map((item) => (
+                <EventCard key={item.id} event={item} />
               ))}
             </div>
           </div>

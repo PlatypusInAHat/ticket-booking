@@ -36,8 +36,9 @@ API.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/refresh-token')) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      const requestUrl = originalRequest.url || '';
+      if (requestUrl.includes('/auth/login') || requestUrl.includes('/auth/refresh-token')) {
         return Promise.reject(error);
       }
 
@@ -100,8 +101,8 @@ API.interceptors.response.use(
 export const authAPI = {
   login: (data) => API.post('/auth/login', data),
   register: (data) => API.post('/auth/register', data),
-  getProfile: () => API.get('/auth/me'),
-  updateProfile: (data) => API.put('/auth/updatedetails', data),
+  getProfile: () => API.get('/users/profile'),
+  updateProfile: (data) => API.put('/users/profile', data),
   forgotPassword: (email) => API.post('/auth/forgot-password', { email }),
   resetPassword: (token, password) => API.put(`/auth/reset-password/${token}`, { password })
 };
@@ -109,7 +110,10 @@ export const authAPI = {
 // Events API
 export const eventsAPI = {
   getEvents: (params, config = {}) => API.get('/events', { params, ...config }),
-  getEventById: (id, config = {}) => API.get(`/events/${id}`, config)
+  getEventById: (id, config = {}) => API.get(`/events/${id}`, config),
+  createBundle: (data) => API.post('/events/bundle', data),
+  update: (id, data) => API.put(`/events/${id}`, data),
+  delete: (id) => API.delete(`/events/${id}`)
 };
 
 // Tickets API
