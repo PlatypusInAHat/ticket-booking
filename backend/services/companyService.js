@@ -1,5 +1,9 @@
 const Company = require('../models/Company');
 const ApiError = require('../utils/ApiError');
+const {
+  buildSort,
+  parsePositiveInt
+} = require('../utils/queryUtils');
 
 const canManageCompany = (company, user) => {
   if (!company || !user) {
@@ -20,11 +24,24 @@ const canManageCompany = (company, user) => {
 };
 
 const getCompanies = async (query = {}, user = null) => {
-  const { status, search, mine } = query;
+  const {
+    status,
+    verificationStatus,
+    search,
+    mine,
+    sortBy = 'createdAt',
+    order = 'desc',
+    page = 1,
+    limit = 100
+  } = query;
   const filter = {};
 
   if (status) {
     filter.status = status;
+  }
+
+  if (verificationStatus) {
+    filter['verification.status'] = verificationStatus;
   }
 
   if (search) {
@@ -38,7 +55,23 @@ const getCompanies = async (query = {}, user = null) => {
     ];
   }
 
-  return Company.find(filter).sort({ createdAt: -1 });
+  const skip = (parsePositiveInt(page, 1) - 1) * parsePositiveInt(limit, 100, { min: 1, max: 100 });
+  const sort = buildSort(sortBy, order, ['createdAt', 'name', 'status', 'verification.status'], 'createdAt');
+
+  const [companies, total] = await Promise.all([
+    Company.find(filter).sort(sort).skip(skip).limit(parsePositiveInt(limit, 100, { min: 1, max: 100 })),
+    Company.countDocuments(filter)
+  ]);
+
+  return {
+    companies,
+    pagination: {
+      total,
+      page: parsePositiveInt(page, 1),
+      limit: parsePositiveInt(limit, 100, { min: 1, max: 100 }),
+      pages: Math.ceil(total / parsePositiveInt(limit, 100, { min: 1, max: 100 }))
+    }
+  };
 };
 
 const getCompanyById = async (id) => {

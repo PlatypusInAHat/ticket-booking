@@ -5,9 +5,29 @@ const Session = require('../models/Session');
 const Ticket = require('../models/Ticket');
 const ApiError = require('../utils/ApiError');
 const { canManageCompany } = require('./companyService');
+const {
+  buildSort,
+  parseDate,
+  parsePositiveInt
+} = require('../utils/queryUtils');
 
 const getEvents = async (query = {}) => {
-  const { companyId, eventType, city, status = 'published', search, page = 1, limit = 10 } = query;
+  const {
+    companyId,
+    eventType,
+    city,
+    status = 'published',
+    search,
+    tag,
+    startsFrom,
+    startsTo,
+    endsFrom,
+    endsTo,
+    sortBy = 'startsAt',
+    order = 'asc',
+    page = 1,
+    limit = 10
+  } = query;
   const filter = {};
 
   if (companyId) {
@@ -30,16 +50,43 @@ const getEvents = async (query = {}) => {
     filter.$text = { $search: search };
   }
 
-  const parsedPage = parseInt(page, 10);
-  const parsedLimit = parseInt(limit, 10);
+  if (tag) {
+    filter.tags = tag.toLowerCase();
+  }
+
+  const startFromDate = parseDate(startsFrom);
+  const startToDate = parseDate(startsTo);
+  const endFromDate = parseDate(endsFrom);
+  const endToDate = parseDate(endsTo);
+
+  if (startFromDate || startToDate) {
+    filter.startsAt = {};
+    if (startFromDate) filter.startsAt.$gte = startFromDate;
+    if (startToDate) filter.startsAt.$lte = startToDate;
+  }
+
+  if (endFromDate || endToDate) {
+    filter.endsAt = {};
+    if (endFromDate) filter.endsAt.$gte = endFromDate;
+    if (endToDate) filter.endsAt.$lte = endToDate;
+  }
+
+  const parsedPage = parsePositiveInt(page, 1);
+  const parsedLimit = parsePositiveInt(limit, 10, { min: 1, max: 100 });
   const skip = (parsedPage - 1) * parsedLimit;
+  const sort = buildSort(
+    sortBy,
+    order,
+    ['startsAt', 'createdAt', 'title', 'stats.views', 'stats.soldTickets'],
+    'startsAt'
+  );
 
   const [events, total] = await Promise.all([
     Event.find(filter)
       .populate('company', 'name slug logo status')
       .skip(skip)
       .limit(parsedLimit)
-      .sort({ startsAt: 1 })
+      .sort(sort)
       .lean(),
     Event.countDocuments(filter)
   ]);

@@ -6,21 +6,21 @@ const router = express.Router();
 
 const emailRule = () => body('email')
   .isEmail()
-  .withMessage('Email không hợp lệ')
+  .withMessage('Email is invalid')
   .normalizeEmail();
 
 router.post('/register', [
   body('name')
     .trim()
     .isLength({ min: 2, max: 100 })
-    .withMessage('Tên phải có từ 2 đến 100 ký tự'),
+    .withMessage('Name must be between 2 and 100 characters'),
   emailRule(),
   body('password')
     .isLength({ min: 8, max: 128 })
-    .withMessage('Mật khẩu phải có từ 8 đến 128 ký tự'),
+    .withMessage('Password must be between 8 and 128 characters'),
   body('confirmPassword')
     .custom((value, { req }) => value === req.body.password)
-    .withMessage('Mật khẩu xác nhận không khớp'),
+    .withMessage('Confirm password does not match'),
   validateRequest
 ], authController.register);
 
@@ -29,7 +29,7 @@ router.post('/login', [
   body('password')
     .isString()
     .isLength({ min: 1, max: 128 })
-    .withMessage('Mật khẩu là bắt buộc'),
+    .withMessage('Password is required'),
   validateRequest
 ], authController.login);
 
@@ -41,7 +41,7 @@ router.post('/forgot-password', [
 router.put('/reset-password/:token', [
   body('password')
     .isLength({ min: 8, max: 128 })
-    .withMessage('Mật khẩu phải có từ 8 đến 128 ký tự'),
+    .withMessage('Password must be between 8 and 128 characters'),
   validateRequest
 ], authController.resetPassword);
 

@@ -13,7 +13,7 @@ const getQueueStatus = asyncHandler(async (req, res) => {
 });
 
 const getUserBookings = asyncHandler(async (req, res) => {
-  const bookings = await bookingService.getUserBookings(req.user.id);
+  const bookings = await bookingService.getUserBookings(req.user.id, req.query);
   res.status(200).json(new ApiResponse(200, bookings));
 });
 

@@ -49,6 +49,7 @@
     "express-validator": "^7.0.0",
     "handlebars": "^4.7.9",
     "jsonwebtoken": "^9.0.0",
+    "@aws-sdk/client-s3": "^3.850.0",
     "mongoose": "^7.0.0",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.1",

@@ -8,29 +8,29 @@ const router = express.Router();
 
 const companyIdParam = () => param('id')
   .isMongoId()
-  .withMessage('Mã công ty không hợp lệ');
+  .withMessage('Company ID is invalid');
 
 const companyWriteRules = () => [
   body('name')
     .optional()
     .trim()
     .isLength({ min: 2, max: 160 })
-    .withMessage('Tên công ty phải có từ 2 đến 160 ký tự'),
+    .withMessage('Company name must be between 2 and 160 characters'),
   body('contact.email')
     .optional()
     .isEmail()
-    .withMessage('Email liên hệ không hợp lệ')
+    .withMessage('Contact email is invalid')
     .normalizeEmail(),
   body('contact.phone')
     .optional()
     .trim()
     .isLength({ max: 30 })
-    .withMessage('Số điện thoại quá dài'),
+    .withMessage('Phone number is too long'),
   body('taxCode')
     .optional()
     .trim()
     .isLength({ max: 40 })
-    .withMessage('Mã số thuế quá dài')
+    .withMessage('Tax code is too long')
 ];
 
 router.get('/', [
@@ -38,11 +38,36 @@ router.get('/', [
   query('status')
     .optional()
     .isIn(['pending', 'active', 'suspended', 'archived'])
-    .withMessage('Trạng thái công ty không hợp lệ'),
+    .withMessage('Status is invalid'),
+  query('verificationStatus')
+    .optional()
+    .isIn(['unverified', 'pending', 'verified', 'rejected'])
+    .withMessage('Verification status is invalid'),
   query('mine')
     .optional()
     .isIn(['true', 'false'])
-    .withMessage('Tham số mine không hợp lệ'),
+    .withMessage('mine must be true or false'),
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 120 })
+    .withMessage('Search is invalid'),
+  query('sortBy')
+    .optional()
+    .isIn(['createdAt', 'name', 'status', 'verification.status'])
+    .withMessage('sortBy is invalid'),
+  query('order')
+    .optional()
+    .isIn(['asc', 'desc'])
+    .withMessage('order is invalid'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('page must be a positive integer'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('limit must be between 1 and 100'),
   validateRequest
 ], companyController.getCompanies);
 router.get('/:id', [companyIdParam(), validateRequest], companyController.getCompanyById);
@@ -52,7 +77,7 @@ router.post('/', [
   ...companyWriteRules(),
   body('name')
     .exists({ checkFalsy: true })
-    .withMessage('Tên công ty là bắt buộc'),
+    .withMessage('Company name is required'),
   validateRequest
 ], companyController.createCompany);
 router.put('/:id', [

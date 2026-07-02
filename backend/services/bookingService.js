@@ -5,6 +5,12 @@ const { buildPassSecrets, generatePassCode } = require('../utils/passUtils');
 const catalogClient = require('./catalogClient');
 const { publishDomainEvent } = require('../shared/domainEventPublisher');
 const EVENTS = require('../shared/domainEvents');
+const {
+  escapeRegex,
+  buildSort,
+  parseDate,
+  parsePositiveInt
+} = require('../utils/queryUtils');
 
 const DEFAULT_BOOKING_HOLD_MINUTES = 15;
 
@@ -300,10 +306,63 @@ const expirePendingBookings = async (options = {}) => {
   };
 };
 
-const getUserBookings = async (userId) => {
-  const bookings = await Booking.find({ user: userId }).sort({ createdAt: -1 });
+const getUserBookings = async (userId, query = {}) => {
+  const {
+    bookingStatus,
+    paymentStatus,
+    paymentMethod,
+    source,
+    search,
+    dateFrom,
+    dateTo,
+    sortBy = 'createdAt',
+    order = 'desc',
+    page = 1,
+    limit = 20
+  } = query;
 
-  return bookings.map(attachTicketSnapshots);
+  const filter = { user: userId };
+
+  if (bookingStatus && bookingStatus !== 'all') filter.bookingStatus = bookingStatus;
+  if (paymentStatus && paymentStatus !== 'all') filter.paymentStatus = paymentStatus;
+  if (paymentMethod && paymentMethod !== 'all') filter.paymentMethod = paymentMethod;
+  if (source && source !== 'all') filter.source = source;
+  if (search) {
+    const escapedSearch = escapeRegex(search);
+    filter.$or = [
+      { bookingNumber: { $regex: escapedSearch, $options: 'i' } },
+      { 'customerInfo.name': { $regex: escapedSearch, $options: 'i' } },
+      { 'customerInfo.email': { $regex: escapedSearch, $options: 'i' } }
+    ];
+  }
+
+  const fromDate = parseDate(dateFrom);
+  const toDate = parseDate(dateTo);
+  if (fromDate || toDate) {
+    filter.createdAt = {};
+    if (fromDate) filter.createdAt.$gte = fromDate;
+    if (toDate) filter.createdAt.$lte = toDate;
+  }
+
+  const currentPage = parsePositiveInt(page, 1);
+  const pageSize = parsePositiveInt(limit, 20, { min: 1, max: 100 });
+  const skip = (currentPage - 1) * pageSize;
+  const sort = buildSort(sortBy, order, ['createdAt', 'updatedAt', 'totalAmount', 'bookingNumber'], 'createdAt');
+
+  const [bookings, total] = await Promise.all([
+    Booking.find(filter).sort(sort).skip(skip).limit(pageSize),
+    Booking.countDocuments(filter)
+  ]);
+
+  return {
+    bookings: bookings.map(attachTicketSnapshots),
+    pagination: {
+      total,
+      page: currentPage,
+      limit: pageSize,
+      pages: Math.ceil(total / pageSize)
+    }
+  };
 };
 
 const getBookingById = async (id, user) => {
