@@ -1,5 +1,6 @@
 process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'catalog-service';
+require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
 const companyRoutes = require('../../routes/companies');
 const eventRoutes = require('../../routes/events');

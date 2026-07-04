@@ -1,5 +1,6 @@
 process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'booking-service';
+require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
 const bookingRoutes = require('../../routes/bookings');
 const paymentRoutes = require('../../routes/payment');

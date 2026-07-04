@@ -1,5 +1,6 @@
 process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'auth-service';
+require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
 const authRoutes = require('../../routes/auth');
 const userRoutes = require('../../routes/users');

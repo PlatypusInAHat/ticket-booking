@@ -1,21 +1,34 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
+process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
+process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'api-gateway';
+require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
+
 const axios = require('axios');
 const compression = require('compression');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const { correlationIdMiddleware } = require('../../middleware/correlationId');
+const errorHandler = require('../../middleware/error');
 const { constantTimeEqual } = require('../../utils/cryptoUtils');
 const { createCorsOptions } = require('../../utils/corsOptions');
 const { normalizeServiceUrl } = require('../../utils/serviceUrl');
-
-dotenv.config();
+const {
+  buildHealthPayload,
+  checkHttpDependency,
+  resolveOverallStatus
+} = require('../../shared/healthChecks');
+const { createMetricsMiddleware, getServiceMetrics } = require('../../shared/metrics');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 
-const SERVICE_NAME = 'api-gateway';
+const SERVICE_NAME = process.env.SERVICE_NAME || 'api-gateway';
 const PORT = process.env.GATEWAY_PORT || process.env.PORT || 5000;
 const UPSTREAM_TIMEOUT_MS = Number(process.env.GATEWAY_UPSTREAM_TIMEOUT_MS || 10000);
+const UPSTREAM_HEALTH_TIMEOUT_MS = Number(process.env.GATEWAY_UPSTREAM_HEALTH_TIMEOUT_MS || 3000);
 
 const SERVICE_ROUTES = [
   {
@@ -47,6 +60,7 @@ const SERVICE_ROUTES = [
 
 const app = express();
 app.disable('x-powered-by');
+const metrics = getServiceMetrics(SERVICE_NAME);
 
 const swaggerOptions = {
   definition: {
@@ -66,6 +80,8 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+app.use(correlationIdMiddleware);
+app.use(createMetricsMiddleware(SERVICE_NAME));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -126,6 +142,69 @@ const forwardRequest = (service) => async (req, res) => {
   }
 };
 
+const checkGatewayDependencies = async () => {
+  const dependencies = {};
+
+  await Promise.all(SERVICE_ROUTES.map(async (service) => {
+    dependencies[service.name] = await checkHttpDependency(SERVICE_NAME, {
+      name: service.name,
+      type: 'http-upstream',
+      url: `${service.target}/health/ready`,
+      timeoutMs: UPSTREAM_HEALTH_TIMEOUT_MS
+    });
+  }));
+
+  return dependencies;
+};
+
+app.get('/health/live', (req, res) => {
+  res.json(buildHealthPayload({
+    serviceName: SERVICE_NAME,
+    status: 'UP'
+  }));
+});
+
+app.get('/health/ready', async (req, res, next) => {
+  try {
+    const shouldCheckUpstreams = process.env.GATEWAY_READY_CHECK_UPSTREAMS === 'true';
+    const dependencies = shouldCheckUpstreams ? await checkGatewayDependencies() : {};
+    const requiredDependencies = shouldCheckUpstreams ? SERVICE_ROUTES.map((service) => service.name) : [];
+    const status = resolveOverallStatus(dependencies, requiredDependencies);
+
+    res.status(status === 'UP' ? 200 : 503).json(buildHealthPayload({
+      serviceName: SERVICE_NAME,
+      status,
+      dependencies
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/health/dependencies', async (req, res, next) => {
+  try {
+    const dependencies = await checkGatewayDependencies();
+    const hasDownDependency = Object.values(dependencies).some((dependency) => dependency.status === 'DOWN');
+
+    res.status(hasDownDependency ? 207 : 200).json(buildHealthPayload({
+      serviceName: SERVICE_NAME,
+      status: hasDownDependency ? 'DEGRADED' : 'UP',
+      dependencies
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/metrics', async (req, res, next) => {
+  try {
+    res.set('Content-Type', metrics.contentType);
+    res.end(await metrics.register.metrics());
+  } catch (error) {
+    next(error);
+  }
+});
+
 const requireGatewayAdmin = (req, res, next) => {
   const internalKey = process.env.INTERNAL_API_KEY;
   const providedInternalKey = req.get('x-internal-api-key');
@@ -180,7 +259,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/admin/gateway/status', requireGatewayAdmin, async (req, res) => {
   const statusPromises = SERVICE_ROUTES.map(async (service) => {
     try {
-      const response = await axios.get(`${service.target}/health`, { timeout: 3000 });
+      const response = await axios.get(`${service.target}/health/ready`, { timeout: 3000 });
       return { name: service.name, status: 'UP', detail: response.data };
     } catch (err) {
       return { name: service.name, status: 'DOWN', error: err.message };
@@ -188,7 +267,7 @@ app.get('/api/admin/gateway/status', requireGatewayAdmin, async (req, res) => {
   });
 
   const statuses = await Promise.all(statusPromises);
-  
+
   res.json({
     gateway: {
       status: 'UP',
@@ -202,7 +281,11 @@ app.get('/api/admin/gateway/status', requireGatewayAdmin, async (req, res) => {
 
 SERVICE_ROUTES.forEach((service) => {
   service.prefixes.forEach((prefix) => {
-    app.use(prefix, forwardRequest(service));
+    const proxy = forwardRequest(service);
+    app.use(prefix, (req, res) => {
+      req.metricsRoute = `${prefix}/*`;
+      return proxy(req, res);
+    });
   });
 });
 
@@ -213,6 +296,8 @@ app.use((req, res) => {
     message: 'No gateway route matched'
   });
 });
+
+app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {

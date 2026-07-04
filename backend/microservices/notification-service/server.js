@@ -1,5 +1,6 @@
 process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'notification-service';
+require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
 const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
@@ -22,6 +23,9 @@ const PORT = process.env.NOTIFICATION_SERVICE_PORT || process.env.PORT || 5105;
 
 const app = createServiceApp({
   serviceName: SERVICE_NAME,
+  health: {
+    requiredDependencies: ['mongodb', 'eventBroker']
+  },
   routes: [
     { path: '/api/notifications', router: publicNotificationRoutes },
     { path: '/internal/notifications', router: notificationRoutes }
