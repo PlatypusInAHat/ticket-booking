@@ -6,6 +6,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { constantTimeEqual } = require('../../utils/cryptoUtils');
 const { createCorsOptions } = require('../../utils/corsOptions');
+const { normalizeServiceUrl } = require('../../utils/serviceUrl');
 
 dotenv.config();
 
@@ -20,27 +21,27 @@ const SERVICE_ROUTES = [
   {
     name: 'auth-service',
     prefixes: ['/api/auth', '/api/users', '/api/admin'],
-    target: process.env.AUTH_SERVICE_URL || 'http://localhost:5101'
+    target: normalizeServiceUrl(process.env.AUTH_SERVICE_URL, 'http://localhost:5101')
   },
   {
     name: 'catalog-service',
     prefixes: ['/api/companies', '/api/events', '/api/tickets', '/api/upload'],
-    target: process.env.CATALOG_SERVICE_URL || 'http://localhost:5102'
+    target: normalizeServiceUrl(process.env.CATALOG_SERVICE_URL, 'http://localhost:5102')
   },
   {
     name: 'booking-service',
     prefixes: ['/api/bookings', '/api/payment'],
-    target: process.env.BOOKING_SERVICE_URL || 'http://localhost:5103'
+    target: normalizeServiceUrl(process.env.BOOKING_SERVICE_URL, 'http://localhost:5103')
   },
   {
     name: 'checkin-service',
     prefixes: ['/api/checkin'],
-    target: process.env.CHECKIN_SERVICE_URL || 'http://localhost:5104'
+    target: normalizeServiceUrl(process.env.CHECKIN_SERVICE_URL, 'http://localhost:5104')
   },
   {
     name: 'notification-service',
     prefixes: ['/api/notifications', '/internal/notifications'],
-    target: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:5105'
+    target: normalizeServiceUrl(process.env.NOTIFICATION_SERVICE_URL, 'http://localhost:5105')
   }
 ];
 

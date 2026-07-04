@@ -2,10 +2,11 @@ const axios = require('axios');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const { getCorrelationId } = require('../middleware/correlationId');
+const { normalizeServiceUrl } = require('../utils/serviceUrl');
 
-const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || 'http://localhost:5102';
-const BOOKING_SERVICE_URL = process.env.BOOKING_SERVICE_URL || 'http://localhost:5103';
-const CHECKIN_SERVICE_URL = process.env.CHECKIN_SERVICE_URL || 'http://localhost:5104';
+const CATALOG_SERVICE_URL = normalizeServiceUrl(process.env.CATALOG_SERVICE_URL, 'http://localhost:5102');
+const BOOKING_SERVICE_URL = normalizeServiceUrl(process.env.BOOKING_SERVICE_URL, 'http://localhost:5103');
+const CHECKIN_SERVICE_URL = normalizeServiceUrl(process.env.CHECKIN_SERVICE_URL, 'http://localhost:5104');
 
 const getInternalHeaders = () => {
   const headers = {};

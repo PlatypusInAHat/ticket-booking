@@ -1,9 +1,10 @@
 const axios = require('axios');
 const ApiError = require('../utils/ApiError');
 const { getCorrelationId } = require('../middleware/correlationId');
+const { normalizeServiceUrl } = require('../utils/serviceUrl');
 
 const getCatalogBaseUrl = () => {
-  return process.env.CATALOG_SERVICE_URL || 'http://localhost:5102';
+  return normalizeServiceUrl(process.env.CATALOG_SERVICE_URL, 'http://localhost:5102');
 };
 
 const requestCatalog = async (path, body = {}) => {

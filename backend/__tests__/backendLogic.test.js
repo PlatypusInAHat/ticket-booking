@@ -4,6 +4,7 @@ const { normalizeTicketSelection } = require('../services/catalogInventoryServic
 const { buildUnsubscribeToken } = require('../services/emailQueueService');
 const { groupEligibleEvents } = require('../services/eventReminderService');
 const { constantTimeEqual } = require('../utils/cryptoUtils');
+const { normalizeServiceUrl } = require('../utils/serviceUrl');
 
 describe('backend safety logic', () => {
   const originalInternalApiKey = process.env.INTERNAL_API_KEY;
@@ -125,5 +126,11 @@ describe('backend safety logic', () => {
 
     expect(token).toBe(sameToken);
     expect(constantTimeEqual(token, sameToken)).toBe(true);
+  });
+
+  test('service URLs support Kubernetes host:port values without clear-text protocol in config', () => {
+    expect(normalizeServiceUrl('auth-service:5101')).toBe('http://auth-service:5101');
+    expect(normalizeServiceUrl('https://api.example.com/')).toBe('https://api.example.com');
+    expect(normalizeServiceUrl('', 'catalog-service:5102')).toBe('http://catalog-service:5102');
   });
 });
