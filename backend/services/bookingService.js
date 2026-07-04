@@ -155,7 +155,11 @@ const createBooking = async (bookingData, user) => {
     throw new ApiError(400, 'No tickets selected');
   }
 
-  const reservation = await catalogClient.reserveTickets(tickets);
+  const expiresAt = getBookingExpiryDate();
+  const reservation = await catalogClient.reserveTickets(tickets, {
+    userId: user.id,
+    expiresAt
+  });
   const bookingTickets = reservation.items.map((item) => ({
     ticket: item.ticket,
     quantity: item.quantity,
@@ -191,7 +195,7 @@ const createBooking = async (bookingData, user) => {
     bookingStatus: 'pending',
     paymentStatus: 'pending',
     source,
-    expiresAt: getBookingExpiryDate(),
+    expiresAt,
     statusHistory: [{
       bookingStatus: 'pending',
       paymentStatus: 'pending',

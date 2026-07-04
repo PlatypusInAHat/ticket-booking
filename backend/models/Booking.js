@@ -327,6 +327,7 @@ bookingSchema.index({ bookingNumber: 1 });
 bookingSchema.index({ paymentStatus: 1 });
 bookingSchema.index({ bookingStatus: 1, createdAt: -1 });
 bookingSchema.index({ bookingStatus: 1, paymentStatus: 1, expiresAt: 1 });
+bookingSchema.index({ bookingStatus: 1, paymentStatus: 1, 'tickets.snapshot.date': 1 });
 bookingSchema.index({ source: 1, createdAt: -1 });
 bookingSchema.index({ 'passes.passCode': 1 }, { unique: true, sparse: true });
 bookingSchema.index({ 'passes.scanToken': 1 }, { unique: true, sparse: true });

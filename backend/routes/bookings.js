@@ -17,7 +17,7 @@ const bookingCreateLimiter = createEnvRateLimiter({
   defaultWindowMs: 60 * 1000,
   defaultMax: 8,
   keyGenerator: (req) => req.user?.id || req.ip,
-  message: 'Ban dang tao qua nhieu don dat ve. Vui long thu lai sau it phut.'
+  message: 'You are creating too many bookings. Please try again in a few minutes.'
 });
 
 const bookingIdParam = () => param('id')

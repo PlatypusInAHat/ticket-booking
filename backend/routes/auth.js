@@ -2,6 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const authController = require('../controllers/authController');
 const validateRequest = require('../middleware/validateRequest');
+const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
 
 const emailRule = () => body('email')
@@ -52,5 +53,7 @@ router.post('/refresh-token', [
     .withMessage('Refresh token is required'),
   validateRequest
 ], authController.refreshToken);
+
+router.post('/logout', authenticateToken, authController.logout);
 
 module.exports = router;

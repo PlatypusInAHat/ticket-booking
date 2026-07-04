@@ -106,7 +106,7 @@ export default function CheckInScreen() {
           {result.pass ? (
             <View style={styles.passDetails}>
               <Text style={styles.sectionTitle}>{result.pass.passCode}</Text>
-              <Text style={styles.muted}>{result.pass.ticket?.eventName}</Text>
+              <Text style={styles.muted}>{result.pass.ticketSnapshot?.eventName || result.pass.ticketSnapshot?.ticketName || 'TicketStage event'}</Text>
               <View style={styles.statusWrap}>
                 <Text style={styles.badge}>{getLabel(passStatusLabels, result.pass.status)}</Text>
               </View>

@@ -176,7 +176,8 @@ Các biến nên đổi khi chạy ngoài môi trường demo:
 NODE_ENV=development
 FRONTEND_URL=http://localhost:3000
 JWT_SECRET=change_me
-JWT_EXPIRE=7d
+JWT_ACCESS_EXPIRE=15m
+JWT_REFRESH_EXPIRE=24h
 INTERNAL_API_KEY=change_me
 SECRET_HASH_KEY=change_me
 PASSWORD_HASH_ROUNDS=12

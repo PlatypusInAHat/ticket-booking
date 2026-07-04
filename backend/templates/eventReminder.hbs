@@ -6,9 +6,9 @@
     body { margin: 0; padding: 0; background: #f4f1ea; color: #1f2933; font-family: Arial, sans-serif; line-height: 1.6; }
     .container { max-width: 620px; margin: 0 auto; padding: 32px 18px; }
     .card { background: #ffffff; border: 1px solid #e4dccd; border-radius: 18px; overflow: hidden; }
-    .header { background: #111827; color: #fbbf24; padding: 28px; text-align: center; }
+    .header { background: #0f766e; color: #ffffff; padding: 28px; text-align: center; }
     .content { padding: 28px; }
-    .button { display: inline-block; padding: 12px 20px; background: #f59e0b; color: #111827; border-radius: 999px; text-decoration: none; font-weight: 700; }
+    .event { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 14px; padding: 16px; margin: 18px 0; }
     .footer { padding: 18px 28px 28px; color: #6b7280; font-size: 12px; text-align: center; }
   </style>
 </head>
@@ -16,18 +16,21 @@
   <div class="container">
     <div class="card">
       <div class="header">
-        <h1>Welcome to TicketStage</h1>
+        <h1>Your event is coming up</h1>
       </div>
       <div class="content">
         <p>Hi <strong>{{userName}}</strong>,</p>
-        <p>Your TicketStage account is ready. You can now discover events, book tickets, and keep your passes in one place.</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a class="button" href="{{frontendUrl}}">Explore events</a>
-        </p>
-        <p>Thanks for joining us,<br>The TicketStage team</p>
+        <p>This is a reminder that <strong>{{eventName}}</strong> starts within the next {{reminderWindowHours}} hours.</p>
+        <div class="event">
+          <p><strong>When:</strong> {{startsAt}}</p>
+          <p><strong>Venue:</strong> {{venue}}</p>
+          <p><strong>Address:</strong> {{address}}</p>
+          <p><strong>Booking:</strong> {{bookingNumber}}</p>
+        </div>
+        <p>Please have your QR/barcode pass ready before arriving at the check-in gate.</p>
       </div>
       <div class="footer">
-        <p>TicketStage - event ticketing, check-in, and audience access.</p>
+        <p>TicketStage event reminder.</p>
       </div>
     </div>
   </div>

@@ -127,7 +127,15 @@ const ticketWriteRules = () => [
     .optional()
     .trim()
     .isLength({ min: 1, max: 120 })
-    .withMessage('City is invalid')
+    .withMessage('City is invalid'),
+  body('seatMap.mode')
+    .optional()
+    .isIn(['general_admission', 'reserved_seating'])
+    .withMessage('Seat map mode is invalid'),
+  body('seatMap.sections')
+    .optional()
+    .isArray()
+    .withMessage('Seat map sections must be an array')
 ];
 
 router.get('/', [...listRules(), validateRequest], ticketController.getAllTickets);

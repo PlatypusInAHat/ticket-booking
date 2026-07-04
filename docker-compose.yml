@@ -9,31 +9,68 @@ services:
 
   auth-mongo:
     image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27018:27017"
     volumes:
       - auth-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{ _id: 0, host: 'auth-mongo:27017' }] }).ok }\""]
+      interval: 5s
+      timeout: 10s
+      retries: 30
 
   catalog-mongo:
     image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27019:27017"
     volumes:
       - catalog-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{ _id: 0, host: 'catalog-mongo:27017' }] }).ok }\""]
+      interval: 5s
+      timeout: 10s
+      retries: 30
 
   booking-mongo:
     image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27020:27017"
     volumes:
       - booking-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{ _id: 0, host: 'booking-mongo:27017' }] }).ok }\""]
+      interval: 5s
+      timeout: 10s
+      retries: 30
 
   checkin-mongo:
     image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27021:27017"
     volumes:
       - checkin-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{ _id: 0, host: 'checkin-mongo:27017' }] }).ok }\""]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+
+  notification-mongo:
+    image: mongo:7
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27022:27017"
+    volumes:
+      - notification-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{ _id: 0, host: 'notification-mongo:27017' }] }).ok }\""]
+      interval: 5s
+      timeout: 10s
+      retries: 30
 
   auth-service:
     build:
@@ -44,7 +81,7 @@ services:
       SERVICE_MODE: microservice
       SERVICE_NAME: auth-service
       AUTH_SERVICE_PORT: 5101
-      AUTH_MONGODB_URI: mongodb://auth-mongo:27017/ticket-auth
+      AUTH_MONGODB_URI: mongodb://auth-mongo:27017/ticket-auth?replicaSet=rs0
       CATALOG_SERVICE_URL: http://catalog-service:5102
       BOOKING_SERVICE_URL: http://booking-service:5103
       CHECKIN_SERVICE_URL: http://checkin-service:5104
@@ -53,7 +90,8 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
-      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      JWT_ACCESS_EXPIRE: ${JWT_ACCESS_EXPIRE:-15m}
+      JWT_REFRESH_EXPIRE: ${JWT_REFRESH_EXPIRE:-24h}
       PASSWORD_HASH_ROUNDS: ${PASSWORD_HASH_ROUNDS:-12}
       PASSWORD_PEPPER: ${PASSWORD_PEPPER:-dev_password_pepper_change_me}
       MIN_PASSWORD_LENGTH: ${MIN_PASSWORD_LENGTH:-8}
@@ -74,13 +112,14 @@ services:
       SERVICE_MODE: microservice
       SERVICE_NAME: catalog-service
       CATALOG_SERVICE_PORT: 5102
-      CATALOG_MONGODB_URI: mongodb://catalog-mongo:27017/ticket-catalog
+      CATALOG_MONGODB_URI: mongodb://catalog-mongo:27017/ticket-catalog?replicaSet=rs0
       EVENT_BROKER_URL: amqp://rabbitmq:5672
       EVENT_EXCHANGE: ticket-booking.events
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
-      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      JWT_ACCESS_EXPIRE: ${JWT_ACCESS_EXPIRE:-15m}
+      JWT_REFRESH_EXPIRE: ${JWT_REFRESH_EXPIRE:-24h}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       - catalog-mongo
@@ -97,7 +136,7 @@ services:
       SERVICE_MODE: microservice
       SERVICE_NAME: booking-service
       BOOKING_SERVICE_PORT: 5103
-      BOOKING_MONGODB_URI: mongodb://booking-mongo:27017/ticket-booking
+      BOOKING_MONGODB_URI: mongodb://booking-mongo:27017/ticket-booking?replicaSet=rs0
       CATALOG_SERVICE_URL: http://catalog-service:5102
       EVENT_BROKER_URL: amqp://rabbitmq:5672
       EVENT_EXCHANGE: ticket-booking.events
@@ -107,7 +146,8 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
-      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      JWT_ACCESS_EXPIRE: ${JWT_ACCESS_EXPIRE:-15m}
+      JWT_REFRESH_EXPIRE: ${JWT_REFRESH_EXPIRE:-24h}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:5000}
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-vnpay_placeholder}
@@ -125,11 +165,17 @@ services:
       BOOKING_HOLD_MINUTES: ${BOOKING_HOLD_MINUTES:-15}
       BOOKING_EXPIRATION_INTERVAL_MS: ${BOOKING_EXPIRATION_INTERVAL_MS:-30000}
       BOOKING_EXPIRATION_BATCH_SIZE: ${BOOKING_EXPIRATION_BATCH_SIZE:-50}
+      EVENT_REMINDER_WORKER_ENABLED: ${EVENT_REMINDER_WORKER_ENABLED:-true}
+      EVENT_REMINDER_INTERVAL_MS: ${EVENT_REMINDER_INTERVAL_MS:-900000}
+      EVENT_REMINDER_WINDOW_HOURS: ${EVENT_REMINDER_WINDOW_HOURS:-24}
+      EVENT_REMINDER_BATCH_SIZE: ${EVENT_REMINDER_BATCH_SIZE:-50}
       BOOKING_QUEUE_ENABLED: ${BOOKING_QUEUE_ENABLED:-true}
       BOOKING_QUEUE_CONCURRENCY: ${BOOKING_QUEUE_CONCURRENCY:-5}
       BOOKING_QUEUE_MAX_SIZE: ${BOOKING_QUEUE_MAX_SIZE:-500}
       BOOKING_QUEUE_WAIT_TIMEOUT_MS: ${BOOKING_QUEUE_WAIT_TIMEOUT_MS:-30000}
+      BOOKING_QUEUE_LEASE_MS: ${BOOKING_QUEUE_LEASE_MS:-300000}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_STORE: ${RATE_LIMIT_STORE:-mongo}
       BOOKING_CREATE_RATE_LIMIT_WINDOW_MS: ${BOOKING_CREATE_RATE_LIMIT_WINDOW_MS:-60000}
       BOOKING_CREATE_RATE_LIMIT_MAX: ${BOOKING_CREATE_RATE_LIMIT_MAX:-8}
       PAYMENT_RATE_LIMIT_WINDOW_MS: ${PAYMENT_RATE_LIMIT_WINDOW_MS:-60000}
@@ -150,7 +196,7 @@ services:
       SERVICE_MODE: microservice
       SERVICE_NAME: checkin-service
       CHECKIN_SERVICE_PORT: 5104
-      CHECKIN_MONGODB_URI: mongodb://checkin-mongo:27017/ticket-checkin
+      CHECKIN_MONGODB_URI: mongodb://checkin-mongo:27017/ticket-checkin?replicaSet=rs0
       EVENT_BROKER_URL: amqp://rabbitmq:5672
       EVENT_EXCHANGE: ticket-booking.events
       OUTBOX_ENABLED: ${OUTBOX_ENABLED:-true}
@@ -159,7 +205,8 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
-      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      JWT_ACCESS_EXPIRE: ${JWT_ACCESS_EXPIRE:-15m}
+      JWT_REFRESH_EXPIRE: ${JWT_REFRESH_EXPIRE:-24h}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       - checkin-mongo
@@ -176,12 +223,31 @@ services:
       SERVICE_MODE: microservice
       SERVICE_NAME: notification-service
       NOTIFICATION_SERVICE_PORT: 5105
+      NOTIFICATION_MONGODB_URI: mongodb://notification-mongo:27017/ticket-notification?replicaSet=rs0
       EVENT_BROKER_URL: amqp://rabbitmq:5672
       EVENT_EXCHANGE: ticket-booking.events
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
+      SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:5000}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+      EMAIL_FROM: ${EMAIL_FROM:-no-reply@ticketstage.local}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TicketStage}
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_SECURE: ${EMAIL_SECURE:-false}
       EMAIL_USER: ${EMAIL_USER:-}
       EMAIL_PASS: ${EMAIL_PASS:-}
+      SES_SMTP_HOST: ${SES_SMTP_HOST:-}
+      SES_SMTP_PORT: ${SES_SMTP_PORT:-587}
+      SES_SMTP_USERNAME: ${SES_SMTP_USERNAME:-}
+      SES_SMTP_PASSWORD: ${SES_SMTP_PASSWORD:-}
+      EMAIL_WORKER_ENABLED: ${EMAIL_WORKER_ENABLED:-true}
+      EMAIL_WORKER_INTERVAL_MS: ${EMAIL_WORKER_INTERVAL_MS:-5000}
+      EMAIL_WORKER_BATCH_SIZE: ${EMAIL_WORKER_BATCH_SIZE:-10}
     depends_on:
+      - notification-mongo
       - rabbitmq
     ports:
       - "5105:5105"
@@ -200,6 +266,7 @@ services:
       CATALOG_SERVICE_URL: http://catalog-service:5102
       BOOKING_SERVICE_URL: http://booking-service:5103
       CHECKIN_SERVICE_URL: http://checkin-service:5104
+      NOTIFICATION_SERVICE_URL: http://notification-service:5105
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
@@ -208,6 +275,7 @@ services:
       - catalog-service
       - booking-service
       - checkin-service
+      - notification-service
     ports:
       - "5000:5000"
 
@@ -218,10 +286,11 @@ services:
     profiles:
       - tools
     environment:
-      AUTH_MONGODB_URI: mongodb://auth-mongo:27017/ticket-auth
-      CATALOG_MONGODB_URI: mongodb://catalog-mongo:27017/ticket-catalog
-      BOOKING_MONGODB_URI: mongodb://booking-mongo:27017/ticket-booking
-      CHECKIN_MONGODB_URI: mongodb://checkin-mongo:27017/ticket-checkin
+      AUTH_MONGODB_URI: mongodb://auth-mongo:27017/ticket-auth?replicaSet=rs0
+      CATALOG_MONGODB_URI: mongodb://catalog-mongo:27017/ticket-catalog?replicaSet=rs0
+      BOOKING_MONGODB_URI: mongodb://booking-mongo:27017/ticket-booking?replicaSet=rs0
+      CHECKIN_MONGODB_URI: mongodb://checkin-mongo:27017/ticket-checkin?replicaSet=rs0
+      NOTIFICATION_MONGODB_URI: mongodb://notification-mongo:27017/ticket-notification?replicaSet=rs0
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ticketbooking.com}
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       PASSWORD_HASH_ROUNDS: ${PASSWORD_HASH_ROUNDS:-12}
@@ -232,6 +301,7 @@ services:
       - catalog-mongo
       - booking-mongo
       - checkin-mongo
+      - notification-mongo
 
 volumes:
   rabbitmq-data:
@@ -239,3 +309,4 @@ volumes:
   catalog-mongo-data:
   booking-mongo-data:
   checkin-mongo-data:
+  notification-mongo-data:

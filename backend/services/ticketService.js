@@ -159,6 +159,7 @@ const createTicket = async (ticketData, user) => {
     price: Number(price),
     availableSeats: Number(availableSeats),
     totalSeats: Number(availableSeats),
+    ticketName: ticketData.ticketName || ticketData.name || resolvedEventName,
     category: ticketData.category || 'standard',
     ticketType: ticketData.ticketType || ticketData.name || resolvedEventName,
     visibility: ticketData.visibility || 'public'

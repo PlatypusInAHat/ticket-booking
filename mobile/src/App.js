@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ticket, ShoppingBag, User, CheckCircle, CreditCard } from 'lucide-react-native';
 import Screen from './components/Screen';
 import Tabs from './components/Tabs';
 import {
+  authApi,
   bookingApi,
   paymentApi,
   setAuthToken,
@@ -82,8 +83,13 @@ export default function App() {
     const bootstrap = async () => {
       const savedAuth = await loadAuth();
       if (savedAuth?.token) {
-        setAuth(savedAuth);
-        setAuthToken(savedAuth.token);
+        if (savedAuth.refreshExpiresAt && Date.parse(savedAuth.refreshExpiresAt) <= Date.now()) {
+          await clearAuth();
+          setAuthToken(null, null);
+        } else {
+          setAuth(savedAuth);
+          setAuthToken(savedAuth.token, savedAuth.refreshToken);
+        }
       }
       setBooting(false);
     };
@@ -109,8 +115,13 @@ export default function App() {
   };
 
   const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      // Keep logout reliable even if the access token is already expired.
+    }
     setAuth(null);
-    setAuthToken(null);
+    setAuthToken(null, null);
     setBookings([]);
     setActiveTab('tickets');
     await clearAuth();
@@ -162,11 +173,18 @@ export default function App() {
         customerEmail: auth.user.email,
         customerPhone: auth.user.phone || ''
       });
-      await paymentApi.process({
+      const session = await paymentApi.createSession({
         bookingId: booking._id,
-        paymentToken: `mobile_demo_${Date.now()}`
+        provider: 'vnpay'
       });
-      Alert.alert('Booking confirmed', 'Your mobile passes are now available in My Tickets.');
+      const paymentUrl = session.redirectUrl || session.paymentUrl || session.deeplink;
+
+      if (!paymentUrl) {
+        throw new Error('The payment gateway did not return a valid checkout URL.');
+      }
+
+      await Linking.openURL(paymentUrl);
+      Alert.alert('Payment started', 'Complete payment in the gateway. Your tickets will appear after the payment webhook confirms the booking.');
       setCart([]);
       setActiveTab('bookings');
       await loadBookings();

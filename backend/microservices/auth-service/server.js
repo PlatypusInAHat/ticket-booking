@@ -7,6 +7,7 @@ const adminRoutes = require('../../routes/admin');
 const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
 const startAuthSubscribers = require('../../subscribers/authSubscribers');
+const { startOutboxPublisher } = require('../../shared/outboxPublisher');
 
 const SERVICE_NAME = 'auth-service';
 const PORT = process.env.AUTH_SERVICE_PORT || 5101;
@@ -27,6 +28,7 @@ startHttpService({
   mongoUri: process.env.AUTH_MONGODB_URI || process.env.MONGODB_URI
 }).then(() => {
   if (process.env.NODE_ENV !== 'test') {
+    startOutboxPublisher({ serviceName: SERVICE_NAME });
     return startAuthSubscribers();
   }
   return null;

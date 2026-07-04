@@ -20,7 +20,7 @@ function BookingCard({ booking, onOpenPasses, onCancel }) {
 
       {booking.tickets?.map(item => (
         <View key={`${booking._id}-${item.ticket?._id || item._id}`} style={styles.bookingItem}>
-          <Text style={styles.itemTitle}>{item.ticket?.eventName || 'Ticket no longer available'}</Text>
+          <Text style={styles.itemTitle}>{item.snapshot?.eventName || item.snapshot?.ticketName || 'Ticket no longer available'}</Text>
           <Text style={styles.muted}>Quantity: {item.quantity}</Text>
         </View>
       ))}

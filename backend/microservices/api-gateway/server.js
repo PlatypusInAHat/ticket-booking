@@ -36,10 +36,16 @@ const SERVICE_ROUTES = [
     name: 'checkin-service',
     prefixes: ['/api/checkin'],
     target: process.env.CHECKIN_SERVICE_URL || 'http://localhost:5104'
+  },
+  {
+    name: 'notification-service',
+    prefixes: ['/api/notifications', '/internal/notifications'],
+    target: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:5105'
   }
 ];
 
 const app = express();
+app.disable('x-powered-by');
 
 const swaggerOptions = {
   definition: {
@@ -139,8 +145,14 @@ const requireGatewayAdmin = (req, res, next) => {
     });
   }
 
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+  return jwt.verify(token, process.env.JWT_SECRET, (error, payload) => {
+    if (error) {
+      return res.status(403).json({
+        success: false,
+        service: SERVICE_NAME,
+        message: 'Invalid or expired token'
+      });
+    }
 
     if (payload.role !== 'admin') {
       return res.status(403).json({
@@ -152,13 +164,7 @@ const requireGatewayAdmin = (req, res, next) => {
 
     req.user = payload;
     return next();
-  } catch (error) {
-    return res.status(403).json({
-      success: false,
-      service: SERVICE_NAME,
-      message: 'Invalid or expired token'
-    });
-  }
+  });
 };
 
 app.get('/api/health', (req, res) => {

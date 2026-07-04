@@ -28,6 +28,17 @@ const ticketSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  ticketName: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  eventName: {
+    type: String,
+    trim: true,
+    default: '',
+    index: true
+  },
   ticketType: {
     type: String,
     trim: true,
@@ -132,6 +143,32 @@ const ticketSchema = new mongoose.Schema({
       min: 1
     }
   },
+  seatMap: {
+    mode: {
+      type: String,
+      enum: ['general_admission', 'reserved_seating'],
+      default: 'general_admission'
+    },
+    sections: [{
+      name: { type: String, default: '' },
+      rows: [{
+        label: { type: String, default: '' },
+        seats: [{
+          code: {
+            type: String,
+            uppercase: true,
+            trim: true
+          },
+          number: { type: String, default: '' },
+          status: {
+            type: String,
+            enum: ['available', 'held', 'sold', 'blocked'],
+            default: 'available'
+          }
+        }]
+      }]
+    }]
+  },
   status: {
     type: String,
     enum: ['draft', 'published', 'sold_out', 'cancelled', 'completed'],
@@ -141,12 +178,15 @@ const ticketSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   }
-}, { timestamps: true });
+}, {
+  timestamps: true,
+  optimisticConcurrency: true
+});
 
 ticketSchema.index({ event: 1, session: 1 });
 ticketSchema.index({ company: 1, event: 1 });
 ticketSchema.index({ eventType: 1, status: 1, date: 1 });
 ticketSchema.index({ 'location.city': 1, status: 1, date: 1 });
-ticketSchema.index({ name: 'text', description: 'text', ticketType: 'text', tags: 'text' });
+ticketSchema.index({ name: 'text', ticketName: 'text', eventName: 'text', description: 'text', ticketType: 'text', tags: 'text' });
 
 module.exports = mongoose.model('Ticket', ticketSchema);

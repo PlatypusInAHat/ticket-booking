@@ -1,4 +1,5 @@
 const Event = require('../models/Event');
+const SeatLock = require('../models/SeatLock');
 const Ticket = require('../models/Ticket');
 const ApiError = require('../utils/ApiError');
 
@@ -19,7 +20,7 @@ const toTicketId = (item = {}) => {
 };
 
 const toSnapshot = (ticket) => ({
-  ticketName: ticket.ticketName || '',
+  ticketName: ticket.ticketName || ticket.name || ticket.ticketType || '',
   eventName: ticket.eventName || '',
   eventType: ticket.eventType || '',
   image: ticket.image || '',
@@ -104,6 +105,94 @@ const buildSaleWindowFilter = (now) => ({
   ]
 });
 
+const releaseSeatLocks = async (ticketId, seatCodes = []) => {
+  if (!ticketId || seatCodes.length === 0) {
+    return;
+  }
+
+  await SeatLock.updateMany(
+    {
+      ticket: ticketId,
+      seatCode: { $in: seatCodes.map(code => String(code).toUpperCase()) },
+      status: 'locked'
+    },
+    {
+      $set: {
+        status: 'released',
+        releasedAt: new Date()
+      }
+    }
+  );
+};
+
+const convertSeatLocks = async (ticketId, seatCodes = []) => {
+  if (!ticketId || seatCodes.length === 0) {
+    return;
+  }
+
+  await SeatLock.updateMany(
+    {
+      ticket: ticketId,
+      seatCode: { $in: seatCodes.map(code => String(code).toUpperCase()) },
+      status: 'locked'
+    },
+    {
+      $set: {
+        status: 'converted',
+        convertedAt: new Date()
+      }
+    }
+  );
+};
+
+const createSeatLocks = async ({ ticketId, seatCodes = [], userId, expiresAt }) => {
+  if (!ticketId || seatCodes.length === 0) {
+    return [];
+  }
+
+  if (!userId) {
+    throw new ApiError(400, 'Seat reservations require a user context');
+  }
+
+  try {
+    return await SeatLock.insertMany(
+      seatCodes.map(seatCode => ({
+        ticket: ticketId,
+        seatCode,
+        user: userId,
+        expiresAt
+      })),
+      { ordered: true }
+    );
+  } catch (error) {
+    if (error.code === 11000 || error.writeErrors?.some(item => item.code === 11000)) {
+      throw new ApiError(409, 'Some selected seats are already reserved');
+    }
+
+    throw error;
+  }
+};
+
+const markReservedSeats = async (ticket, seatCodes = [], status) => {
+  if (!ticket?.seatMap || ticket.seatMap.mode !== 'reserved_seating' || seatCodes.length === 0) {
+    return;
+  }
+
+  const normalizedSeatCodes = seatCodes.map(code => String(code).toUpperCase());
+  ticket.seatMap.sections.forEach(sec => {
+    sec.rows.forEach(row => {
+      row.seats.forEach(seat => {
+        if (normalizedSeatCodes.includes(seat.code)) {
+          seat.status = status;
+        }
+      });
+    });
+  });
+
+  ticket.updatedAt = new Date();
+  await ticket.save();
+};
+
 const releaseTickets = async (bookingTickets = [], { restoreRevenue = false } = {}) => {
   const released = [];
 
@@ -119,15 +208,8 @@ const releaseTickets = async (bookingTickets = [], { restoreRevenue = false } = 
     if (!ticket) continue;
 
     if (ticket.seatMap?.mode === 'reserved_seating' && Array.isArray(item.seatCodes)) {
-      item.seatCodes.forEach(seatCode => {
-        ticket.seatMap.sections.forEach(sec => {
-          sec.rows.forEach(row => {
-            row.seats.forEach(seat => {
-              if (seat.code === seatCode) seat.status = 'available';
-            });
-          });
-        });
-      });
+      await releaseSeatLocks(ticketId, item.seatCodes);
+      await markReservedSeats(ticket, item.seatCodes, 'available');
       ticket.availableSeats = Math.min(ticket.totalSeats, ticket.availableSeats + quantity);
       ticket.soldSeats = Math.max(0, ticket.soldSeats - quantity);
       ticket.updatedAt = new Date();
@@ -170,9 +252,10 @@ const releaseTickets = async (bookingTickets = [], { restoreRevenue = false } = 
   return { released };
 };
 
-const reserveTickets = async (tickets = []) => {
+const reserveTickets = async (tickets = [], options = {}) => {
   const normalizedTickets = normalizeTicketSelection(tickets);
   const now = new Date();
+  const expiresAt = options.expiresAt ? new Date(options.expiresAt) : new Date(now.getTime() + 15 * 60 * 1000);
 
   if (normalizedTickets.length === 0) {
     throw new ApiError(400, 'Selected tickets are invalid');
@@ -213,6 +296,13 @@ const reserveTickets = async (tickets = []) => {
           throw new ApiError(400, `Must provide exactly ${item.quantity} seat codes for reserved seating`);
         }
 
+        await createSeatLocks({
+          ticketId: item.ticketId,
+          seatCodes: item.seatCodes,
+          userId: options.userId,
+          expiresAt
+        });
+
         let availableCount = 0;
         ticketDoc.seatMap.sections.forEach(sec => {
           sec.rows.forEach(row => {
@@ -226,6 +316,7 @@ const reserveTickets = async (tickets = []) => {
         });
 
         if (availableCount !== item.quantity) {
+          await releaseSeatLocks(item.ticketId, item.seatCodes);
           throw new ApiError(400, 'Some selected seats are no longer available');
         }
 
@@ -234,7 +325,14 @@ const reserveTickets = async (tickets = []) => {
         if (ticketDoc.availableSeats === 0) ticketDoc.status = 'sold_out';
         ticketDoc.updatedAt = new Date();
         
-        ticket = await ticketDoc.save();
+        try {
+          ticket = await ticketDoc.save();
+        } catch (error) {
+          await releaseSeatLocks(item.ticketId, item.seatCodes);
+          throw error.name === 'VersionError'
+            ? new ApiError(409, 'Some selected seats are no longer available')
+            : error;
+        }
       } else {
         ticket = await Ticket.findOneAndUpdate(
           {
@@ -303,11 +401,13 @@ const applyRevenue = async (bookingTickets = []) => {
       continue;
     }
 
-    const ticket = await Ticket.findById(ticketId).select('event');
+    const ticket = await Ticket.findById(ticketId);
     if (!ticket?.event) {
       continue;
     }
 
+    await markReservedSeats(ticket, item.seatCodes || [], 'sold');
+    await convertSeatLocks(ticketId, item.seatCodes || []);
     await incrementEventStats(ticket.event, { 'stats.revenue': subtotal });
     applied.push({ ticketId, subtotal });
   }

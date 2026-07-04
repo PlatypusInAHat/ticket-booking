@@ -27,8 +27,12 @@ const requestCatalog = async (path, body = {}) => {
   }
 };
 
-const reserveTickets = async (tickets) => {
-  return requestCatalog('/internal/catalog/tickets/reserve', { tickets });
+const reserveTickets = async (tickets, options = {}) => {
+  return requestCatalog('/internal/catalog/tickets/reserve', {
+    tickets,
+    userId: options.userId,
+    expiresAt: options.expiresAt
+  });
 };
 
 const releaseTickets = async (tickets, options = {}) => {

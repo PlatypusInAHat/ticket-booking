@@ -1,6 +1,9 @@
 const crypto = require('crypto');
 
 const EXCHANGE_NAME = process.env.EVENT_EXCHANGE || 'ticket-booking.events';
+const DEFAULT_PREFETCH = 10;
+const DEFAULT_RETRY_DELAY_MS = 15000;
+const DEFAULT_MAX_RETRIES = 5;
 
 let amqp;
 let connection;
@@ -104,6 +107,31 @@ const publishEvent = async (type, payload = {}, options = {}) => {
   return publishEnvelope(envelope);
 };
 
+const parsePositiveInt = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const getRetryCount = (message) => {
+  const retryCount = Number.parseInt(message.properties.headers?.['x-retry-count'] || '0', 10);
+  return Number.isFinite(retryCount) ? retryCount : 0;
+};
+
+const publishToQueue = (activeChannel, queueName, message, headers = {}) => {
+  activeChannel.sendToQueue(
+    queueName,
+    message.content,
+    {
+      ...message.properties,
+      persistent: true,
+      headers: {
+        ...(message.properties.headers || {}),
+        ...headers
+      }
+    }
+  );
+};
+
 const subscribeEvents = async ({ serviceName, routingKeys, handler }) => {
   if (!isBrokerEnabled()) {
     return false;
@@ -111,8 +139,23 @@ const subscribeEvents = async ({ serviceName, routingKeys, handler }) => {
 
   const activeChannel = await connectEventBus();
   const queueName = `${serviceName}.events`;
+  const retryQueueName = `${queueName}.retry`;
+  const deadQueueName = `${queueName}.dead`;
+  const retryDelayMs = parsePositiveInt(process.env.EVENT_RETRY_DELAY_MS, DEFAULT_RETRY_DELAY_MS);
+  const maxRetries = parsePositiveInt(process.env.EVENT_MAX_RETRIES, DEFAULT_MAX_RETRIES);
+  const prefetch = parsePositiveInt(process.env.EVENT_CONSUMER_PREFETCH, DEFAULT_PREFETCH);
 
   await activeChannel.assertQueue(queueName, { durable: true });
+  await activeChannel.assertQueue(retryQueueName, {
+    durable: true,
+    arguments: {
+      'x-message-ttl': retryDelayMs,
+      'x-dead-letter-exchange': '',
+      'x-dead-letter-routing-key': queueName
+    }
+  });
+  await activeChannel.assertQueue(deadQueueName, { durable: true });
+  activeChannel.prefetch(prefetch);
 
   await Promise.all(
     routingKeys.map((routingKey) => activeChannel.bindQueue(queueName, EXCHANGE_NAME, routingKey))
@@ -128,12 +171,28 @@ const subscribeEvents = async ({ serviceName, routingKeys, handler }) => {
       await handler(envelope);
       activeChannel.ack(message);
     } catch (error) {
+      const retryCount = getRetryCount(message);
       console.error(`[event-bus] ${serviceName} handler failed:`, error.message);
-      activeChannel.nack(message, false, false);
+
+      if (retryCount < maxRetries) {
+        publishToQueue(activeChannel, retryQueueName, message, {
+          'x-retry-count': retryCount + 1,
+          'x-last-error': error.message
+        });
+      } else {
+        publishToQueue(activeChannel, deadQueueName, message, {
+          'x-retry-count': retryCount,
+          'x-dead-lettered-at': new Date().toISOString(),
+          'x-last-error': error.message
+        });
+        console.error(`[event-bus] ${serviceName} moved message to DLQ after ${retryCount} retries`);
+      }
+
+      activeChannel.ack(message);
     }
   });
 
-  console.log(`[event-bus] ${serviceName} subscribed: ${routingKeys.join(', ')}`);
+  console.log(`[event-bus] ${serviceName} subscribed: ${routingKeys.join(', ')} (retry=${retryDelayMs}ms, maxRetries=${maxRetries})`);
   return true;
 };
 

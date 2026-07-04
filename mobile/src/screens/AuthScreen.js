@@ -32,7 +32,7 @@ export default function AuthScreen({ onAuthenticated }) {
         ? await authApi.login(form.email, form.password)
         : await authApi.register(form);
 
-      setAuthToken(auth.token);
+      setAuthToken(auth.token, auth.refreshToken);
       await saveAuth(auth);
       onAuthenticated(auth);
     } catch (error) {

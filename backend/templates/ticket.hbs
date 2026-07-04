@@ -1,58 +1,69 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; }
-        .header { text-align: center; margin-bottom: 20px; background-color: #111; color: #FBBF24; padding: 20px; border-radius: 10px; }
-        .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
-        .ticket-info { background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #FBBF24; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
-        th { background-color: #eee; }
-    </style>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; padding: 0; background: #f4f1ea; color: #1f2933; font-family: Arial, sans-serif; line-height: 1.6; }
+    .container { max-width: 680px; margin: 0 auto; padding: 32px 18px; }
+    .card { background: #ffffff; border: 1px solid #e4dccd; border-radius: 18px; overflow: hidden; }
+    .header { background: #111827; color: #fbbf24; padding: 28px; text-align: center; }
+    .content { padding: 28px; }
+    .summary { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; margin: 20px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 10px 6px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+    th { color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .total { text-align: right; font-size: 20px; font-weight: 700; margin-top: 18px; }
+    .note { background: #ecfdf5; border-left: 4px solid #10b981; padding: 12px 14px; border-radius: 10px; }
+    .footer { padding: 18px 28px 28px; color: #6b7280; font-size: 12px; text-align: center; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>🎫 Vé Điện Tử Của Bạn</h2>
-            <p>Mã đặt chỗ: <strong>{{bookingNumber}}</strong></p>
-        </div>
-        
-        <p>Xin chào <strong>{{userName}}</strong>,</p>
-        <p>Chúc mừng! Thanh toán của bạn đã thành công. Dưới đây là thông tin vé của bạn:</p>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <h1>Your booking is confirmed</h1>
+        <p>Booking number: <strong>{{bookingNumber}}</strong></p>
+      </div>
+      <div class="content">
+        <p>Hi <strong>{{userName}}</strong>,</p>
+        <p>Your payment was successful. Your tickets and admission passes are now ready in your TicketStage account.</p>
 
-        <div class="ticket-info">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Sự kiện</th>
-                        <th>Số lượng</th>
-                        <th>Đơn giá</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{#each tickets}}
-                    <tr>
-                        <td>{{this.eventName}}</td>
-                        <td>x{{this.quantity}}</td>
-                        <td>{{this.price}}</td>
-                    </tr>
-                    {{/each}}
-                </tbody>
-            </table>
-            <p style="text-align: right; margin-top: 15px; font-size: 18px;">
-                Tổng thanh toán: <strong>{{totalAmount}}</strong>
-            </p>
+        <div class="summary">
+          <table>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Ticket</th>
+                <th>Qty</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each tickets}}
+              <tr>
+                <td>
+                  <strong>{{this.eventName}}</strong><br>
+                  <span>{{this.date}}</span><br>
+                  <span>{{this.venue}}</span>
+                </td>
+                <td>{{this.ticketName}}</td>
+                <td>x{{this.quantity}}</td>
+                <td>{{this.subtotal}}</td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+          <div class="total">Total paid: {{totalAmount}}</div>
         </div>
 
-        <p><em>Vui lòng xuất trình email này kèm theo giấy tờ tùy thân (CCCD/Passport) khi đến check-in tại quầy sự kiện.</em></p>
-        
-        <p>Cảm ơn bạn đã sử dụng dịch vụ của TicketStage!</p>
-        
-        <div class="footer">
-            <p>© 2026 TicketStage. All rights reserved.</p>
+        <div class="note">
+          Please bring your QR/barcode pass and a valid ID when checking in at the venue.
         </div>
+      </div>
+      <div class="footer">
+        <p>TicketStage - thank you for your purchase.</p>
+      </div>
     </div>
+  </div>
 </body>
 </html>

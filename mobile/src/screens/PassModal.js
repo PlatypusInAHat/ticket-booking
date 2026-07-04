@@ -83,7 +83,7 @@ export default function PassModal({ booking, passes, onClose }) {
 
               {selectedPass ? (
                 <Card style={styles.passCard}>
-                  <Text style={styles.title}>{selectedPass.ticket?.eventName}</Text>
+                  <Text style={styles.title}>{selectedPass.ticketSnapshot?.eventName || selectedPass.ticketSnapshot?.ticketName || 'Mobile ticket'}</Text>
                   <Text style={styles.muted}>{selectedPass.passCode}</Text>
                   <Text style={styles.badge}>{getLabel(passStatusLabels, selectedPass.status)}</Text>
 
