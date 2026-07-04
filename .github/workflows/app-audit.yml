@@ -214,7 +214,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Trivy Filesystem Scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -308,7 +308,7 @@ jobs:
         run: docker load -i "${{ matrix.service }}-image.tar"
 
       - name: Trivy Backend Service Image Scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ matrix.local_image }}:audit
           format: table

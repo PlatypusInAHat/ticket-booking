@@ -397,7 +397,7 @@ jobs:
         run: docker load -i "${{ matrix.service }}-image.tar"
 
       - name: Trivy Service Image Scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ matrix.local_image }}:audit
           format: table
