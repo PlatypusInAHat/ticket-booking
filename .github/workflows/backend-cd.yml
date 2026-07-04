@@ -22,10 +22,16 @@ on:
       - 'backend/**'
       - '.github/workflows/backend-cd.yml'
   workflow_dispatch:
+    inputs:
+      services:
+        description: 'Comma-separated services to build/deploy, or all/auto.'
+        required: false
+        default: auto
+        type: string
 
 jobs:
   resolve-deploy-target:
-    name: 01 / Resolve Deploy Target
+    name: 01 / Resolve Deploy Target And Services
     runs-on: ubuntu-latest
     outputs:
       deploy_allowed: ${{ steps.target.outputs.deploy_allowed }}
@@ -34,11 +40,27 @@ jobs:
       image_tag: ${{ steps.target.outputs.image_tag }}
       short_sha: ${{ steps.target.outputs.short_sha }}
       safe_ref: ${{ steps.target.outputs.safe_ref }}
+      service_matrix: ${{ steps.target.outputs.service_matrix }}
+      service_names: ${{ steps.target.outputs.service_names }}
+      service_count: ${{ steps.target.outputs.service_count }}
     steps:
-      - name: Resolve branch, tag, and image metadata
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve branch, image metadata, and affected services
         id: target
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          MANUAL_SERVICES: ${{ github.event.inputs.services || 'auto' }}
         run: |
           set -euo pipefail
+
+          all_services=(api-gateway auth-service catalog-service booking-service checkin-service notification-service)
 
           deploy_allowed="true"
           deploy_env=""
@@ -73,6 +95,203 @@ jobs:
 
           image_tag="${deploy_env}-${short_sha}"
 
+          contains_service() {
+            local candidate="$1"
+            for service in "${all_services[@]}"; do
+              if [[ "$service" == "$candidate" ]]; then
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          select_all_services() {
+            selected_services=("${all_services[@]}")
+          }
+
+          is_global_backend_change() {
+            local file="$1"
+            case "$file" in
+              .github/workflows/backend-cd.yml|backend/Dockerfile|backend/package.json|backend/package-lock.json|backend/server.js|backend/routes/index.js)
+                return 0
+                ;;
+              backend/config/*|backend/middleware/*|backend/shared/*|backend/utils/*|backend/scripts/*|backend/__tests__/*)
+                return 0
+                ;;
+              *)
+                return 1
+                ;;
+            esac
+          }
+
+          affects_service() {
+            local service="$1"
+            local file="$2"
+            case "$service" in
+              api-gateway)
+                [[ "$file" == backend/microservices/api-gateway/* ]]
+                ;;
+              auth-service)
+                [[ "$file" == backend/microservices/auth-service/* ||
+                  "$file" == backend/routes/auth.js ||
+                  "$file" == backend/routes/users.js ||
+                  "$file" == backend/routes/admin.js ||
+                  "$file" == backend/controllers/authController.js ||
+                  "$file" == backend/controllers/userController.js ||
+                  "$file" == backend/controllers/adminController.js ||
+                  "$file" == backend/services/authService.js ||
+                  "$file" == backend/services/userService.js ||
+                  "$file" == backend/services/adminService.js ||
+                  "$file" == backend/models/User.js ||
+                  "$file" == backend/models/Session.js ]]
+                ;;
+              catalog-service)
+                [[ "$file" == backend/microservices/catalog-service/* ||
+                  "$file" == backend/routes/companies.js ||
+                  "$file" == backend/routes/events.js ||
+                  "$file" == backend/routes/tickets.js ||
+                  "$file" == backend/routes/upload.js ||
+                  "$file" == backend/routes/internal/catalog.js ||
+                  "$file" == backend/controllers/companyController.js ||
+                  "$file" == backend/controllers/eventController.js ||
+                  "$file" == backend/controllers/ticketController.js ||
+                  "$file" == backend/services/companyService.js ||
+                  "$file" == backend/services/eventService.js ||
+                  "$file" == backend/services/ticketService.js ||
+                  "$file" == backend/services/catalogInventoryService.js ||
+                  "$file" == backend/utils/mediaStorage.js ||
+                  "$file" == backend/serializers/ticketSerializer.js ||
+                  "$file" == backend/models/Company.js ||
+                  "$file" == backend/models/Event.js ||
+                  "$file" == backend/models/Ticket.js ||
+                  "$file" == backend/models/SeatLock.js ]]
+                ;;
+              booking-service)
+                [[ "$file" == backend/microservices/booking-service/* ||
+                  "$file" == backend/routes/bookings.js ||
+                  "$file" == backend/routes/payment.js ||
+                  "$file" == backend/routes/internal/booking.js ||
+                  "$file" == backend/controllers/bookingController.js ||
+                  "$file" == backend/controllers/passController.js ||
+                  "$file" == backend/controllers/paymentController.js ||
+                  "$file" == backend/services/bookingService.js ||
+                  "$file" == backend/services/bookingExpirationService.js ||
+                  "$file" == backend/services/catalogClient.js ||
+                  "$file" == backend/services/eventReminderService.js ||
+                  "$file" == backend/services/passService.js ||
+                  "$file" == backend/services/paymentService.js ||
+                  "$file" == backend/services/purchaseQueue.js ||
+                  "$file" == backend/models/Booking.js ||
+                  "$file" == backend/models/Payment.js ||
+                  "$file" == backend/models/QueueSlot.js ||
+                  "$file" == backend/models/RateLimitCounter.js ]]
+                ;;
+              checkin-service)
+                [[ "$file" == backend/microservices/checkin-service/* ||
+                  "$file" == backend/routes/checkin.js ||
+                  "$file" == backend/routes/internal/checkin.js ||
+                  "$file" == backend/controllers/checkinController.js ||
+                  "$file" == backend/services/checkinService.js ||
+                  "$file" == backend/models/CheckInDevice.js ||
+                  "$file" == backend/models/CheckInLog.js ]]
+                ;;
+              notification-service)
+                [[ "$file" == backend/microservices/notification-service/* ||
+                  "$file" == backend/routes/notifications.js ||
+                  "$file" == backend/routes/internal/notifications.js ||
+                  "$file" == backend/services/emailQueueService.js ||
+                  "$file" == backend/services/notificationEventService.js ||
+                  "$file" == backend/utils/emailService.js ||
+                  "$file" == backend/templates/* ||
+                  "$file" == backend/models/EmailJob.js ||
+                  "$file" == backend/models/EmailLog.js ||
+                  "$file" == backend/models/EmailPreference.js ||
+                  "$file" == backend/models/EmailSuppression.js ||
+                  "$file" == backend/models/EmailTemplate.js ||
+                  "$file" == backend/models/MarketingCampaign.js ]]
+                ;;
+            esac
+          }
+
+          selected_services=()
+
+          if [[ "${MANUAL_SERVICES}" != "auto" && "${MANUAL_SERVICES}" != "all" ]]; then
+            IFS=',' read -ra requested_services <<< "${MANUAL_SERVICES}"
+            for requested in "${requested_services[@]}"; do
+              service="$(echo "$requested" | xargs)"
+              if ! contains_service "$service"; then
+                echo "Unknown service requested: ${service}"
+                echo "Allowed services: ${all_services[*]}"
+                exit 1
+              fi
+              selected_services+=("$service")
+            done
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" || "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            select_all_services
+          else
+            if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+              mapfile -t changed_files < <(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+            elif [[ -z "${BEFORE_SHA}" || "${BEFORE_SHA}" =~ ^0+$ ]]; then
+              select_all_services
+              changed_files=()
+            else
+              mapfile -t changed_files < <(git diff --name-only "${BEFORE_SHA}" "${GITHUB_SHA}")
+            fi
+
+            if [[ "${#selected_services[@]}" -eq 0 ]]; then
+              declare -A selected=()
+              unknown_backend_change="false"
+
+              for file in "${changed_files[@]}"; do
+                if is_global_backend_change "$file"; then
+                  select_all_services
+                  break
+                fi
+
+                if [[ "$file" == backend/* ]]; then
+                  matched="false"
+                  for service in "${all_services[@]}"; do
+                    if affects_service "$service" "$file"; then
+                      selected["$service"]=1
+                      matched="true"
+                    fi
+                  done
+
+                  if [[ "$matched" == "false" ]]; then
+                    unknown_backend_change="true"
+                  fi
+                fi
+              done
+
+              if [[ "${#selected_services[@]}" -eq 0 ]]; then
+                if [[ "$unknown_backend_change" == "true" ]]; then
+                  select_all_services
+                else
+                  for service in "${all_services[@]}"; do
+                    if [[ -n "${selected[$service]:-}" ]]; then
+                      selected_services+=("$service")
+                    fi
+                  done
+                fi
+              fi
+            fi
+          fi
+
+          if [[ "${#selected_services[@]}" -eq 0 ]]; then
+            select_all_services
+          fi
+
+          service_matrix="$(
+            printf '%s\n' "${selected_services[@]}" | jq -R . | jq -cs '
+              map({
+                service: .,
+                local_image: ("ticket-booking-" + .),
+                start_script: (if . == "api-gateway" then "start:gateway" else "start:" + . end)
+              })
+            '
+          )"
+          service_names="$(printf '%s ' "${selected_services[@]}" | sed 's/[[:space:]]$//')"
+
           {
             echo "deploy_allowed=${deploy_allowed}"
             echo "deploy_env=${deploy_env}"
@@ -80,7 +299,12 @@ jobs:
             echo "image_tag=${image_tag}"
             echo "short_sha=${short_sha}"
             echo "safe_ref=${safe_ref}"
+            echo "service_matrix=${service_matrix}"
+            echo "service_names=${service_names}"
+            echo "service_count=${#selected_services[@]}"
           } >> "$GITHUB_OUTPUT"
+
+          echo "Selected services: ${service_names}"
 
   backend-quality:
     name: 02 / Backend Install, Audit & Test
@@ -110,80 +334,95 @@ jobs:
         run: npm test
 
   backend-image-build:
-    name: 03 / Build Backend Image
+    name: 03 / Build Image (${{ matrix.service }})
     runs-on: ubuntu-latest
     needs:
       - resolve-deploy-target
       - backend-quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.resolve-deploy-target.outputs.service_matrix) }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build Backend Docker Image
-        working-directory: backend
+      - name: Build Service Docker Image
         env:
           IMAGE_TAG: ${{ needs.resolve-deploy-target.outputs.image_tag }}
+          LOCAL_IMAGE: ${{ matrix.local_image }}
+          SERVICE_START_SCRIPT: ${{ matrix.start_script }}
         run: |
           set -euo pipefail
 
           docker build \
+            --build-arg "SERVICE_START_SCRIPT=${SERVICE_START_SCRIPT}" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --label "org.opencontainers.image.version=${IMAGE_TAG}" \
-            -t ticket-booking-backend:${IMAGE_TAG} \
-            -t ticket-booking-backend:audit .
+            -t "${LOCAL_IMAGE}:${IMAGE_TAG}" \
+            -t "${LOCAL_IMAGE}:audit" \
+            backend
 
-      - name: Save Backend Image Artifact
-        run: docker save ticket-booking-backend:audit -o backend-image.tar
+      - name: Save Service Image Artifact
+        env:
+          LOCAL_IMAGE: ${{ matrix.local_image }}
+          SERVICE: ${{ matrix.service }}
+        run: docker save "${LOCAL_IMAGE}:audit" -o "${SERVICE}-image.tar"
 
-      - name: Upload Backend Image Artifact
+      - name: Upload Service Image Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: backend-image
-          path: backend-image.tar
+          name: backend-image-${{ matrix.service }}
+          path: ${{ matrix.service }}-image.tar
           retention-days: 1
 
   backend-image-scan:
-    name: 04 / Scan Backend Image
+    name: 04 / Scan Image (${{ matrix.service }})
     runs-on: ubuntu-latest
     needs:
       - resolve-deploy-target
       - backend-image-build
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.resolve-deploy-target.outputs.service_matrix) }}
     steps:
-      - name: Download Backend Image Artifact
+      - name: Download Service Image Artifact
         uses: actions/download-artifact@v4
         with:
-          name: backend-image
+          name: backend-image-${{ matrix.service }}
 
-      - name: Load Backend Image
-        run: docker load -i backend-image.tar
+      - name: Load Service Image
+        run: docker load -i "${{ matrix.service }}-image.tar"
 
-      - name: Trivy Backend Image Scan
+      - name: Trivy Service Image Scan
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          image-ref: ticket-booking-backend:audit
+          image-ref: ${{ matrix.local_image }}:audit
           format: table
           exit-code: '1'
           severity: HIGH,CRITICAL
 
   backend-image-push:
-    name: 05 / Push Backend Image
+    name: 05 / Push Image (${{ matrix.service }})
     runs-on: ubuntu-latest
     needs:
       - resolve-deploy-target
       - backend-image-scan
     if: github.event_name != 'pull_request' && needs.resolve-deploy-target.outputs.deploy_allowed == 'true'
-    outputs:
-      image_uri: ${{ steps.meta.outputs.image_uri }}
-      image_tag: ${{ steps.meta.outputs.image_tag }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.resolve-deploy-target.outputs.service_matrix) }}
     steps:
-      - name: Download Backend Image Artifact
+      - name: Download Service Image Artifact
         uses: actions/download-artifact@v4
         with:
-          name: backend-image
+          name: backend-image-${{ matrix.service }}
 
-      - name: Load Backend Image
-        run: docker load -i backend-image.tar
+      - name: Load Service Image
+        run: docker load -i "${{ matrix.service }}-image.tar"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -196,24 +435,23 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Tag and Push Backend Image
-        id: meta
+      - name: Tag and Push Service Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.BACKEND_ECR_REPOSITORY }}
+          ECR_REPOSITORY_PREFIX: ${{ secrets.BACKEND_ECR_REPOSITORY_PREFIX }}
           IMAGE_TAG: ${{ needs.resolve-deploy-target.outputs.image_tag }}
+          LOCAL_IMAGE: ${{ matrix.local_image }}
           SAFE_REF: ${{ needs.resolve-deploy-target.outputs.safe_ref }}
           SHORT_SHA: ${{ needs.resolve-deploy-target.outputs.short_sha }}
           DEPLOY_ENV: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
+          SERVICE: ${{ matrix.service }}
         run: |
           set -euo pipefail
 
-          if [ -z "${ECR_REPOSITORY}" ]; then
-            echo "Missing required GitHub secret: BACKEND_ECR_REPOSITORY"
-            exit 1
-          fi
+          repository_prefix="${ECR_REPOSITORY_PREFIX:-${DEPLOY_ENV}}"
+          repository_prefix="${repository_prefix%/}"
+          image_uri="${ECR_REGISTRY}/${repository_prefix}/${SERVICE}"
 
-          image_uri="${ECR_REGISTRY}/${ECR_REPOSITORY}"
           tags=(
             "${image_uri}:${IMAGE_TAG}"
             "${image_uri}:sha-${SHORT_SHA}"
@@ -228,31 +466,30 @@ jobs:
           fi
 
           for tag in "${tags[@]}"; do
-            docker tag "ticket-booking-backend:audit" "$tag"
+            docker tag "${LOCAL_IMAGE}:audit" "$tag"
             docker push "$tag"
           done
 
-          {
-            echo "image_uri=${image_uri}"
-            echo "image_tag=${IMAGE_TAG}"
-          } >> "$GITHUB_OUTPUT"
-
   backend-deploy:
-    name: 06 / Deploy Backend To EKS
+    name: 06 / Deploy (${{ matrix.service }})
     runs-on: ubuntu-latest
     needs:
       - resolve-deploy-target
       - backend-image-push
     if: github.event_name != 'pull_request' && needs.resolve-deploy-target.outputs.deploy_allowed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.resolve-deploy-target.outputs.service_matrix) }}
     concurrency:
-      group: backend-deploy-${{ github.ref_name }}
+      group: backend-deploy-${{ github.ref_name }}-${{ matrix.service }}
       cancel-in-progress: true
     env:
       K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE || 'ticketstage' }}
-      IMAGE_URI: ${{ needs.backend-image-push.outputs.image_uri }}
-      IMAGE_TAG: ${{ needs.backend-image-push.outputs.image_tag }}
+      IMAGE_TAG: ${{ needs.resolve-deploy-target.outputs.image_tag }}
       DEPLOY_ENV: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
       DEPLOY_CHANNEL: ${{ needs.resolve-deploy-target.outputs.deploy_channel }}
+      SERVICE: ${{ matrix.service }}
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -261,24 +498,30 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
-      - name: Deploy Backend Services
+      - name: Deploy Service To EKS
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY_PREFIX: ${{ secrets.BACKEND_ECR_REPOSITORY_PREFIX }}
         run: |
           set -euo pipefail
 
-          echo "Deploying backend channel=${DEPLOY_CHANNEL} env=${DEPLOY_ENV} image=${IMAGE_URI}:${IMAGE_TAG}"
+          repository_prefix="${ECR_REPOSITORY_PREFIX:-${DEPLOY_ENV}}"
+          repository_prefix="${repository_prefix%/}"
+          image_uri="${ECR_REGISTRY}/${repository_prefix}/${SERVICE}:${IMAGE_TAG}"
 
-          services=("api-gateway" "auth-service" "booking-service" "catalog-service" "checkin-service" "notification-service")
+          echo "Deploying service=${SERVICE} channel=${DEPLOY_CHANNEL} env=${DEPLOY_ENV} image=${image_uri}"
 
-          for service in "${services[@]}"; do
-            echo "Updating deployment for ${service} to ${IMAGE_URI}:${IMAGE_TAG}..."
-            kubectl -n "$K8S_NAMESPACE" set image "deployment/${service}" "${service}=${IMAGE_URI}:${IMAGE_TAG}"
-            if ! kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${service}" --timeout=180s; then
-              echo "Rollout failed for ${service}. Rolling back to previous ReplicaSet..."
-              kubectl -n "$K8S_NAMESPACE" rollout undo "deployment/${service}"
-              kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${service}" --timeout=180s
-              exit 1
-            fi
-          done
+          kubectl -n "$K8S_NAMESPACE" set image "deployment/${SERVICE}" "${SERVICE}=${image_uri}"
+          if ! kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${SERVICE}" --timeout=180s; then
+            echo "Rollout failed for ${SERVICE}. Rolling back to previous ReplicaSet..."
+            kubectl -n "$K8S_NAMESPACE" rollout undo "deployment/${SERVICE}"
+            kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${SERVICE}" --timeout=180s
+            exit 1
+          fi

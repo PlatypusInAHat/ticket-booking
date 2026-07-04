@@ -232,43 +232,85 @@ jobs:
           sarif_file: trivy-app-results.sarif
 
   backend-image-build:
-    name: 04 / Backend Image Build
+    name: 04 / Backend Image Build (${{ matrix.service }})
     runs-on: ubuntu-latest
     needs: backend-test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api-gateway
+            local_image: ticket-booking-api-gateway
+            start_script: start:gateway
+          - service: auth-service
+            local_image: ticket-booking-auth-service
+            start_script: start:auth-service
+          - service: catalog-service
+            local_image: ticket-booking-catalog-service
+            start_script: start:catalog-service
+          - service: booking-service
+            local_image: ticket-booking-booking-service
+            start_script: start:booking-service
+          - service: checkin-service
+            local_image: ticket-booking-checkin-service
+            start_script: start:checkin-service
+          - service: notification-service
+            local_image: ticket-booking-notification-service
+            start_script: start:notification-service
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build Backend Image
-        run: docker build -t ticket-booking-backend:audit backend
+      - name: Build Backend Service Image
+        run: |
+          docker build \
+            --build-arg "SERVICE_START_SCRIPT=${{ matrix.start_script }}" \
+            -t "${{ matrix.local_image }}:audit" \
+            backend
 
-      - name: Save Backend Image
-        run: docker save ticket-booking-backend:audit -o backend-image.tar
+      - name: Save Backend Service Image
+        run: docker save "${{ matrix.local_image }}:audit" -o "${{ matrix.service }}-image.tar"
 
-      - name: Upload Backend Image Artifact
+      - name: Upload Backend Service Image Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: backend-image
-          path: backend-image.tar
+          name: backend-image-${{ matrix.service }}
+          path: ${{ matrix.service }}-image.tar
           retention-days: 1
 
   backend-image-scan:
-    name: 05 / Trivy Backend Image Scan
+    name: 05 / Trivy Backend Image Scan (${{ matrix.service }})
     runs-on: ubuntu-latest
     needs: backend-image-build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api-gateway
+            local_image: ticket-booking-api-gateway
+          - service: auth-service
+            local_image: ticket-booking-auth-service
+          - service: catalog-service
+            local_image: ticket-booking-catalog-service
+          - service: booking-service
+            local_image: ticket-booking-booking-service
+          - service: checkin-service
+            local_image: ticket-booking-checkin-service
+          - service: notification-service
+            local_image: ticket-booking-notification-service
     steps:
-      - name: Download Backend Image Artifact
+      - name: Download Backend Service Image Artifact
         uses: actions/download-artifact@v4
         with:
-          name: backend-image
+          name: backend-image-${{ matrix.service }}
 
-      - name: Load Backend Image
-        run: docker load -i backend-image.tar
+      - name: Load Backend Service Image
+        run: docker load -i "${{ matrix.service }}-image.tar"
 
-      - name: Trivy Backend Image Scan
+      - name: Trivy Backend Service Image Scan
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          image-ref: ticket-booking-backend:audit
+          image-ref: ${{ matrix.local_image }}:audit
           format: table
           exit-code: '1'
           severity: HIGH,CRITICAL

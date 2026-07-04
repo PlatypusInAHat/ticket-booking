@@ -2,11 +2,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+ARG SERVICE_START_SCRIPT=start
+ENV SERVICE_START_SCRIPT=${SERVICE_START_SCRIPT}
+
 COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY . .
 
-EXPOSE 5000 5101 5102 5103 5104
+EXPOSE 5000 5101 5102 5103 5104 5105
 
-CMD ["npm", "start"]
+CMD ["sh", "-c", "npm run ${SERVICE_START_SCRIPT}"]
