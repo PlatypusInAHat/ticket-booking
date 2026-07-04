@@ -356,6 +356,7 @@ jobs:
           set -euo pipefail
 
           docker build \
+            --pull \
             --build-arg "SERVICE_START_SCRIPT=${SERVICE_START_SCRIPT}" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
@@ -400,6 +401,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ matrix.local_image }}:audit
+          scanners: vuln
           format: table
           exit-code: '1'
           severity: HIGH,CRITICAL

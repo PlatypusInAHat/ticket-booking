@@ -4,3 +4,7 @@ npm-debug.log
 .env
 .env.*
 coverage
+dist
+.cache
+.DS_Store
+*.tsbuildinfo

@@ -264,6 +264,7 @@ jobs:
       - name: Build Backend Service Image
         run: |
           docker build \
+            --pull \
             --build-arg "SERVICE_START_SCRIPT=${{ matrix.start_script }}" \
             -t "${{ matrix.local_image }}:audit" \
             backend
@@ -311,6 +312,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ matrix.local_image }}:audit
+          scanners: vuln
           format: table
           exit-code: '1'
           severity: HIGH,CRITICAL

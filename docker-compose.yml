@@ -75,7 +75,7 @@ services:
   auth-service:
     build:
       context: ./backend
-    command: npm run start:auth-service
+    command: node microservices/auth-service/server.js
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -106,7 +106,7 @@ services:
   catalog-service:
     build:
       context: ./backend
-    command: npm run start:catalog-service
+    command: node microservices/catalog-service/server.js
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -130,7 +130,7 @@ services:
   booking-service:
     build:
       context: ./backend
-    command: npm run start:booking-service
+    command: node microservices/booking-service/server.js
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -190,7 +190,7 @@ services:
   checkin-service:
     build:
       context: ./backend
-    command: npm run start:checkin-service
+    command: node microservices/checkin-service/server.js
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -217,7 +217,7 @@ services:
   notification-service:
     build:
       context: ./backend
-    command: npm run start:notification-service
+    command: node microservices/notification-service/server.js
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -255,7 +255,7 @@ services:
   api-gateway:
     build:
       context: ./backend
-    command: npm run start:gateway
+    command: node microservices/api-gateway/server.js
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -282,7 +282,7 @@ services:
   seed-microservices:
     build:
       context: ./backend
-    command: npm run seed:microservices
+    command: node scripts/seedMicroservices.js
     profiles:
       - tools
     environment:
