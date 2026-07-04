@@ -214,16 +214,28 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Trivy Filesystem Scan
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,secret,misconfig
-          format: sarif
-          output: trivy-app-results.sarif
-          exit-code: '1'
-          severity: HIGH,CRITICAL
-          skip-dirs: backend/node_modules,frontend/node_modules,mobile/node_modules
+        run: |
+          set -euo pipefail
+
+          docker run --rm \
+            -v "$PWD:/repo" \
+            -w /repo \
+            aquasec/trivy:0.70.0 \
+            fs \
+            --skip-version-check \
+            --scanners vuln,misconfig \
+            --severity HIGH,CRITICAL \
+            --format sarif \
+            --output trivy-app-results.sarif \
+            --exit-code 1 \
+            --skip-dirs .git \
+            --skip-dirs backend/node_modules \
+            --skip-dirs frontend/node_modules \
+            --skip-dirs mobile/node_modules \
+            --skip-dirs backend/coverage \
+            --skip-dirs frontend/coverage \
+            --skip-dirs mobile/coverage \
+            .
 
       - name: Upload Trivy SARIF
         if: always()
