@@ -4,6 +4,7 @@ import { Ticket, ShoppingBag, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAppSelector, useAppDispatch } from "@/store"
 import { logout } from "@/store/authSlice"
+import { authAPI } from "@/services/api"
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Events", to: "/events" },
@@ -21,7 +22,12 @@ export function Navbar() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout()
+    } catch (error) {
+      // Client-side logout must still clear local credentials if the session is already expired.
+    }
     dispatch(logout())
     setOpen(false)
     navigate("/")

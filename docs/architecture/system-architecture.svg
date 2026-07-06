@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+  <title id="title">TicketStage System Architecture</title>
+  <desc id="desc">Cloudflare, frontend, AWS EKS microservices, data stores, event broker, monitoring, GitHub Actions, ECR, Terraform, and Argo CD architecture.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10100f"/>
+      <stop offset="55%" stop-color="#171512"/>
+      <stop offset="100%" stop-color="#21190d"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffd166"/>
+      <stop offset="100%" stop-color="#f4a261"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d8c7a1"/>
+    </marker>
+    <style>
+      .title { font: 800 44px Arial, sans-serif; fill: #fff7df; }
+      .subtitle { font: 500 18px Arial, sans-serif; fill: #cbbf9e; }
+      .box { fill: #24211b; stroke: #5c5038; stroke-width: 2; rx: 18; filter: url(#shadow); }
+      .box2 { fill: #192522; stroke: #47715f; stroke-width: 2; rx: 18; filter: url(#shadow); }
+      .box3 { fill: #241b20; stroke: #794a5f; stroke-width: 2; rx: 18; filter: url(#shadow); }
+      .aws { fill: rgba(255, 209, 102, 0.04); stroke: #806a33; stroke-width: 2; rx: 28; stroke-dasharray: 8 8; }
+      .label { font: 800 20px Arial, sans-serif; fill: #fff7df; }
+      .small { font: 500 14px Arial, sans-serif; fill: #d8c7a1; }
+      .tiny { font: 600 12px Arial, sans-serif; fill: #9f9274; letter-spacing: 0.08em; }
+      .line { stroke: #d8c7a1; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .event { stroke: #70d6a3; stroke-width: 2.5; fill: none; marker-end: url(#arrow); stroke-dasharray: 7 7; }
+      .deploy { stroke: #87a8ff; stroke-width: 2.5; fill: none; marker-end: url(#arrow); stroke-dasharray: 9 7; }
+      .pill { fill: url(#accent); rx: 999; }
+      .pillText { font: 800 13px Arial, sans-serif; fill: #22180a; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1100" fill="url(#bg)"/>
+  <circle cx="1370" cy="110" r="210" fill="#f4a261" opacity="0.09"/>
+  <circle cx="150" cy="920" r="260" fill="#70d6a3" opacity="0.08"/>
+
+  <text x="70" y="72" class="title">TicketStage System Architecture</text>
+  <text x="72" y="108" class="subtitle">High-availability event ticketing platform with microservices, GitOps, monitoring, and queue-based resilience.</text>
+
+  <rect x="55" y="145" width="1490" height="780" class="aws"/>
+  <text x="85" y="183" class="tiny">AWS CLOUD / PROTECTED EDGE</text>
+
+  <rect x="95" y="230" width="190" height="92" class="box"/>
+  <text x="125" y="268" class="label">Users</text>
+  <text x="125" y="294" class="small">Web + Mobile</text>
+
+  <rect x="355" y="220" width="230" height="112" class="box3"/>
+  <text x="390" y="260" class="label">Cloudflare</text>
+  <text x="390" y="286" class="small">DNS, WAF, DDoS</text>
+  <text x="390" y="309" class="small">Bot + Rate Limits</text>
+
+  <rect x="660" y="170" width="230" height="112" class="box"/>
+  <text x="695" y="210" class="label">Frontend</text>
+  <text x="695" y="236" class="small">React / Vite</text>
+  <text x="695" y="259" class="small">S3 + CloudFront</text>
+
+  <rect x="660" y="335" width="230" height="112" class="box"/>
+  <text x="695" y="375" class="label">AWS ALB</text>
+  <text x="695" y="401" class="small">Ingress Controller</text>
+  <text x="695" y="424" class="small">TLS + Routing</text>
+
+  <rect x="985" y="155" width="480" height="640" class="aws"/>
+  <text x="1015" y="193" class="tiny">EKS CLUSTER</text>
+
+  <rect x="1095" y="235" width="230" height="92" class="box2"/>
+  <text x="1130" y="273" class="label">API Gateway</text>
+  <text x="1130" y="299" class="small">Express reverse proxy</text>
+
+  <rect x="1015" y="380" width="180" height="88" class="box2"/>
+  <text x="1042" y="416" class="label">Auth</text>
+  <text x="1042" y="442" class="small">JWT + Users</text>
+
+  <rect x="1245" y="380" width="180" height="88" class="box2"/>
+  <text x="1272" y="416" class="label">Catalog</text>
+  <text x="1272" y="442" class="small">Events + Tickets</text>
+
+  <rect x="1015" y="520" width="180" height="88" class="box2"/>
+  <text x="1042" y="556" class="label">Booking</text>
+  <text x="1042" y="582" class="small">Queue + Payment</text>
+
+  <rect x="1245" y="520" width="180" height="88" class="box2"/>
+  <text x="1272" y="556" class="label">Check-in</text>
+  <text x="1272" y="582" class="small">QR, Barcode, NFC</text>
+
+  <rect x="1130" y="660" width="180" height="88" class="box2"/>
+  <text x="1157" y="696" class="label">Notify</text>
+  <text x="1157" y="722" class="small">Email + Events</text>
+
+  <rect x="1015" y="835" width="190" height="68" class="box"/>
+  <text x="1040" y="864" class="label">HPA / KEDA</text>
+  <text x="1040" y="886" class="small">Autoscaling</text>
+
+  <rect x="1245" y="835" width="190" height="68" class="box"/>
+  <text x="1270" y="864" class="label">Monitoring</text>
+  <text x="1270" y="886" class="small">Prometheus + Grafana</text>
+
+  <rect x="665" y="540" width="220" height="92" class="box"/>
+  <text x="697" y="577" class="label">RabbitMQ</text>
+  <text x="697" y="603" class="small">Amazon MQ Broker</text>
+
+  <rect x="665" y="700" width="220" height="92" class="box"/>
+  <text x="697" y="737" class="label">Payment</text>
+  <text x="697" y="763" class="small">VNPay / MoMo</text>
+
+  <rect x="95" y="500" width="190" height="88" class="box"/>
+  <text x="122" y="536" class="label">GitHub Actions</text>
+  <text x="122" y="562" class="small">Build, scan, push</text>
+
+  <rect x="355" y="500" width="190" height="88" class="box"/>
+  <text x="390" y="536" class="label">ECR</text>
+  <text x="390" y="562" class="small">Tagged images</text>
+
+  <rect x="95" y="665" width="190" height="88" class="box"/>
+  <text x="122" y="701" class="label">Terraform</text>
+  <text x="122" y="727" class="small">VPC, EKS, MQ, S3</text>
+
+  <rect x="355" y="665" width="190" height="88" class="box"/>
+  <text x="390" y="701" class="label">Argo CD</text>
+  <text x="390" y="727" class="small">GitOps sync</text>
+
+  <rect x="1030" y="935" width="110" height="72" class="box3"/>
+  <text x="1058" y="965" class="label">Auth DB</text>
+  <text x="1058" y="989" class="small">Mongo</text>
+  <rect x="1155" y="935" width="110" height="72" class="box3"/>
+  <text x="1170" y="965" class="label">Catalog DB</text>
+  <text x="1183" y="989" class="small">Mongo</text>
+  <rect x="1280" y="935" width="110" height="72" class="box3"/>
+  <text x="1298" y="965" class="label">Booking DB</text>
+  <text x="1308" y="989" class="small">Mongo</text>
+  <rect x="1405" y="935" width="110" height="72" class="box3"/>
+  <text x="1420" y="965" class="label">Checkin DB</text>
+  <text x="1433" y="989" class="small">Mongo</text>
+
+  <path class="line" d="M285 276 H355"/>
+  <path class="line" d="M585 250 C620 235 630 225 660 225"/>
+  <path class="line" d="M585 300 C620 325 630 370 660 390"/>
+  <path class="line" d="M890 390 H1095"/>
+  <path class="line" d="M1210 327 V380"/>
+  <path class="line" d="M1178 327 C1115 345 1105 360 1105 380"/>
+  <path class="line" d="M1242 327 C1310 345 1335 360 1335 380"/>
+  <path class="line" d="M1160 327 C1088 410 1105 492 1105 520"/>
+  <path class="line" d="M1260 327 C1348 412 1335 492 1335 520"/>
+  <path class="event" d="M1195 560 C1060 580 990 592 885 586"/>
+  <path class="event" d="M1245 565 C1105 610 1030 670 1310 704"/>
+  <path class="event" d="M885 586 C1010 630 1055 680 1130 704"/>
+  <path class="line" d="M1105 608 V935"/>
+  <path class="line" d="M1335 468 V935"/>
+  <path class="line" d="M1105 608 C1160 775 1210 840 1210 935"/>
+  <path class="line" d="M1335 608 C1390 760 1458 845 1460 935"/>
+  <path class="line" d="M1015 560 H885"/>
+  <path class="line" d="M885 740 H1015"/>
+  <path class="deploy" d="M285 544 H355"/>
+  <path class="deploy" d="M545 544 C735 545 840 680 985 865"/>
+  <path class="deploy" d="M285 710 H355"/>
+  <path class="deploy" d="M545 710 C700 760 820 835 1015 865"/>
+  <path class="deploy" d="M450 665 C560 560 690 515 985 280"/>
+
+  <rect x="70" y="1018" width="132" height="34" class="pill"/>
+  <text x="94" y="1040" class="pillText">solid = traffic</text>
+  <rect x="230" y="1018" width="145" height="34" class="pill"/>
+  <text x="254" y="1040" class="pillText">dashed = async</text>
+  <rect x="405" y="1018" width="150" height="34" class="pill"/>
+  <text x="428" y="1040" class="pillText">blue = deploy</text>
+</svg>

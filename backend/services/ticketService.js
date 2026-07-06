@@ -3,35 +3,82 @@ const Event = require('../models/Event');
 const ApiError = require('../utils/ApiError');
 const { toPublicTicket } = require('../serializers/ticketSerializer');
 const { canManageCompany } = require('./companyService');
-
-const toPositiveInteger = (value, fallback) => {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
+const {
+  buildSort,
+  parseBoolean,
+  parseDate,
+  parsePositiveInt
+} = require('../utils/queryUtils');
 
 const getAllTickets = async (query) => {
-  const { companyId, eventId, eventType, city, search, page = 1, limit = 10 } = query;
-  const currentPage = toPositiveInteger(page, 1);
-  const pageSize = toPositiveInteger(limit, 10);
+  const {
+    companyId,
+    eventId,
+    eventType,
+    city,
+    search,
+    status,
+    sessionId,
+    tag,
+    minPrice,
+    maxPrice,
+    dateFrom,
+    dateTo,
+    availableOnly,
+    sortBy = 'date',
+    order = 'asc',
+    page = 1,
+    limit = 10
+  } = query;
+
+  const currentPage = parsePositiveInt(page, 1);
+  const pageSize = parsePositiveInt(limit, 10, { min: 1, max: 100 });
 
   const filter = { isActive: true };
 
   if (companyId) filter.company = companyId;
   if (eventId) filter.event = eventId;
+  if (sessionId) filter.session = sessionId;
   if (eventType) filter.eventType = eventType;
   if (city) filter['location.city'] = city;
-  if (search) {
-    filter.$text = { $search: search };
+  if (status && status !== 'all') filter.status = status;
+  if (search) filter.$text = { $search: search };
+  if (tag) filter.tags = tag.toLowerCase();
+  if (parseBoolean(availableOnly)) {
+    filter.availableSeats = { $gt: 0 };
+  }
+
+  const fromDate = parseDate(dateFrom);
+  const toDate = parseDate(dateTo);
+  if (fromDate || toDate) {
+    filter.date = {};
+    if (fromDate) filter.date.$gte = fromDate;
+    if (toDate) filter.date.$lte = toDate;
+  }
+
+  const min = Number.parseFloat(minPrice);
+  const max = Number.parseFloat(maxPrice);
+  if (Number.isFinite(min) || Number.isFinite(max)) {
+    filter.price = {};
+    if (Number.isFinite(min)) filter.price.$gte = min;
+    if (Number.isFinite(max)) filter.price.$lte = max;
   }
 
   const skip = (currentPage - 1) * pageSize;
+  const sort = buildSort(
+    sortBy,
+    order,
+    ['date', 'price', 'availableSeats', 'createdAt', 'soldSeats'],
+    'date'
+  );
 
   const tickets = await Ticket.find(filter)
     .populate('company', 'name slug logo status')
-    .populate('event', 'title slug eventType coverImage startsAt endsAt status company')
+    .populate('event', 'title slug eventType coverImage startsAt endsAt status company location')
+    .populate('session', 'startsAt endsAt status')
     .skip(skip)
     .limit(pageSize)
-    .sort({ date: 1 });
+    .sort(sort);
 
   const total = await Ticket.countDocuments(filter);
 
@@ -49,7 +96,8 @@ const getAllTickets = async (query) => {
 const getTicketById = async (id) => {
   const ticket = await Ticket.findById(id)
     .populate('company', 'name slug logo contact address description status verification.status')
-    .populate('event', 'title slug eventType description coverImage gallery location startsAt endsAt timezone status saleWindow admission policies tags company');
+    .populate('event', 'title slug eventType description coverImage gallery location startsAt endsAt timezone status saleWindow admission policies tags company')
+    .populate('session', 'startsAt endsAt status');
   if (!ticket) {
     throw new ApiError(404, 'Ticket not found');
   }
@@ -94,6 +142,7 @@ const createTicket = async (ticketData, user) => {
     ...ticketData,
     event: eventDocument?._id,
     company: eventDocument?.company?._id,
+    organizer: user.id,
     eventName: resolvedEventName,
     eventType: resolvedEventType,
     description: ticketData.description ?? eventDocument?.description,
@@ -105,11 +154,15 @@ const createTicket = async (ticketData, user) => {
         ? eventDocument.startsAt.toISOString().slice(11, 16)
         : undefined
     ),
+    timezone: ticketData.timezone || eventDocument?.timezone || 'Asia/Ho_Chi_Minh',
     currency: ticketData.currency || eventDocument?.company?.settings?.defaultCurrency || 'VND',
     price: Number(price),
     availableSeats: Number(availableSeats),
     totalSeats: Number(availableSeats),
-    organizer: user.id
+    ticketName: ticketData.ticketName || ticketData.name || resolvedEventName,
+    category: ticketData.category || 'standard',
+    ticketType: ticketData.ticketType || ticketData.name || resolvedEventName,
+    visibility: ticketData.visibility || 'public'
   });
 
   await ticket.save();

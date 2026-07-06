@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; padding: 0; background: #f4f1ea; color: #1f2933; font-family: Arial, sans-serif; line-height: 1.6; }
+    .container { max-width: 620px; margin: 0 auto; padding: 32px 18px; }
+    .card { background: #ffffff; border: 1px solid #e4dccd; border-radius: 18px; overflow: hidden; }
+    .header { background: #0f766e; color: #ffffff; padding: 28px; text-align: center; }
+    .content { padding: 28px; }
+    .event { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 14px; padding: 16px; margin: 18px 0; }
+    .footer { padding: 18px 28px 28px; color: #6b7280; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <h1>Your event is coming up</h1>
+      </div>
+      <div class="content">
+        <p>Hi <strong>{{userName}}</strong>,</p>
+        <p>This is a reminder that <strong>{{eventName}}</strong> starts within the next {{reminderWindowHours}} hours.</p>
+        <div class="event">
+          <p><strong>When:</strong> {{startsAt}}</p>
+          <p><strong>Venue:</strong> {{venue}}</p>
+          <p><strong>Address:</strong> {{address}}</p>
+          <p><strong>Booking:</strong> {{bookingNumber}}</p>
+        </div>
+        <p>Please have your QR/barcode pass ready before arriving at the check-in gate.</p>
+      </div>
+      <div class="footer">
+        <p>TicketStage event reminder.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

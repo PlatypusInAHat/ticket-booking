@@ -14,7 +14,9 @@ const serviceDefinitions = [
       AUTH_MONGODB_URI: process.env.AUTH_MONGODB_URI || 'mongodb://127.0.0.1:27017/ticket-auth',
       CATALOG_SERVICE_URL: process.env.CATALOG_SERVICE_URL || 'http://127.0.0.1:5102',
       BOOKING_SERVICE_URL: process.env.BOOKING_SERVICE_URL || 'http://127.0.0.1:5103',
-      CHECKIN_SERVICE_URL: process.env.CHECKIN_SERVICE_URL || 'http://127.0.0.1:5104'
+      CHECKIN_SERVICE_URL: process.env.CHECKIN_SERVICE_URL || 'http://127.0.0.1:5104',
+      EVENT_BROKER_URL: process.env.EVENT_BROKER_URL,
+      EVENT_EXCHANGE: process.env.EVENT_EXCHANGE
     }
   },
   {
@@ -35,7 +37,11 @@ const serviceDefinitions = [
       SERVICE_NAME: 'booking-service',
       BOOKING_SERVICE_PORT: process.env.BOOKING_SERVICE_PORT || '5103',
       BOOKING_MONGODB_URI: process.env.BOOKING_MONGODB_URI || 'mongodb://127.0.0.1:27017/ticket-booking',
-      CATALOG_SERVICE_URL: process.env.CATALOG_SERVICE_URL || 'http://127.0.0.1:5102'
+      CATALOG_SERVICE_URL: process.env.CATALOG_SERVICE_URL || 'http://127.0.0.1:5102',
+      EVENT_REMINDER_WORKER_ENABLED: process.env.EVENT_REMINDER_WORKER_ENABLED,
+      EVENT_REMINDER_INTERVAL_MS: process.env.EVENT_REMINDER_INTERVAL_MS,
+      EVENT_REMINDER_WINDOW_HOURS: process.env.EVENT_REMINDER_WINDOW_HOURS,
+      EVENT_REMINDER_BATCH_SIZE: process.env.EVENT_REMINDER_BATCH_SIZE
     }
   },
   {
@@ -54,7 +60,8 @@ const serviceDefinitions = [
     env: {
       SERVICE_MODE: 'microservice',
       SERVICE_NAME: 'api-gateway',
-      GATEWAY_PORT: process.env.GATEWAY_PORT || process.env.PORT || '5000'
+      GATEWAY_PORT: process.env.GATEWAY_PORT || process.env.PORT || '5000',
+      NOTIFICATION_SERVICE_URL: process.env.NOTIFICATION_SERVICE_URL || 'http://127.0.0.1:5105'
     }
   },
   {
@@ -63,7 +70,30 @@ const serviceDefinitions = [
     env: {
       SERVICE_MODE: 'microservice',
       SERVICE_NAME: 'notification-service',
-      NOTIFICATION_SERVICE_PORT: process.env.NOTIFICATION_SERVICE_PORT || '5105'
+      NOTIFICATION_SERVICE_PORT: process.env.NOTIFICATION_SERVICE_PORT || '5105',
+      NOTIFICATION_MONGODB_URI: process.env.NOTIFICATION_MONGODB_URI || 'mongodb://127.0.0.1:27017/ticket-notification',
+      EVENT_BROKER_URL: process.env.EVENT_BROKER_URL,
+      EVENT_EXCHANGE: process.env.EVENT_EXCHANGE,
+      INTERNAL_API_KEY: process.env.INTERNAL_API_KEY,
+      SECRET_HASH_KEY: process.env.SECRET_HASH_KEY,
+      JWT_SECRET: process.env.JWT_SECRET,
+      FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+      PUBLIC_API_URL: process.env.PUBLIC_API_URL || 'http://localhost:5000',
+      EMAIL_PROVIDER: process.env.EMAIL_PROVIDER,
+      EMAIL_FROM: process.env.EMAIL_FROM,
+      EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME,
+      EMAIL_HOST: process.env.EMAIL_HOST,
+      EMAIL_PORT: process.env.EMAIL_PORT,
+      EMAIL_SECURE: process.env.EMAIL_SECURE,
+      EMAIL_USER: process.env.EMAIL_USER,
+      EMAIL_PASS: process.env.EMAIL_PASS,
+      SES_SMTP_HOST: process.env.SES_SMTP_HOST,
+      SES_SMTP_PORT: process.env.SES_SMTP_PORT,
+      SES_SMTP_USERNAME: process.env.SES_SMTP_USERNAME,
+      SES_SMTP_PASSWORD: process.env.SES_SMTP_PASSWORD,
+      EMAIL_WORKER_ENABLED: process.env.EMAIL_WORKER_ENABLED,
+      EMAIL_WORKER_INTERVAL_MS: process.env.EMAIL_WORKER_INTERVAL_MS,
+      EMAIL_WORKER_BATCH_SIZE: process.env.EMAIL_WORKER_BATCH_SIZE
     }
   }
 ];
@@ -73,6 +103,12 @@ const writeWithPrefix = (name, stream, chunk) => {
     .split(/\r?\n/)
     .filter(Boolean)
     .forEach((line) => stream.write(`[${name}] ${line}\n`));
+};
+
+const removeUndefinedEnvValues = (env = {}) => {
+  return Object.fromEntries(
+    Object.entries(env).filter(([, value]) => value !== undefined)
+  );
 };
 
 const startMicroservices = (services = serviceDefinitions) => {
@@ -97,7 +133,7 @@ const startMicroservices = (services = serviceDefinitions) => {
   services.forEach(({ name, script, env }) => {
     const child = spawn(process.execPath, [path.join(backendRoot, script)], {
       cwd: backendRoot,
-      env: { ...process.env, ...env },
+      env: removeUndefinedEnvValues({ ...process.env, ...env }),
       stdio: ['ignore', 'pipe', 'pipe']
     });
 

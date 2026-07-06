@@ -32,7 +32,7 @@ export default function AuthScreen({ onAuthenticated }) {
         ? await authApi.login(form.email, form.password)
         : await authApi.register(form);
 
-      setAuthToken(auth.token);
+      setAuthToken(auth.token, auth.refreshToken);
       await saveAuth(auth);
       onAuthenticated(auth);
     } catch (error) {
@@ -55,14 +55,14 @@ export default function AuthScreen({ onAuthenticated }) {
   return (
     <Screen
       title="TicketStage"
-      subtitle="Ứng dụng đặt vé, quản lý vé điện tử và check-in tại cổng."
+      subtitle="Book tickets, manage mobile passes, and check in guests with QR, barcode, or NFC."
       right={<Ticket color={colors.accent} size={36} />}
     >
       <Card style={styles.card}>
         <Tabs
           tabs={[
-            { key: 'login', label: 'Đăng nhập', icon: LogIn },
-            { key: 'register', label: 'Đăng ký', icon: UserPlus }
+            { key: 'login', label: 'Log in', icon: LogIn },
+            { key: 'register', label: 'Register', icon: UserPlus }
           ]}
           activeTab={mode}
           onChange={setMode}
@@ -70,10 +70,10 @@ export default function AuthScreen({ onAuthenticated }) {
 
         {mode === 'register' && (
           <Field
-            label="Họ và tên"
+            label="Full name"
             value={form.name}
             onChangeText={(value) => setForm(current => ({ ...current, name: value }))}
-            placeholder="Nguyễn Văn A"
+            placeholder="Alex Nguyen"
           />
         )}
 
@@ -83,31 +83,31 @@ export default function AuthScreen({ onAuthenticated }) {
           onChangeText={(value) => setForm(current => ({ ...current, email: value }))}
           autoCapitalize="none"
           keyboardType="email-address"
-          placeholder="ban@example.com"
+          placeholder="you@example.com"
         />
 
         <Field
-          label="Mật khẩu"
+          label="Password"
           value={form.password}
           onChangeText={(value) => setForm(current => ({ ...current, password: value }))}
           secureTextEntry
-          placeholder="Nhập mật khẩu"
+          placeholder="Enter your password"
         />
 
         {mode === 'register' && (
           <Field
-            label="Xác nhận mật khẩu"
+            label="Confirm password"
             value={form.confirmPassword}
             onChangeText={(value) => setForm(current => ({ ...current, confirmPassword: value }))}
             secureTextEntry
-            placeholder="Nhập lại mật khẩu"
+            placeholder="Repeat your password"
           />
         )}
 
         {message ? <Text style={styles.errorText}>{message}</Text> : null}
 
         <Button
-          title={mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
+          title={mode === 'login' ? 'Log in' : 'Create account'}
           icon={mode === 'login' ? LogIn : UserPlus}
           onPress={submit}
           loading={loading}
@@ -115,8 +115,8 @@ export default function AuthScreen({ onAuthenticated }) {
         />
 
         <View style={styles.demoRow}>
-          <Button title="Khách" variant="secondary" icon={User} onPress={() => useDemoAccount('user')} style={styles.demoButton} />
-          <Button title="Nhân viên" variant="secondary" icon={User} onPress={() => useDemoAccount('staff')} style={styles.demoButton} />
+          <Button title="Customer" variant="secondary" icon={User} onPress={() => useDemoAccount('user')} style={styles.demoButton} />
+          <Button title="Staff" variant="secondary" icon={User} onPress={() => useDemoAccount('staff')} style={styles.demoButton} />
         </View>
       </Card>
     </Screen>

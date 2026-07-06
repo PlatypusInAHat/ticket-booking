@@ -1,29 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
-        .button { display: inline-block; padding: 10px 20px; background-color: #FBBF24; color: #000; text-decoration: none; border-radius: 5px; font-weight: bold; }
-    </style>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; padding: 0; background: #f4f1ea; color: #1f2933; font-family: Arial, sans-serif; line-height: 1.6; }
+    .container { max-width: 620px; margin: 0 auto; padding: 32px 18px; }
+    .card { background: #ffffff; border: 1px solid #e4dccd; border-radius: 18px; overflow: hidden; }
+    .header { background: #111827; color: #fbbf24; padding: 28px; text-align: center; }
+    .content { padding: 28px; }
+    .button { display: inline-block; padding: 12px 20px; background: #f59e0b; color: #111827; border-radius: 999px; text-decoration: none; font-weight: 700; }
+    .footer { padding: 18px 28px 28px; color: #6b7280; font-size: 12px; text-align: center; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>🎉 Chào mừng đến với TicketStage!</h2>
-        </div>
-        <p>Xin chào <strong>{{userName}}</strong>,</p>
-        <p>Cảm ơn bạn đã đăng ký tài khoản tại TicketStage. Chúng tôi rất vui mừng được đồng hành cùng bạn trong những sự kiện sắp tới.</p>
-        <p>Giờ đây bạn đã có thể bắt đầu đặt vé cho các concert, lễ hội, và sự kiện thể thao yêu thích.</p>
-        <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173" class="button">Khám phá Sự kiện ngay</a>
-        </div>
-        <p>Trân trọng,<br>Đội ngũ TicketStage</p>
-        <div class="footer">
-            <p>© 2026 TicketStage. All rights reserved.</p>
-        </div>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <h1>Welcome to TicketStage</h1>
+      </div>
+      <div class="content">
+        <p>Hi <strong>{{userName}}</strong>,</p>
+        <p>Your TicketStage account is ready. You can now discover events, book tickets, and keep your passes in one place.</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a class="button" href="{{frontendUrl}}">Explore events</a>
+        </p>
+        <p>Thanks for joining us,<br>The TicketStage team</p>
+      </div>
+      <div class="footer">
+        <p>TicketStage - event ticketing, check-in, and audience access.</p>
+      </div>
     </div>
+  </div>
 </body>
 </html>

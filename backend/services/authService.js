@@ -3,20 +3,40 @@ const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const { getMinimumPasswordLength } = require('../utils/cryptoUtils');
 
+const getAccessTokenExpiry = () => process.env.JWT_ACCESS_EXPIRE || '15m';
+const getRefreshTokenExpiry = () => process.env.JWT_REFRESH_EXPIRE || '24h';
+
+const getRefreshSecret = () => (
+  process.env.JWT_REFRESH_SECRET || `${process.env.JWT_SECRET}_refresh`
+);
+
+const toIsoExpiry = (token) => {
+  const decoded = jwt.decode(token);
+  return decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null;
+};
+
 const generateTokens = (user) => {
   const accessToken = jwt.sign(
     { id: user._id, email: user.email, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: '15m' }
+    { expiresIn: getAccessTokenExpiry() }
   );
 
   const refreshToken = jwt.sign(
-    { id: user._id },
-    process.env.JWT_REFRESH_SECRET || (process.env.JWT_SECRET + '_refresh'),
-    { expiresIn: '7d' }
+    {
+      id: user._id,
+      version: user.security?.refreshTokenVersion || 0
+    },
+    getRefreshSecret(),
+    { expiresIn: getRefreshTokenExpiry() }
   );
 
-  return { accessToken, refreshToken };
+  return {
+    accessToken,
+    refreshToken,
+    expiresAt: toIsoExpiry(accessToken),
+    refreshExpiresAt: toIsoExpiry(refreshToken)
+  };
 };
 
 const register = async (userData) => {
@@ -42,7 +62,7 @@ const register = async (userData) => {
   const user = new User({ name, email, password });
   await user.save();
 
-  const { accessToken, refreshToken } = generateTokens(user);
+  const { accessToken, refreshToken, expiresAt, refreshExpiresAt } = generateTokens(user);
 
   const { publishDomainEvent } = require('../shared/domainEventPublisher');
   const EVENTS = require('../shared/domainEvents');
@@ -52,6 +72,8 @@ const register = async (userData) => {
   return {
     token: accessToken,
     refreshToken,
+    expiresAt,
+    refreshExpiresAt,
     user: {
       id: user._id,
       name: user.name,
@@ -93,11 +115,13 @@ const login = async (email, password) => {
 
   await user.save({ validateBeforeSave: false });
 
-  const { accessToken, refreshToken } = generateTokens(user);
+  const { accessToken, refreshToken, expiresAt, refreshExpiresAt } = generateTokens(user);
 
   return {
     token: accessToken,
     refreshToken,
+    expiresAt,
+    refreshExpiresAt,
     user: {
       id: user._id,
       name: user.name,
@@ -113,8 +137,7 @@ const refreshAuthToken = async (oldRefreshToken) => {
   }
 
   try {
-    const secret = process.env.JWT_REFRESH_SECRET || (process.env.JWT_SECRET + '_refresh');
-    const decoded = jwt.verify(oldRefreshToken, secret);
+    const decoded = jwt.verify(oldRefreshToken, getRefreshSecret());
     
     const user = await User.findById(decoded.id);
     if (!user) {
@@ -125,11 +148,25 @@ const refreshAuthToken = async (oldRefreshToken) => {
       throw new ApiError(403, 'This account is not active');
     }
 
-    const { accessToken, refreshToken } = generateTokens(user);
+    if ((user.security?.refreshTokenVersion || 0) !== (decoded.version || 0)) {
+      throw new ApiError(401, 'Refresh token has been revoked');
+    }
+
+    if (
+      user.security?.passwordChangedAt &&
+      decoded.iat &&
+      user.security.passwordChangedAt.getTime() > decoded.iat * 1000
+    ) {
+      throw new ApiError(401, 'Refresh token has expired after password change');
+    }
+
+    const { accessToken, refreshToken, expiresAt, refreshExpiresAt } = generateTokens(user);
 
     return {
       token: accessToken,
       refreshToken,
+      expiresAt,
+      refreshExpiresAt,
       user: {
         id: user._id,
         name: user.name,
@@ -178,9 +215,21 @@ const resetPassword = async (resetToken, newPassword) => {
   user.password = newPassword;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpire = undefined;
+  user.security = user.security || {};
+  user.security.refreshTokenVersion = (user.security.refreshTokenVersion || 0) + 1;
   await user.save();
 
   return { message: 'Password updated successfully' };
 };
 
-module.exports = { register, login, refreshAuthToken, forgotPassword, resetPassword };
+const logout = async (userId) => {
+  await User.findByIdAndUpdate(userId, {
+    $inc: {
+      'security.refreshTokenVersion': 1
+    }
+  });
+
+  return { message: 'Logged out successfully' };
+};
+
+module.exports = { register, login, refreshAuthToken, forgotPassword, resetPassword, logout };

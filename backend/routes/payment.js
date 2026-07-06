@@ -20,18 +20,18 @@ const paymentLimiter = createEnvRateLimiter({
   defaultWindowMs: 60 * 1000,
   defaultMax: 12,
   keyGenerator: (req) => req.user?.id || req.ip,
-  message: 'Ban dang gui qua nhieu yeu cau thanh toan. Vui long thu lai sau.'
+  message: 'You are sending too many payment requests. Please try again later.'
 });
 
 router.post('/session', [
   paymentLimiter,
   body('bookingId')
     .isMongoId()
-    .withMessage('Ma don dat ve khong hop le'),
+    .withMessage('Booking ID is invalid'),
   body('provider')
     .optional()
     .isIn(['mock', 'vnpay', 'momo', 'credit_card', 'debit_card'])
-    .withMessage('Cong thanh toan khong hop le'),
+    .withMessage('Payment provider is invalid'),
   validateRequest
 ], paymentController.createPaymentSession);
 
@@ -39,19 +39,19 @@ router.post('/process', [
   paymentLimiter,
   body('bookingId')
     .isMongoId()
-    .withMessage('Ma don dat ve khong hop le'),
+    .withMessage('Booking ID is invalid'),
   body('paymentToken')
     .isString()
     .trim()
     .isLength({ min: 6, max: 512 })
-    .withMessage('Payment token khong hop le'),
+    .withMessage('Payment token is invalid'),
   validateRequest
 ], paymentController.processPayment);
 
 router.get('/:bookingId', [
   param('bookingId')
     .isMongoId()
-    .withMessage('Ma don dat ve khong hop le'),
+    .withMessage('Booking ID is invalid'),
   validateRequest
 ], paymentController.getPaymentStatus);
 

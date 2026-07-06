@@ -1,9 +1,10 @@
 const axios = require('axios');
 const ApiError = require('../utils/ApiError');
 const { getCorrelationId } = require('../middleware/correlationId');
+const { normalizeServiceUrl } = require('../utils/serviceUrl');
 
 const getCatalogBaseUrl = () => {
-  return process.env.CATALOG_SERVICE_URL || 'http://localhost:5102';
+  return normalizeServiceUrl(process.env.CATALOG_SERVICE_URL, 'http://localhost:5102');
 };
 
 const requestCatalog = async (path, body = {}) => {
@@ -27,8 +28,12 @@ const requestCatalog = async (path, body = {}) => {
   }
 };
 
-const reserveTickets = async (tickets) => {
-  return requestCatalog('/internal/catalog/tickets/reserve', { tickets });
+const reserveTickets = async (tickets, options = {}) => {
+  return requestCatalog('/internal/catalog/tickets/reserve', {
+    tickets,
+    userId: options.userId,
+    expiresAt: options.expiresAt
+  });
 };
 
 const releaseTickets = async (tickets, options = {}) => {

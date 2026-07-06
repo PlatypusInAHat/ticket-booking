@@ -17,21 +17,21 @@ function TicketCard({ ticket, onOpen, onBook }) {
         <Text style={styles.price}>{formatCurrency(ticket.price)}</Text>
       </View>
       <Text style={styles.title}>{ticket.eventName}</Text>
-      
+
       <View style={styles.infoRow}>
         <MapPin size={14} color={colors.muted} />
         <Text style={styles.muted}>{ticket.location?.venue}, {ticket.location?.city}</Text>
       </View>
-      
+
       <View style={styles.infoRow}>
         <Calendar size={14} color={colors.muted} />
-        <Text style={styles.muted}>{formatDate(ticket.date)} lúc {ticket.time}</Text>
+        <Text style={styles.muted}>{formatDate(ticket.date)} at {ticket.time}</Text>
       </View>
 
-      <Text style={styles.available}>Còn {ticket.availableSeats} vé</Text>
+      <Text style={styles.available}>{ticket.availableSeats} tickets left</Text>
       <View style={styles.actions}>
-        <Button title="Chi tiết" icon={Eye} variant="secondary" onPress={() => onOpen(ticket)} style={styles.flexButton} />
-        <Button title="Thêm giỏ" icon={Plus} onPress={() => onBook(ticket)} style={styles.flexButton} />
+        <Button title="Details" icon={Eye} variant="secondary" onPress={() => onOpen(ticket)} style={styles.flexButton} />
+        <Button title="Add to cart" icon={Plus} onPress={() => onBook(ticket)} style={styles.flexButton} />
       </View>
     </Card>
   );
@@ -39,7 +39,7 @@ function TicketCard({ ticket, onOpen, onBook }) {
 
 export default function TicketsScreen({ tickets, loading, refresh, onOpenTicket, onBookTicket }) {
   return (
-    <Screen title="Khám phá vé" subtitle="Chọn sự kiện, chuyến đi hoặc suất chiếu phù hợp.">
+    <Screen title="Explore Tickets" subtitle="Browse available events and choose the right ticket.">
       <ScrollView
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.accent} />}
         scrollEnabled={false}
@@ -54,8 +54,8 @@ export default function TicketsScreen({ tickets, loading, refresh, onOpenTicket,
         ))}
         {!loading && tickets.length === 0 ? (
           <Card>
-            <Text style={styles.title}>Chưa có vé đang bán</Text>
-            <Text style={styles.muted}>Hãy chạy backend seed hoặc kiểm tra kết nối API.</Text>
+            <Text style={styles.title}>No tickets on sale</Text>
+            <Text style={styles.muted}>Run the backend seed or check your API connection.</Text>
           </Card>
         ) : null}
       </ScrollView>

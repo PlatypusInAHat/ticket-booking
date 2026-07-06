@@ -30,7 +30,10 @@ router.get('/stats', asyncHandler(async (req, res) => {
 }));
 
 router.post('/tickets/reserve', asyncHandler(async (req, res) => {
-  const reservation = await catalogInventoryService.reserveTickets(req.body.tickets || []);
+  const reservation = await catalogInventoryService.reserveTickets(req.body.tickets || [], {
+    userId: req.body.userId,
+    expiresAt: req.body.expiresAt
+  });
   res.status(200).json(new ApiResponse(200, reservation));
 }));
 

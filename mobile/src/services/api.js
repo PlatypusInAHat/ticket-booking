@@ -1,9 +1,12 @@
 import { API_BASE_URL } from '../config';
+import { clearAuth, loadAuth, saveAuth } from './storage';
 
 let token = null;
+let refreshToken = null;
 
-export const setAuthToken = (nextToken) => {
+export const setAuthToken = (nextToken, nextRefreshToken = refreshToken) => {
   token = nextToken;
+  refreshToken = nextRefreshToken;
 };
 
 export const getAuthToken = () => token;
@@ -25,6 +28,27 @@ const buildQuery = (params = {}) => {
   return value ? `?${value}` : '';
 };
 
+const refreshAuthSession = async () => {
+  if (!refreshToken) {
+    const savedAuth = await loadAuth();
+    refreshToken = savedAuth?.refreshToken || null;
+  }
+
+  if (!refreshToken) {
+    throw new Error('Your session has expired. Please log in again.');
+  }
+
+  const refreshed = await request('/auth/refresh-token', {
+    method: 'POST',
+    body: { refreshToken },
+    skipAuthRefresh: true
+  });
+
+  setAuthToken(refreshed.token, refreshed.refreshToken);
+  await saveAuth(refreshed);
+  return refreshed.token;
+};
+
 const request = async (path, options = {}) => {
   const headers = {
     Accept: 'application/json',
@@ -43,7 +67,21 @@ const request = async (path, options = {}) => {
   const payload = contentType.includes('application/json') ? await response.json() : await response.text();
 
   if (!response.ok) {
-    throw new Error(payload?.message || 'Không thể kết nối máy chủ.');
+    if (response.status === 401 && !options.skipAuthRefresh && !path.includes('/auth/login')) {
+      try {
+        await refreshAuthSession();
+        return request(path, {
+          ...options,
+          skipAuthRefresh: true
+        });
+      } catch (refreshError) {
+        await clearAuth();
+        setAuthToken(null, null);
+        throw refreshError;
+      }
+    }
+
+    throw new Error(payload?.message || payload?.error || 'Cannot connect to the API server.');
   }
 
   return payload?.data ?? payload;
@@ -53,7 +91,8 @@ export const imageUrl = (path) => `${API_BASE_URL}${path}`;
 
 export const authApi = {
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
-  register: (data) => request('/auth/register', { method: 'POST', body: data })
+  register: (data) => request('/auth/register', { method: 'POST', body: data }),
+  logout: () => request('/auth/logout', { method: 'POST' })
 };
 
 export const ticketApi = {
@@ -72,6 +111,8 @@ export const bookingApi = {
 };
 
 export const paymentApi = {
+  createSession: (data) => request('/payment/session', { method: 'POST', body: data }),
+  status: (bookingId) => request(`/payment/${bookingId}`),
   process: (data) => request('/payment/process', { method: 'POST', body: data })
 };
 

@@ -134,10 +134,11 @@ jobs:
           set -euo pipefail
 
           docker build \
+            --pull \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --label "org.opencontainers.image.version=${IMAGE_TAG}" \
-            -t ticketstage-frontend:${IMAGE_TAG} \
+            -t "ticketstage-frontend:${IMAGE_TAG}" \
             -t ticketstage-frontend:audit .
 
       - name: Save Frontend Image Artifact
@@ -166,9 +167,10 @@ jobs:
         run: docker load -i frontend-image.tar
 
       - name: Trivy Frontend Image Scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ticketstage-frontend:audit
+          scanners: vuln
           format: table
           exit-code: '1'
           severity: HIGH,CRITICAL

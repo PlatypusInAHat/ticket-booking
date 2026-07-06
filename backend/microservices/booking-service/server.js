@@ -1,5 +1,6 @@
 process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'booking-service';
+require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
 const bookingRoutes = require('../../routes/bookings');
 const paymentRoutes = require('../../routes/payment');
@@ -8,6 +9,7 @@ const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
 const startBookingSubscribers = require('../../subscribers/bookingSubscribers');
 const { startBookingExpirationWorker } = require('../../services/bookingExpirationService');
+const { startEventReminderWorker } = require('../../services/eventReminderService');
 const { startOutboxPublisher } = require('../../shared/outboxPublisher');
 
 const SERVICE_NAME = 'booking-service';
@@ -30,6 +32,7 @@ startHttpService({
 }).then(() => {
   if (process.env.NODE_ENV !== 'test') {
     startBookingExpirationWorker();
+    startEventReminderWorker();
     startOutboxPublisher({ serviceName: SERVICE_NAME });
     return startBookingSubscribers();
   }

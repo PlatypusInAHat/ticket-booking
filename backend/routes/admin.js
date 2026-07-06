@@ -13,17 +13,17 @@ router.get('/bookings', adminController.getAllBookings);
 router.put('/bookings/:id/payment', [
   param('id')
     .isMongoId()
-    .withMessage('Mã đơn đặt vé không hợp lệ'),
+    .withMessage('Booking ID is invalid'),
   body('paymentStatus')
     .isIn(['pending', 'completed', 'failed', 'refunded'])
-    .withMessage('Trạng thái thanh toán không hợp lệ'),
+    .withMessage('Payment status is invalid'),
   validateRequest
 ], adminController.updatePaymentStatus);
 
 router.get('/users', adminController.getAllUsers);
 router.put('/users/:id/role', [
-  param('id').isMongoId().withMessage('ID người dùng không hợp lệ'),
-  body('role').isIn(['user', 'admin', 'staff', 'organizer']).withMessage('Quyền không hợp lệ'),
+  param('id').isMongoId().withMessage('User ID is invalid'),
+  body('role').isIn(['user', 'admin', 'staff', 'organizer']).withMessage('Role is invalid'),
   validateRequest
 ], adminController.updateUserRole);
 

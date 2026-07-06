@@ -12,30 +12,30 @@ export default function TicketDetailModal({ ticket, onClose, onBook }) {
     <Modal visible={Boolean(ticket)} animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalWrap}>
         <Screen
-          title="Chi tiết sự kiện"
+          title="Event Details"
           subtitle={ticket?.eventName}
-          right={<Button title="Đóng" icon={X} variant="ghost" onPress={onClose} style={styles.closeBtn} />}
+          right={<Button title="Close" icon={X} variant="ghost" onPress={onClose} style={styles.closeBtn} />}
         >
           {ticket ? (
             <Card style={styles.card}>
               <Image source={{ uri: ticket.image }} style={styles.image} />
               <Text style={styles.title}>{ticket.eventName}</Text>
-              
+
               <View style={styles.infoRow}>
                 <MapPin size={14} color={colors.muted} />
                 <Text style={styles.muted}>{ticket.location?.venue}, {ticket.location?.city}</Text>
               </View>
-              
+
               <View style={styles.infoRow}>
                 <Calendar size={14} color={colors.muted} />
-                <Text style={styles.muted}>{formatDate(ticket.date)} lúc {ticket.time}</Text>
+                <Text style={styles.muted}>{formatDate(ticket.date)} at {ticket.time}</Text>
               </View>
 
               <Text style={styles.price}>{formatCurrency(ticket.price)}</Text>
-              <Text style={styles.description}>{ticket.description || 'Sự kiện chưa có mô tả chi tiết.'}</Text>
-              
+              <Text style={styles.description}>{ticket.description || 'This event does not have a detailed description yet.'}</Text>
+
               <View style={styles.actions}>
-                <Button title="Thêm vào giỏ" icon={Plus} onPress={() => onBook(ticket)} style={styles.flexButton} />
+                <Button title="Add to cart" icon={Plus} onPress={() => onBook(ticket)} style={styles.flexButton} />
               </View>
             </Card>
           ) : null}

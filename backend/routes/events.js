@@ -9,71 +9,114 @@ const router = express.Router();
 
 const eventIdParam = () => param('id')
   .isMongoId()
-  .withMessage('Mã sự kiện không hợp lệ');
+  .withMessage('Event ID is invalid');
 
 const eventLookupParam = () => param('id')
   .custom((value) => /^[a-z0-9-]+$/i.test(value))
-  .withMessage('Ma hoac slug su kien khong hop le');
+  .withMessage('Event slug is invalid');
 
 const eventTypeRule = () => body('eventType')
   .optional()
   .isIn(['concert', 'train', 'flight', 'movie', 'sports', 'theater', 'conference', 'festival', 'workshop', 'other'])
-  .withMessage('Loại sự kiện không hợp lệ');
+  .withMessage('Event type is invalid');
 
 const eventWriteRules = () => [
   body('companyId')
     .optional()
     .isMongoId()
-    .withMessage('Mã công ty không hợp lệ'),
+    .withMessage('Company ID is invalid'),
   body('company')
     .optional()
     .isMongoId()
-    .withMessage('Mã công ty không hợp lệ'),
+    .withMessage('Company ID is invalid'),
   body('title')
     .optional()
     .trim()
     .isLength({ min: 2, max: 180 })
-    .withMessage('Tên sự kiện phải có từ 2 đến 180 ký tự'),
+    .withMessage('Title must be between 2 and 180 characters'),
   eventTypeRule(),
   body('startsAt')
     .optional()
     .isISO8601()
-    .withMessage('Thời gian bắt đầu không hợp lệ'),
+    .withMessage('startsAt is invalid'),
   body('endsAt')
     .optional()
     .isISO8601()
-    .withMessage('Thời gian kết thúc không hợp lệ'),
+    .withMessage('endsAt is invalid'),
   body('location.venue')
     .optional()
     .trim()
     .isLength({ min: 1, max: 160 })
-    .withMessage('Địa điểm không hợp lệ'),
+    .withMessage('Venue is invalid'),
   body('location.city')
     .optional()
     .trim()
     .isLength({ min: 1, max: 120 })
-    .withMessage('Thành phố không hợp lệ')
+    .withMessage('City is invalid')
 ];
 
 router.get('/', [
   query('companyId')
     .optional()
     .isMongoId()
-    .withMessage('Mã công ty không hợp lệ'),
+    .withMessage('Company ID is invalid'),
+  query('status')
+    .optional()
+    .isIn(['draft', 'published', 'sold_out', 'cancelled', 'completed', 'archived', 'all'])
+    .withMessage('Status is invalid'),
   query('eventType')
     .optional()
     .isIn(['concert', 'train', 'flight', 'movie', 'sports', 'theater', 'conference', 'festival', 'workshop', 'other'])
-    .withMessage('Loại sự kiện không hợp lệ'),
+    .withMessage('Event type is invalid'),
+  query('city')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 120 })
+    .withMessage('City is invalid'),
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 120 })
+    .withMessage('Search is invalid'),
+  query('tag')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 60 })
+    .withMessage('Tag is invalid'),
+  query('startsFrom')
+    .optional()
+    .isISO8601()
+    .withMessage('startsFrom is invalid'),
+  query('startsTo')
+    .optional()
+    .isISO8601()
+    .withMessage('startsTo is invalid'),
+  query('endsFrom')
+    .optional()
+    .isISO8601()
+    .withMessage('endsFrom is invalid'),
+  query('endsTo')
+    .optional()
+    .isISO8601()
+    .withMessage('endsTo is invalid'),
+  query('sortBy')
+    .optional()
+    .isIn(['startsAt', 'createdAt', 'title', 'stats.views', 'stats.soldTickets'])
+    .withMessage('sortBy is invalid'),
+  query('order')
+    .optional()
+    .isIn(['asc', 'desc'])
+    .withMessage('order is invalid'),
   query('page')
     .optional()
     .isInt({ min: 1 })
-    .withMessage('Trang phải là số nguyên dương'),
+    .withMessage('page must be a positive integer'),
   query('limit')
     .optional()
     .isInt({ min: 1, max: 100 })
-    .withMessage('Giới hạn phải từ 1 đến 100'),
+    .withMessage('limit must be between 1 and 100'),
   validateRequest,
-  cacheMiddleware(60) // Cache for 60 seconds
+  cacheMiddleware(60)
 ], eventController.getEvents);
 router.get('/:id', [eventLookupParam(), validateRequest, cacheMiddleware(300)], eventController.getEventById);
 router.post('/bundle', [

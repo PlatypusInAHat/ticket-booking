@@ -1,16 +1,35 @@
 const crypto = require('crypto');
+const {
+  SpanKind,
+  SpanStatusCode,
+  context,
+  propagation,
+  trace
+} = require('@opentelemetry/api');
 
 const EXCHANGE_NAME = process.env.EVENT_EXCHANGE || 'ticket-booking.events';
+const DEFAULT_PREFETCH = 10;
+const DEFAULT_RETRY_DELAY_MS = 15000;
+const DEFAULT_MAX_RETRIES = 5;
 
 let amqp;
 let connection;
 let channel;
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const getTracer = () => trace.getTracer('ticketstage-event-bus');
+
+const getTraceCarrier = () => {
+  const carrier = {};
+  propagation.inject(context.active(), carrier);
+  return carrier;
+};
 
 const isBrokerEnabled = () => {
   return process.env.EVENT_BROKER_ENABLED !== 'false' && Boolean(process.env.EVENT_BROKER_URL);
 };
+
+const isEventBusConnected = () => Boolean(connection && channel);
 
 const getAmqp = () => {
   if (!amqp) {
@@ -69,6 +88,7 @@ const buildEnvelope = (type, payload = {}, source = process.env.SERVICE_NAME || 
   type,
   source,
   payload,
+  traceContext: getTraceCarrier(),
   occurredAt: new Date().toISOString()
 });
 
@@ -77,31 +97,81 @@ const publishEnvelope = async (envelope) => {
     return false;
   }
 
-  try {
-    const activeChannel = await connectEventBus();
+  const parentContext = propagation.extract(context.active(), envelope.traceContext || {});
 
-    activeChannel.publish(
-      EXCHANGE_NAME,
-      envelope.type,
-      Buffer.from(JSON.stringify(envelope)),
-      {
-        contentType: 'application/json',
-        persistent: true,
-        messageId: envelope.id,
-        timestamp: Date.now()
+  return context.with(parentContext, () => getTracer().startActiveSpan(
+    `event publish ${envelope.type}`,
+    {
+      kind: SpanKind.PRODUCER,
+      attributes: {
+        'messaging.system': 'rabbitmq',
+        'messaging.destination.name': EXCHANGE_NAME,
+        'messaging.operation.name': 'publish',
+        'messaging.message.id': envelope.id,
+        'messaging.message.type': envelope.type
       }
-    );
+    },
+    async (span) => {
+      try {
+        const activeChannel = await connectEventBus();
+        const headers = {};
+        propagation.inject(context.active(), headers);
 
-    return true;
-  } catch (error) {
-    console.error(`[event-bus] failed to publish ${envelope.type}:`, error.message);
-    return false;
-  }
+        activeChannel.publish(
+          EXCHANGE_NAME,
+          envelope.type,
+          Buffer.from(JSON.stringify(envelope)),
+          {
+            contentType: 'application/json',
+            persistent: true,
+            messageId: envelope.id,
+            timestamp: Date.now(),
+            headers
+          }
+        );
+
+        span.setStatus({ code: SpanStatusCode.OK });
+        return true;
+      } catch (error) {
+        span.recordException(error);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+        console.error(`[event-bus] failed to publish ${envelope.type}:`, error.message);
+        return false;
+      } finally {
+        span.end();
+      }
+    }
+  ));
 };
 
 const publishEvent = async (type, payload = {}, options = {}) => {
   const envelope = buildEnvelope(type, payload, options.source);
   return publishEnvelope(envelope);
+};
+
+const parsePositiveInt = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const getRetryCount = (message) => {
+  const retryCount = Number.parseInt(message.properties.headers?.['x-retry-count'] || '0', 10);
+  return Number.isFinite(retryCount) ? retryCount : 0;
+};
+
+const publishToQueue = (activeChannel, queueName, message, headers = {}) => {
+  activeChannel.sendToQueue(
+    queueName,
+    message.content,
+    {
+      ...message.properties,
+      persistent: true,
+      headers: {
+        ...(message.properties.headers || {}),
+        ...headers
+      }
+    }
+  );
 };
 
 const subscribeEvents = async ({ serviceName, routingKeys, handler }) => {
@@ -111,8 +181,23 @@ const subscribeEvents = async ({ serviceName, routingKeys, handler }) => {
 
   const activeChannel = await connectEventBus();
   const queueName = `${serviceName}.events`;
+  const retryQueueName = `${queueName}.retry`;
+  const deadQueueName = `${queueName}.dead`;
+  const retryDelayMs = parsePositiveInt(process.env.EVENT_RETRY_DELAY_MS, DEFAULT_RETRY_DELAY_MS);
+  const maxRetries = parsePositiveInt(process.env.EVENT_MAX_RETRIES, DEFAULT_MAX_RETRIES);
+  const prefetch = parsePositiveInt(process.env.EVENT_CONSUMER_PREFETCH, DEFAULT_PREFETCH);
 
   await activeChannel.assertQueue(queueName, { durable: true });
+  await activeChannel.assertQueue(retryQueueName, {
+    durable: true,
+    arguments: {
+      'x-message-ttl': retryDelayMs,
+      'x-dead-letter-exchange': '',
+      'x-dead-letter-routing-key': queueName
+    }
+  });
+  await activeChannel.assertQueue(deadQueueName, { durable: true });
+  activeChannel.prefetch(prefetch);
 
   await Promise.all(
     routingKeys.map((routingKey) => activeChannel.bindQueue(queueName, EXCHANGE_NAME, routingKey))
@@ -123,17 +208,57 @@ const subscribeEvents = async ({ serviceName, routingKeys, handler }) => {
       return;
     }
 
-    try {
-      const envelope = JSON.parse(message.content.toString());
-      await handler(envelope);
-      activeChannel.ack(message);
-    } catch (error) {
-      console.error(`[event-bus] ${serviceName} handler failed:`, error.message);
-      activeChannel.nack(message, false, false);
-    }
+    const parentContext = propagation.extract(context.active(), message.properties.headers || {});
+
+    await context.with(parentContext, async () => getTracer().startActiveSpan(
+      `event consume ${message.fields.routingKey}`,
+      {
+        kind: SpanKind.CONSUMER,
+        attributes: {
+          'messaging.system': 'rabbitmq',
+          'messaging.destination.name': queueName,
+          'messaging.operation.name': 'process',
+          'messaging.rabbitmq.routing_key': message.fields.routingKey,
+          'messaging.message.id': message.properties.messageId || ''
+        }
+      },
+      async (span) => {
+        try {
+          const envelope = JSON.parse(message.content.toString());
+          span.setAttribute('messaging.message.type', envelope.type);
+          await handler(envelope);
+          span.setStatus({ code: SpanStatusCode.OK });
+          activeChannel.ack(message);
+        } catch (error) {
+          const retryCount = getRetryCount(message);
+          span.recordException(error);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+          span.setAttribute('messaging.message.retry_count', retryCount);
+          console.error(`[event-bus] ${serviceName} handler failed:`, error.message);
+
+          if (retryCount < maxRetries) {
+            publishToQueue(activeChannel, retryQueueName, message, {
+              'x-retry-count': retryCount + 1,
+              'x-last-error': error.message
+            });
+          } else {
+            publishToQueue(activeChannel, deadQueueName, message, {
+              'x-retry-count': retryCount,
+              'x-dead-lettered-at': new Date().toISOString(),
+              'x-last-error': error.message
+            });
+            console.error(`[event-bus] ${serviceName} moved message to DLQ after ${retryCount} retries`);
+          }
+
+          activeChannel.ack(message);
+        } finally {
+          span.end();
+        }
+      }
+    ));
   });
 
-  console.log(`[event-bus] ${serviceName} subscribed: ${routingKeys.join(', ')}`);
+  console.log(`[event-bus] ${serviceName} subscribed: ${routingKeys.join(', ')} (retry=${retryDelayMs}ms, maxRetries=${maxRetries})`);
   return true;
 };
 
@@ -153,6 +278,7 @@ module.exports = {
   buildEnvelope,
   closeEventBus,
   connectEventBus,
+  isEventBusConnected,
   isBrokerEnabled,
   publishEnvelope,
   publishEvent,

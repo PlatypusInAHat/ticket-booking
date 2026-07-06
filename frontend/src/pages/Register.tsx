@@ -40,6 +40,8 @@ export function Register() {
           user: authData.user,
           token: authData.token,
           refreshToken: authData.refreshToken,
+          expiresAt: authData.expiresAt,
+          refreshExpiresAt: authData.refreshExpiresAt,
         })
       )
 

@@ -13,13 +13,13 @@ const { publishDomainEvent } = require('../shared/domainEventPublisher');
 const EVENTS = require('../shared/domainEvents');
 
 const CHECK_IN_MESSAGES = {
-  notFound: 'Khong tim thay ve.',
-  unpaid: 'Don dat ve chua duoc thanh toan hoac chua duoc xac nhan.',
-  duplicate: 'Ve da duoc check-in truoc do.',
-  cancelled: 'Ve da bi huy.',
-  voided: 'Ve da bi vo hieu hoa.',
-  valid: 'Ve hop le.',
-  success: 'Check-in thanh cong.'
+  notFound: 'Ticket not found.',
+  unpaid: 'Booking is not paid or confirmed yet.',
+  duplicate: 'Ticket has already been checked in.',
+  cancelled: 'Ticket has been cancelled.',
+  voided: 'Ticket has been voided.',
+  valid: 'Ticket is valid.',
+  success: 'Check-in successful.'
 };
 
 const hashScanInput = (scanInput = '') => {

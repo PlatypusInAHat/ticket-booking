@@ -5,9 +5,29 @@ const Session = require('../models/Session');
 const Ticket = require('../models/Ticket');
 const ApiError = require('../utils/ApiError');
 const { canManageCompany } = require('./companyService');
+const {
+  buildSort,
+  parseDate,
+  parsePositiveInt
+} = require('../utils/queryUtils');
 
 const getEvents = async (query = {}) => {
-  const { companyId, eventType, city, status = 'published', search, page = 1, limit = 10 } = query;
+  const {
+    companyId,
+    eventType,
+    city,
+    status = 'published',
+    search,
+    tag,
+    startsFrom,
+    startsTo,
+    endsFrom,
+    endsTo,
+    sortBy = 'startsAt',
+    order = 'asc',
+    page = 1,
+    limit = 10
+  } = query;
   const filter = {};
 
   if (companyId) {
@@ -30,16 +50,43 @@ const getEvents = async (query = {}) => {
     filter.$text = { $search: search };
   }
 
-  const parsedPage = parseInt(page, 10);
-  const parsedLimit = parseInt(limit, 10);
+  if (tag) {
+    filter.tags = tag.toLowerCase();
+  }
+
+  const startFromDate = parseDate(startsFrom);
+  const startToDate = parseDate(startsTo);
+  const endFromDate = parseDate(endsFrom);
+  const endToDate = parseDate(endsTo);
+
+  if (startFromDate || startToDate) {
+    filter.startsAt = {};
+    if (startFromDate) filter.startsAt.$gte = startFromDate;
+    if (startToDate) filter.startsAt.$lte = startToDate;
+  }
+
+  if (endFromDate || endToDate) {
+    filter.endsAt = {};
+    if (endFromDate) filter.endsAt.$gte = endFromDate;
+    if (endToDate) filter.endsAt.$lte = endToDate;
+  }
+
+  const parsedPage = parsePositiveInt(page, 1);
+  const parsedLimit = parsePositiveInt(limit, 10, { min: 1, max: 100 });
   const skip = (parsedPage - 1) * parsedLimit;
+  const sort = buildSort(
+    sortBy,
+    order,
+    ['startsAt', 'createdAt', 'title', 'stats.views', 'stats.soldTickets'],
+    'startsAt'
+  );
 
   const [events, total] = await Promise.all([
     Event.find(filter)
       .populate('company', 'name slug logo status')
       .skip(skip)
       .limit(parsedLimit)
-      .sort({ startsAt: 1 })
+      .sort(sort)
       .lean(),
     Event.countDocuments(filter)
   ]);
@@ -113,6 +160,19 @@ const createEventBundle = async (bundleData, user) => {
     throw new ApiError(400, 'Company, title, and event type are required');
   }
 
+  if (!location?.venue || !location?.city) {
+    throw new ApiError(400, 'Venue and city are required');
+  }
+
+  const companyDocument = await Company.findById(companyRef);
+  if (!companyDocument) {
+    throw new ApiError(404, 'Company not found');
+  }
+
+  if (!canManageCompany(companyDocument, user)) {
+    throw new ApiError(403, 'Not authorized to create events for this company');
+  }
+
   const sess = await mongoose.startSession();
   sess.startTransaction();
 
@@ -142,41 +202,77 @@ const createEventBundle = async (bundleData, user) => {
     await newEvent.save({ session: sess });
 
     // 2. Create Sessions and Tickets
+    let totalTickets = 0;
+
     if (sessionsData && sessionsData.length > 0) {
       for (const sessionItem of sessionsData) {
+        const sessionStartsAt = new Date(sessionItem.startDate);
+        const sessionEndsAt = new Date(sessionItem.endDate);
         const newSession = new Session({
           event: newEvent._id,
-          startsAt: new Date(sessionItem.startDate),
-          endsAt: new Date(sessionItem.endDate)
+          startsAt: sessionStartsAt,
+          endsAt: sessionEndsAt
         });
         await newSession.save({ session: sess });
 
         // 3. Create Tickets for this session
         if (sessionItem.ticketTypes && sessionItem.ticketTypes.length > 0) {
-          const ticketsToCreate = sessionItem.ticketTypes.map(t => ({
-            event: newEvent._id,
-            session: newSession._id,
-            company: companyRef,
-            name: t.name,
-            price: t.isFree ? 0 : Number(t.price),
-            isFree: Boolean(t.isFree),
-            totalSeats: Number(t.totalQuantity),
-            availableSeats: Number(t.totalQuantity),
-            description: t.description || '',
-            image: t.image || '',
-            saleWindow: {
-              startsAt: t.saleStart ? new Date(t.saleStart) : null,
-              endsAt: t.saleEnd ? new Date(t.saleEnd) : null
-            },
-            policies: {
-              maxTicketsPerUser: t.maxPerOrder,
-              minTicketsPerUser: t.minPerOrder
+          const ticketsToCreate = sessionItem.ticketTypes.map(t => {
+            const totalSeats = Number(t.totalQuantity);
+
+            if (!Number.isFinite(totalSeats) || totalSeats < 1) {
+              throw new ApiError(400, `Ticket quantity is invalid for ${t.name || 'unnamed ticket'}`);
             }
-          }));
+
+            totalTickets += totalSeats;
+
+            return {
+              event: newEvent._id,
+              session: newSession._id,
+              company: companyDocument._id,
+              organizer: user.id,
+              name: t.name,
+              ticketName: t.name,
+              eventName: title,
+              eventType,
+              ticketType: t.ticketType || t.name,
+              category: t.category || 'standard',
+              location,
+              date: sessionStartsAt,
+              time: sessionStartsAt.toISOString().slice(11, 16),
+              timezone: eventData.timezone || 'Asia/Ho_Chi_Minh',
+              currency: eventData.currency || companyDocument.settings?.defaultCurrency || 'VND',
+              price: t.isFree ? 0 : Number(t.price),
+              isFree: Boolean(t.isFree),
+              totalSeats,
+              availableSeats: totalSeats,
+              description: t.description || eventData.description || '',
+              image: t.image || eventData.coverImage || '',
+              tags: t.tags || eventData.tags || [],
+              saleWindow: {
+                startsAt: t.saleStart ? new Date(t.saleStart) : null,
+                endsAt: t.saleEnd ? new Date(t.saleEnd) : null
+              },
+              policies: {
+                maxTicketsPerUser: t.maxPerOrder,
+                minTicketsPerUser: t.minPerOrder
+              },
+              seatMap: t.seatMap || { mode: 'general_admission', sections: [] }
+            };
+          });
 
           await Ticket.insertMany(ticketsToCreate, { session: sess });
         }
       }
+    }
+
+    if (totalTickets > 0) {
+      await Event.updateOne(
+        { _id: newEvent._id },
+        { $inc: { 'stats.totalTickets': totalTickets } },
+        { session: sess }
+      );
+      newEvent.stats.totalTickets = totalTickets;
     }
 
     await sess.commitTransaction();

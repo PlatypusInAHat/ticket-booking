@@ -71,6 +71,12 @@ API.interceptors.response.use(
         
         localStorage.setItem('token', newAccessToken);
         localStorage.setItem('refreshToken', newRefreshToken);
+        if (data.data.expiresAt) {
+          localStorage.setItem('auth_expires_at', data.data.expiresAt);
+        }
+        if (data.data.refreshExpiresAt) {
+          localStorage.setItem('auth_refresh_expires_at', data.data.refreshExpiresAt);
+        }
         if (data.data.user) {
           localStorage.setItem('auth_user', JSON.stringify(data.data.user));
         }
@@ -86,6 +92,8 @@ API.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth_expires_at');
+        localStorage.removeItem('auth_refresh_expires_at');
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {
@@ -101,6 +109,7 @@ API.interceptors.response.use(
 export const authAPI = {
   login: (data) => API.post('/auth/login', data),
   register: (data) => API.post('/auth/register', data),
+  logout: () => API.post('/auth/logout'),
   getProfile: () => API.get('/users/profile'),
   updateProfile: (data) => API.put('/users/profile', data),
   forgotPassword: (email) => API.post('/auth/forgot-password', { email }),

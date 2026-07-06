@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 
 const HASH_PREFIX = 'hmac-sha256';
 

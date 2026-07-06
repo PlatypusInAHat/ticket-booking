@@ -1,15 +1,26 @@
 const internalAuth = require('../shared/internalAuth');
 const { isExpiredPendingBooking } = require('../services/bookingService');
 const { normalizeTicketSelection } = require('../services/catalogInventoryService');
+const { buildUnsubscribeToken } = require('../services/emailQueueService');
+const { groupEligibleEvents } = require('../services/eventReminderService');
+const { constantTimeEqual } = require('../utils/cryptoUtils');
+const { normalizeServiceUrl } = require('../utils/serviceUrl');
 
 describe('backend safety logic', () => {
   const originalInternalApiKey = process.env.INTERNAL_API_KEY;
+  const originalSecretHashKey = process.env.SECRET_HASH_KEY;
 
   afterEach(() => {
     if (originalInternalApiKey === undefined) {
       delete process.env.INTERNAL_API_KEY;
     } else {
       process.env.INTERNAL_API_KEY = originalInternalApiKey;
+    }
+
+    if (originalSecretHashKey === undefined) {
+      delete process.env.SECRET_HASH_KEY;
+    } else {
+      process.env.SECRET_HASH_KEY = originalSecretHashKey;
     }
   });
 
@@ -67,5 +78,59 @@ describe('backend safety logic', () => {
       { ticketId: 'ticket-a', quantity: 5 },
       { ticketId: 'ticket-b', quantity: 1 }
     ]);
+  });
+
+  test('event reminder grouping includes only events inside the reminder window', () => {
+    const now = new Date('2026-07-03T10:00:00.000Z');
+    const horizon = new Date('2026-07-04T10:00:00.000Z');
+    const groups = groupEligibleEvents({
+      tickets: [
+        {
+          quantity: 2,
+          snapshot: {
+            eventName: 'Summer Concert',
+            ticketName: 'VIP',
+            date: new Date('2026-07-04T09:00:00.000Z'),
+            location: { venue: 'Main Arena' }
+          }
+        },
+        {
+          quantity: 1,
+          snapshot: {
+            eventName: 'Past Show',
+            date: new Date('2026-07-03T09:00:00.000Z')
+          }
+        },
+        {
+          quantity: 1,
+          snapshot: {
+            eventName: 'Next Week Show',
+            date: new Date('2026-07-10T09:00:00.000Z')
+          }
+        }
+      ]
+    }, now, horizon);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      title: 'Summer Concert',
+      quantity: 2
+    });
+  });
+
+  test('unsubscribe token is deterministic and signed', () => {
+    process.env.SECRET_HASH_KEY = 'test-secret';
+
+    const token = buildUnsubscribeToken('Customer@Example.com');
+    const sameToken = buildUnsubscribeToken('customer@example.com');
+
+    expect(token).toBe(sameToken);
+    expect(constantTimeEqual(token, sameToken)).toBe(true);
+  });
+
+  test('service URLs support Kubernetes host:port values without clear-text protocol in config', () => {
+    expect(normalizeServiceUrl('auth-service:5101')).toBe('http://auth-service:5101');
+    expect(normalizeServiceUrl('https://api.example.com/')).toBe('https://api.example.com');
+    expect(normalizeServiceUrl('', 'catalog-service:5102')).toBe('http://catalog-service:5102');
   });
 });

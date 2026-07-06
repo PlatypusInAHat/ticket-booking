@@ -1,5 +1,6 @@
 process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'checkin-service';
+require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
 const checkinRoutes = require('../../routes/checkin');
 const internalCheckinRoutes = require('../../routes/internal/checkin');
