@@ -5,7 +5,6 @@ process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'api-gateway';
 require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
-const axios = require('axios');
 const compression = require('compression');
 const cors = require('cors');
 const express = require('express');
@@ -14,6 +13,7 @@ const { correlationIdMiddleware } = require('../../middleware/correlationId');
 const errorHandler = require('../../middleware/error');
 const { constantTimeEqual } = require('../../utils/cryptoUtils');
 const { createCorsOptions } = require('../../utils/corsOptions');
+const { requestInternalService } = require('../../shared/internalHttpClient');
 const { normalizeServiceUrl } = require('../../utils/serviceUrl');
 const {
   buildHealthPayload,
@@ -113,8 +113,10 @@ const forwardRequest = (service) => async (req, res) => {
   const targetUrl = `${service.target}${req.originalUrl}`;
 
   try {
-    const response = await axios({
-      url: targetUrl,
+    const response = await requestInternalService({
+      serviceName: service.name,
+      baseUrl: service.target,
+      path: req.originalUrl,
       method: req.method,
       headers: {
         ...stripHopByHopHeaders(req.headers),
@@ -122,8 +124,11 @@ const forwardRequest = (service) => async (req, res) => {
       },
       data: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
       responseType: 'arraybuffer',
-      timeout: UPSTREAM_TIMEOUT_MS,
-      validateStatus: () => true
+      timeoutMs: UPSTREAM_TIMEOUT_MS,
+      validateStatus: () => true,
+      rawResponse: true,
+      retries: 1,
+      retryDelayMs: 150
     });
 
     Object.entries(stripHopByHopHeaders(response.headers)).forEach(([key, value]) => {
@@ -259,7 +264,15 @@ app.get('/api/health', (req, res) => {
 app.get('/api/admin/gateway/status', requireGatewayAdmin, async (req, res) => {
   const statusPromises = SERVICE_ROUTES.map(async (service) => {
     try {
-      const response = await axios.get(`${service.target}/health/ready`, { timeout: 3000 });
+      const response = await requestInternalService({
+        serviceName: service.name,
+        baseUrl: service.target,
+        path: '/health/ready',
+        timeoutMs: 3000,
+        retries: 1,
+        retryDelayMs: 150,
+        rawResponse: true
+      });
       return { name: service.name, status: 'UP', detail: response.data };
     } catch (err) {
       return { name: service.name, status: 'DOWN', error: err.message };

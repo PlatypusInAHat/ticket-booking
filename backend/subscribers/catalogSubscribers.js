@@ -1,5 +1,5 @@
-const catalogInventoryService = require('../services/catalogInventoryService');
-const EVENTS = require('../shared/domainEvents');
+const catalogInventoryService = require('../services/catalog/src/services/catalogInventoryService');
+const EVENTS = require('../packages/platform/src/lib/domainEvents');
 const { subscribeEvents } = require('../shared/eventBus');
 
 const startCatalogSubscribers = async () => {

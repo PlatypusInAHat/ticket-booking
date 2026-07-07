@@ -107,6 +107,8 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Build Frontend
+        env:
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY || '' }}
         run: npm run build
 
       - name: Upload Frontend Dist Artifact
@@ -130,11 +132,13 @@ jobs:
         working-directory: frontend
         env:
           IMAGE_TAG: ${{ needs.resolve-deploy-target.outputs.image_tag }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY || '' }}
         run: |
           set -euo pipefail
 
           docker build \
             --pull \
+            --build-arg "VITE_TURNSTILE_SITE_KEY=${VITE_TURNSTILE_SITE_KEY}" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --label "org.opencontainers.image.version=${IMAGE_TAG}" \

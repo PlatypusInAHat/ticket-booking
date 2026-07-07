@@ -1,0 +1,22 @@
+{
+  "name": "@ticket-booking/auth-service",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Authentication service package for the ticket booking backend",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node ../../microservices/auth-service/server.js",
+    "dev": "nodemon ../../microservices/auth-service/server.js"
+  },
+  "dependencies": {
+    "@ticket-booking/shared": "file:../../packages/shared",
+    "bcryptjs": "^2.4.3",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

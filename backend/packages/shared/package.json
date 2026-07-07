@@ -1,0 +1,7 @@
+{
+  "name": "@ticket-booking/shared",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Shared application primitives for ticket-booking backend services",
+  "main": "src/index.js"
+}

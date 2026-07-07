@@ -75,7 +75,7 @@ services:
   auth-service:
     build:
       context: ./backend
-    command: node microservices/auth-service/server.js
+      dockerfile: services/auth/Dockerfile
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -87,6 +87,8 @@ services:
       CHECKIN_SERVICE_URL: http://checkin-service:5104
       EVENT_BROKER_URL: amqp://rabbitmq:5672
       EVENT_EXCHANGE: ticket-booking.events
+      EVENT_IDEMPOTENCY_ENABLED: ${EVENT_IDEMPOTENCY_ENABLED:-true}
+      EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS: ${EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS:-300000}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
@@ -106,7 +108,7 @@ services:
   catalog-service:
     build:
       context: ./backend
-    command: node microservices/catalog-service/server.js
+      dockerfile: services/catalog/Dockerfile
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -115,6 +117,8 @@ services:
       CATALOG_MONGODB_URI: mongodb://catalog-mongo:27017/ticket-catalog?replicaSet=rs0
       EVENT_BROKER_URL: amqp://rabbitmq:5672
       EVENT_EXCHANGE: ticket-booking.events
+      EVENT_IDEMPOTENCY_ENABLED: ${EVENT_IDEMPOTENCY_ENABLED:-true}
+      EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS: ${EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS:-300000}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
@@ -130,7 +134,7 @@ services:
   booking-service:
     build:
       context: ./backend
-    command: node microservices/booking-service/server.js
+      dockerfile: services/booking/Dockerfile
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -140,9 +144,16 @@ services:
       CATALOG_SERVICE_URL: http://catalog-service:5102
       EVENT_BROKER_URL: amqp://rabbitmq:5672
       EVENT_EXCHANGE: ticket-booking.events
+      EVENT_IDEMPOTENCY_ENABLED: ${EVENT_IDEMPOTENCY_ENABLED:-true}
+      EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS: ${EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS:-300000}
       OUTBOX_ENABLED: ${OUTBOX_ENABLED:-true}
       OUTBOX_PUBLISH_INTERVAL_MS: ${OUTBOX_PUBLISH_INTERVAL_MS:-5000}
       OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-50}
+      INTERNAL_HTTP_TIMEOUT_MS: ${INTERNAL_HTTP_TIMEOUT_MS:-5000}
+      INTERNAL_HTTP_RETRIES: ${INTERNAL_HTTP_RETRIES:-2}
+      INTERNAL_HTTP_RETRY_DELAY_MS: ${INTERNAL_HTTP_RETRY_DELAY_MS:-250}
+      INTERNAL_HTTP_CIRCUIT_BREAKER_THRESHOLD: ${INTERNAL_HTTP_CIRCUIT_BREAKER_THRESHOLD:-5}
+      INTERNAL_HTTP_CIRCUIT_BREAKER_COOLDOWN_MS: ${INTERNAL_HTTP_CIRCUIT_BREAKER_COOLDOWN_MS:-15000}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
@@ -174,12 +185,21 @@ services:
       BOOKING_QUEUE_MAX_SIZE: ${BOOKING_QUEUE_MAX_SIZE:-500}
       BOOKING_QUEUE_WAIT_TIMEOUT_MS: ${BOOKING_QUEUE_WAIT_TIMEOUT_MS:-30000}
       BOOKING_QUEUE_LEASE_MS: ${BOOKING_QUEUE_LEASE_MS:-300000}
+      BOOKING_QUEUE_STORE: ${BOOKING_QUEUE_STORE:-mongo}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       RATE_LIMIT_STORE: ${RATE_LIMIT_STORE:-mongo}
       BOOKING_CREATE_RATE_LIMIT_WINDOW_MS: ${BOOKING_CREATE_RATE_LIMIT_WINDOW_MS:-60000}
       BOOKING_CREATE_RATE_LIMIT_MAX: ${BOOKING_CREATE_RATE_LIMIT_MAX:-8}
       PAYMENT_RATE_LIMIT_WINDOW_MS: ${PAYMENT_RATE_LIMIT_WINDOW_MS:-60000}
       PAYMENT_RATE_LIMIT_MAX: ${PAYMENT_RATE_LIMIT_MAX:-12}
+      PURCHASE_LIMIT_ENABLED: ${PURCHASE_LIMIT_ENABLED:-true}
+      PURCHASE_LIMIT_WINDOW_MS: ${PURCHASE_LIMIT_WINDOW_MS:-86400000}
+      PURCHASE_LIMIT_MAX_TICKETS_PER_EVENT: ${PURCHASE_LIMIT_MAX_TICKETS_PER_EVENT:-10}
+      TURNSTILE_ENABLED: ${TURNSTILE_ENABLED:-false}
+      TURNSTILE_PROTECTED_SOURCES: ${TURNSTILE_PROTECTED_SOURCES:-web}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      DEVICE_FINGERPRINT_SECRET: ${DEVICE_FINGERPRINT_SECRET:-dev_device_fingerprint_secret_change_me}
+      BOT_RISK_BLOCK_THRESHOLD: ${BOT_RISK_BLOCK_THRESHOLD:-90}
     depends_on:
       - booking-mongo
       - catalog-service
@@ -190,7 +210,7 @@ services:
   checkin-service:
     build:
       context: ./backend
-    command: node microservices/checkin-service/server.js
+      dockerfile: services/checkin/Dockerfile
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -199,6 +219,8 @@ services:
       CHECKIN_MONGODB_URI: mongodb://checkin-mongo:27017/ticket-checkin?replicaSet=rs0
       EVENT_BROKER_URL: amqp://rabbitmq:5672
       EVENT_EXCHANGE: ticket-booking.events
+      EVENT_IDEMPOTENCY_ENABLED: ${EVENT_IDEMPOTENCY_ENABLED:-true}
+      EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS: ${EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS:-300000}
       OUTBOX_ENABLED: ${OUTBOX_ENABLED:-true}
       OUTBOX_PUBLISH_INTERVAL_MS: ${OUTBOX_PUBLISH_INTERVAL_MS:-5000}
       OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-50}
@@ -217,7 +239,7 @@ services:
   notification-service:
     build:
       context: ./backend
-    command: node microservices/notification-service/server.js
+      dockerfile: services/notification/Dockerfile
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -226,6 +248,8 @@ services:
       NOTIFICATION_MONGODB_URI: mongodb://notification-mongo:27017/ticket-notification?replicaSet=rs0
       EVENT_BROKER_URL: amqp://rabbitmq:5672
       EVENT_EXCHANGE: ticket-booking.events
+      EVENT_IDEMPOTENCY_ENABLED: ${EVENT_IDEMPOTENCY_ENABLED:-true}
+      EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS: ${EVENT_IDEMPOTENCY_PROCESSING_TIMEOUT_MS:-300000}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       SECRET_HASH_KEY: ${SECRET_HASH_KEY:-dev_secret_hash_key_change_me}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
@@ -255,7 +279,7 @@ services:
   api-gateway:
     build:
       context: ./backend
-    command: node microservices/api-gateway/server.js
+      dockerfile: services/api-gateway/Dockerfile
     environment:
       NODE_ENV: development
       SERVICE_MODE: microservice
@@ -267,6 +291,11 @@ services:
       BOOKING_SERVICE_URL: http://booking-service:5103
       CHECKIN_SERVICE_URL: http://checkin-service:5104
       NOTIFICATION_SERVICE_URL: http://notification-service:5105
+      INTERNAL_HTTP_TIMEOUT_MS: ${INTERNAL_HTTP_TIMEOUT_MS:-5000}
+      INTERNAL_HTTP_RETRIES: ${INTERNAL_HTTP_RETRIES:-1}
+      INTERNAL_HTTP_RETRY_DELAY_MS: ${INTERNAL_HTTP_RETRY_DELAY_MS:-150}
+      INTERNAL_HTTP_CIRCUIT_BREAKER_THRESHOLD: ${INTERNAL_HTTP_CIRCUIT_BREAKER_THRESHOLD:-5}
+      INTERNAL_HTTP_CIRCUIT_BREAKER_COOLDOWN_MS: ${INTERNAL_HTTP_CIRCUIT_BREAKER_COOLDOWN_MS:-15000}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev_internal_key}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}

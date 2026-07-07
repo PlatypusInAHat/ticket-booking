@@ -11,6 +11,7 @@ import {
   setAuthToken,
   ticketApi
 } from './services/api';
+import { getDeviceFingerprint } from './services/deviceFingerprint';
 import { clearAuth, loadAuth } from './services/storage';
 import { colors } from './theme';
 import AuthScreen from './screens/AuthScreen';
@@ -171,7 +172,9 @@ export default function App() {
         paymentMethod: 'vnpay',
         customerName: auth.user.name,
         customerEmail: auth.user.email,
-        customerPhone: auth.user.phone || ''
+        customerPhone: auth.user.phone || '',
+        source: 'mobile',
+        deviceFingerprint: await getDeviceFingerprint()
       });
       const session = await paymentApi.createSession({
         bookingId: booking._id,

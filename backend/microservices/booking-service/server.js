@@ -2,14 +2,14 @@ process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'booking-service';
 require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
-const bookingRoutes = require('../../routes/bookings');
-const paymentRoutes = require('../../routes/payment');
-const internalBookingRoutes = require('../../routes/internal/booking');
+const bookingRoutes = require('../../services/booking/src/routes/bookings');
+const paymentRoutes = require('../../services/booking/src/routes/payment');
+const internalBookingRoutes = require('../../services/booking/src/routes/internal/booking');
 const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
 const startBookingSubscribers = require('../../subscribers/bookingSubscribers');
-const { startBookingExpirationWorker } = require('../../services/bookingExpirationService');
-const { startEventReminderWorker } = require('../../services/eventReminderService');
+const { startBookingExpirationWorker } = require('../../services/booking/src/services/bookingExpirationService');
+const { startEventReminderWorker } = require('../../services/booking/src/services/eventReminderService');
 const { startOutboxPublisher } = require('../../shared/outboxPublisher');
 
 const SERVICE_NAME = 'booking-service';

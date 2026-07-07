@@ -1,8 +1,10 @@
 const internalAuth = require('../shared/internalAuth');
-const { isExpiredPendingBooking } = require('../services/bookingService');
-const { normalizeTicketSelection } = require('../services/catalogInventoryService');
-const { buildUnsubscribeToken } = require('../services/emailQueueService');
-const { groupEligibleEvents } = require('../services/eventReminderService');
+const { isExpiredPendingBooking } = require('../services/booking/src/services/bookingService');
+const { assessBotRisk } = require('../services/botProtectionService');
+const { normalizeTicketSelection } = require('../services/catalog/src/services/catalogInventoryService');
+const { buildUnsubscribeToken } = require('../services/notification/src/services/emailQueueService');
+const { groupEligibleEvents } = require('../services/booking/src/services/eventReminderService');
+const { groupQuantitiesByEvent } = require('../services/purchaseLimitService');
 const { constantTimeEqual } = require('../utils/cryptoUtils');
 const { normalizeServiceUrl } = require('../utils/serviceUrl');
 
@@ -78,6 +80,32 @@ describe('backend safety logic', () => {
       { ticketId: 'ticket-a', quantity: 5 },
       { ticketId: 'ticket-b', quantity: 1 }
     ]);
+  });
+
+  test('bot risk scoring flags suspicious checkout clients', () => {
+    const risk = assessBotRisk({
+      body: { source: 'web' },
+      get: (name) => (name === 'user-agent' ? 'curl/8.0' : '')
+    }, {
+      deviceFingerprint: ''
+    });
+
+    expect(risk.score).toBeGreaterThanOrEqual(60);
+    expect(risk.reasons).toEqual(expect.arrayContaining([
+      'missing_device_fingerprint',
+      'suspicious_user_agent'
+    ]));
+  });
+
+  test('purchase limit grouping sums quantities by event', () => {
+    const grouped = groupQuantitiesByEvent([
+      { event: 'event-a', quantity: 2 },
+      { event: 'event-a', quantity: 3 },
+      { event: 'event-b', quantity: 1 }
+    ]);
+
+    expect(grouped.get('event-a')).toBe(5);
+    expect(grouped.get('event-b')).toBe(1);
   });
 
   test('event reminder grouping includes only events inside the reminder window', () => {

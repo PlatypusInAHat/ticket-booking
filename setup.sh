@@ -3,8 +3,8 @@
 # Script cài đặt nhanh cho ứng dụng Đặt Vé Online
 
 echo "╔════════════════════════════════════════╗"
-echo "║   🎟️  Ticket Booking App Setup       ║"
-echo "║   Ứng dụng Đặt Vé Online             ║"
+echo "║   🎟️  Ticket Booking App Setup         ║"
+echo "║   Ứng dụng Đặt Vé Online               ║"
 echo "╚════════════════════════════════════════╝"
 echo ""
 
@@ -43,7 +43,7 @@ echo " Frontend cài đặt xong!"
 echo ""
 
 echo "╔════════════════════════════════════════╗"
-echo "║    Cài đặt hoàn tất!                 ║"
+echo "║         Cài đặt hoàn tất!              ║"
 echo "╚════════════════════════════════════════╝"
 echo ""
 echo "📝 Hướng dẫn chạy ứng dụng:"

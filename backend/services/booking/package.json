@@ -1,0 +1,23 @@
+{
+  "name": "@ticket-booking/booking-service",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Booking service package for the ticket booking backend",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node ../../microservices/booking-service/server.js",
+    "dev": "nodemon ../../microservices/booking-service/server.js"
+  },
+  "dependencies": {
+    "@ticket-booking/shared": "file:../../packages/shared",
+    "axios": "^1.3.0",
+    "bwip-js": "^4.11.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.0",
+    "mongoose": "^7.0.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

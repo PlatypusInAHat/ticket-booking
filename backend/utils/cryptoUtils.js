@@ -78,13 +78,4 @@ const getMinimumPasswordLength = () => {
   return Number.isFinite(length) ? Math.max(length, 8) : 8;
 };
 
-module.exports = {
-  constantTimeEqual,
-  getMinimumPasswordLength,
-  getPasswordHashRounds,
-  hashSecret,
-  hmacSha256,
-  isHashedSecret,
-  pepperPassword,
-  verifySecret
-};
+module.exports = require('../packages/platform/src/lib/cryptoUtils');

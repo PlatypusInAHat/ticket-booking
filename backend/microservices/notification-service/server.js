@@ -6,16 +6,16 @@ const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
 const { subscribeToDomainEvents } = require('../../shared/domainEventSubscriber');
 const EVENTS = require('../../shared/domainEvents');
-const publicNotificationRoutes = require('../../routes/notifications');
-const notificationRoutes = require('../../routes/internal/notifications');
-const { startEmailWorker } = require('../../services/emailQueueService');
+const publicNotificationRoutes = require('../../services/notification/src/routes/notifications');
+const notificationRoutes = require('../../services/notification/src/routes/internal/notifications');
+const { startEmailWorker } = require('../../services/notification/src/services/emailQueueService');
 const {
   enqueueBookingCancelledEmail,
   enqueueEventReminderEmail,
   enqueuePasswordResetEmail,
   enqueuePaymentCompletedEmail,
   enqueueWelcomeEmail
-} = require('../../services/notificationEventService');
+} = require('../../services/notification/src/services/notificationEventService');
 const logger = require('../../utils/logger');
 
 const SERVICE_NAME = 'notification-service';

@@ -1,0 +1,56 @@
+openapi: 3.0.3
+info:
+  title: Booking Service Internal API
+  version: 1.0.0
+  description: Internal contract for booking administration and payment state synchronization.
+servers:
+  - url: http://booking-service:5103
+security:
+  - InternalApiKey: []
+paths:
+  /internal/booking/stats:
+    get:
+      summary: Get booking and payment aggregate statistics
+      responses:
+        '200':
+          description: Booking stats payload
+  /internal/booking/bookings:
+    get:
+      summary: List bookings for administrative consumers
+      responses:
+        '200':
+          description: Booking collection
+  /internal/booking/bookings/{id}/payment:
+    put:
+      summary: Update booking payment status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - paymentStatus
+              properties:
+                paymentStatus:
+                  type: string
+                  enum:
+                    - pending
+                    - completed
+                    - failed
+                    - refunded
+      responses:
+        '200':
+          description: Updated booking
+components:
+  securitySchemes:
+    InternalApiKey:
+      type: apiKey
+      in: header
+      name: x-internal-api-key

@@ -129,10 +129,12 @@ jobs:
             local file="$2"
             case "$service" in
               api-gateway)
-                [[ "$file" == backend/microservices/api-gateway/* ]]
+                [[ "$file" == backend/microservices/api-gateway/* ||
+                  "$file" == backend/services/api-gateway/* ]]
                 ;;
               auth-service)
                 [[ "$file" == backend/microservices/auth-service/* ||
+                  "$file" == backend/services/auth/* ||
                   "$file" == backend/routes/auth.js ||
                   "$file" == backend/routes/users.js ||
                   "$file" == backend/routes/admin.js ||
@@ -147,6 +149,7 @@ jobs:
                 ;;
               catalog-service)
                 [[ "$file" == backend/microservices/catalog-service/* ||
+                  "$file" == backend/services/catalog/* ||
                   "$file" == backend/routes/companies.js ||
                   "$file" == backend/routes/events.js ||
                   "$file" == backend/routes/tickets.js ||
@@ -168,6 +171,7 @@ jobs:
                 ;;
               booking-service)
                 [[ "$file" == backend/microservices/booking-service/* ||
+                  "$file" == backend/services/booking/* ||
                   "$file" == backend/routes/bookings.js ||
                   "$file" == backend/routes/payment.js ||
                   "$file" == backend/routes/internal/booking.js ||
@@ -188,6 +192,7 @@ jobs:
                 ;;
               checkin-service)
                 [[ "$file" == backend/microservices/checkin-service/* ||
+                  "$file" == backend/services/checkin/* ||
                   "$file" == backend/routes/checkin.js ||
                   "$file" == backend/routes/internal/checkin.js ||
                   "$file" == backend/controllers/checkinController.js ||
@@ -197,6 +202,7 @@ jobs:
                 ;;
               notification-service)
                 [[ "$file" == backend/microservices/notification-service/* ||
+                  "$file" == backend/services/notification/* ||
                   "$file" == backend/routes/notifications.js ||
                   "$file" == backend/routes/internal/notifications.js ||
                   "$file" == backend/services/emailQueueService.js ||
@@ -286,7 +292,15 @@ jobs:
               map({
                 service: .,
                 local_image: ("ticket-booking-" + .),
-                start_script: (if . == "api-gateway" then "start:gateway" else "start:" + . end)
+                dockerfile: (
+                  if . == "api-gateway" then "services/api-gateway/Dockerfile"
+                  elif . == "auth-service" then "services/auth/Dockerfile"
+                  elif . == "catalog-service" then "services/catalog/Dockerfile"
+                  elif . == "booking-service" then "services/booking/Dockerfile"
+                  elif . == "checkin-service" then "services/checkin/Dockerfile"
+                  else "services/notification/Dockerfile"
+                  end
+                )
               })
             '
           )"
@@ -351,13 +365,13 @@ jobs:
         env:
           IMAGE_TAG: ${{ needs.resolve-deploy-target.outputs.image_tag }}
           LOCAL_IMAGE: ${{ matrix.local_image }}
-          SERVICE_START_SCRIPT: ${{ matrix.start_script }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
         run: |
           set -euo pipefail
 
           docker build \
             --pull \
-            --build-arg "SERVICE_START_SCRIPT=${SERVICE_START_SCRIPT}" \
+            -f "backend/${DOCKERFILE}" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --label "org.opencontainers.image.version=${IMAGE_TAG}" \

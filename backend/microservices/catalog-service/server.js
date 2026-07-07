@@ -2,10 +2,10 @@ process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'catalog-service';
 require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
-const companyRoutes = require('../../routes/companies');
-const eventRoutes = require('../../routes/events');
-const ticketRoutes = require('../../routes/tickets');
-const internalCatalogRoutes = require('../../routes/internal/catalog');
+const companyRoutes = require('../../services/catalog/src/routes/companies');
+const eventRoutes = require('../../services/catalog/src/routes/events');
+const ticketRoutes = require('../../services/catalog/src/routes/tickets');
+const internalCatalogRoutes = require('../../services/catalog/src/routes/internal/catalog');
 const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
 const startCatalogSubscribers = require('../../subscribers/catalogSubscribers');
@@ -13,7 +13,7 @@ const startCatalogSubscribers = require('../../subscribers/catalogSubscribers');
 const SERVICE_NAME = 'catalog-service';
 const PORT = process.env.CATALOG_SERVICE_PORT || 5102;
 
-const uploadRoutes = require('../../routes/upload');
+const uploadRoutes = require('../../services/catalog/src/routes/upload');
 
 const app = createServiceApp({
   serviceName: SERVICE_NAME,

@@ -1,5 +1,5 @@
-const User = require('../models/User');
-const EVENTS = require('../shared/domainEvents');
+const User = require('../services/auth/src/models/User');
+const EVENTS = require('../packages/platform/src/lib/domainEvents');
 const { subscribeEvents } = require('../shared/eventBus');
 
 const handleBookingCreated = async ({ payload }) => {

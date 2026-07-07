@@ -1,0 +1,95 @@
+openapi: 3.0.3
+info:
+  title: Catalog Service Internal API
+  version: 1.0.0
+  description: Internal contract used by peer services for ticket inventory and catalog analytics.
+servers:
+  - url: http://catalog-service:5102
+security:
+  - InternalApiKey: []
+paths:
+  /internal/catalog/stats:
+    get:
+      summary: Get catalog aggregate statistics
+      responses:
+        '200':
+          description: Catalog stats payload
+  /internal/catalog/tickets/reserve:
+    post:
+      summary: Reserve tickets for a pending booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketReservationRequest'
+      responses:
+        '200':
+          description: Reservation completed
+  /internal/catalog/tickets/release:
+    post:
+      summary: Release reserved tickets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketReleaseRequest'
+      responses:
+        '200':
+          description: Release completed
+  /internal/catalog/events/revenue:
+    post:
+      summary: Apply confirmed revenue to related events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketBatchRequest'
+      responses:
+        '200':
+          description: Revenue applied
+components:
+  securitySchemes:
+    InternalApiKey:
+      type: apiKey
+      in: header
+      name: x-internal-api-key
+  schemas:
+    TicketBatchItem:
+      type: object
+      properties:
+        ticketId:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        seatNumbers:
+          type: array
+          items:
+            type: string
+    TicketBatchRequest:
+      type: object
+      properties:
+        tickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketBatchItem'
+    TicketReservationRequest:
+      allOf:
+        - $ref: '#/components/schemas/TicketBatchRequest'
+        - type: object
+          properties:
+            userId:
+              type: string
+            expiresAt:
+              type: string
+              format: date-time
+    TicketReleaseRequest:
+      allOf:
+        - $ref: '#/components/schemas/TicketBatchRequest'
+        - type: object
+          properties:
+            restoreRevenue:
+              type: boolean

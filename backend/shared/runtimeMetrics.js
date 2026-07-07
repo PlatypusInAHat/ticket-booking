@@ -55,7 +55,7 @@ const collectBookingQueueMetrics = async (serviceName) => {
     return;
   }
 
-  const purchaseQueue = safeRequire('../services/purchaseQueue');
+  const purchaseQueue = safeRequire('../services/booking/src/services/purchaseQueue');
   if (!purchaseQueue?.getPurchaseQueueStats) {
     return;
   }
@@ -74,7 +74,7 @@ const collectEmailQueueMetrics = async (serviceName) => {
     return;
   }
 
-  const EmailJob = safeRequire('../models/EmailJob');
+  const EmailJob = safeRequire('../services/notification/src/models/EmailJob');
   if (!EmailJob) {
     return;
   }

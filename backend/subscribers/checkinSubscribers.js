@@ -1,5 +1,5 @@
-const Booking = require('../models/Booking');
-const EVENTS = require('../shared/domainEvents');
+const Booking = require('../services/booking/src/models/Booking');
+const EVENTS = require('../packages/platform/src/lib/domainEvents');
 const { subscribeEvents } = require('../shared/eventBus');
 
 const upsertBookingProjection = async (booking = {}) => {

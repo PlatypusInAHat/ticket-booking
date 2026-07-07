@@ -1,13 +1,16 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, CheckCircle2, CreditCard, Lock, Receipt } from "lucide-react"
+import { TurnstileWidget } from "@/components/TurnstileWidget"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { clearCart } from "@/store/cartSlice"
 import { bookingsAPI, paymentAPI } from "@/services/api"
+import { getDeviceFingerprint } from "@/utils/deviceFingerprint"
 import { formatCurrency } from "@/utils/format"
 import { paymentMethodLabels } from "@/utils/labels"
 
 const gatewayMethods = new Set(["vnpay", "momo"])
+const turnstileSiteKey = String((import.meta as any).env?.VITE_TURNSTILE_SITE_KEY || "").trim()
 
 const getPaymentActionText = (paymentMethod: string) => {
   if (paymentMethod === "vnpay") {
@@ -35,8 +38,13 @@ export function Checkout() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [statusText, setStatusText] = useState("")
+  const [turnstileToken, setTurnstileToken] = useState("")
 
-  const createBookingPayload = () => ({
+  const resetTurnstile = useCallback(() => {
+    setTurnstileToken("")
+  }, [])
+
+  const createBookingPayload = (security: { deviceFingerprint: string; turnstileToken?: string }) => ({
     tickets: items.map((item: any) => ({
       ticketId: item._id || item.id,
       quantity: item.quantity,
@@ -46,6 +54,8 @@ export function Checkout() {
     customerEmail,
     customerPhone,
     source: "web",
+    deviceFingerprint: security.deviceFingerprint,
+    turnstileToken: security.turnstileToken || undefined,
   })
 
   const redirectToGateway = (session: any) => {
@@ -77,7 +87,15 @@ export function Checkout() {
     setStatusText("Holding your tickets...")
 
     try {
-      const bookingResponse = await bookingsAPI.create(createBookingPayload())
+      if (turnstileSiteKey && !turnstileToken) {
+        throw new Error("Please complete the human verification before checkout.")
+      }
+
+      const deviceFingerprint = await getDeviceFingerprint()
+      const bookingResponse = await bookingsAPI.create(createBookingPayload({
+        deviceFingerprint,
+        turnstileToken
+      }))
       const booking = bookingResponse.data.data
 
       window.localStorage.setItem("lastPendingBookingId", booking._id)
@@ -226,9 +244,18 @@ export function Checkout() {
             </p>
           </div>
 
+          <div className="mt-6 rounded-2xl border border-border bg-surface p-5">
+            <p className="mb-3 text-sm font-bold text-foreground">Bot protection</p>
+            <TurnstileWidget
+              siteKey={turnstileSiteKey}
+              onVerify={setTurnstileToken}
+              onReset={resetTurnstile}
+            />
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || Boolean(turnstileSiteKey && !turnstileToken)}
             className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-8 py-4 text-lg font-semibold text-accent-foreground transition-colors hover:bg-accent-strong disabled:opacity-50 md:w-auto"
           >
             <CreditCard className="h-5 w-5" />

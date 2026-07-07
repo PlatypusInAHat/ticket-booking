@@ -253,22 +253,22 @@ jobs:
         include:
           - service: api-gateway
             local_image: ticket-booking-api-gateway
-            start_script: start:gateway
+            dockerfile: services/api-gateway/Dockerfile
           - service: auth-service
             local_image: ticket-booking-auth-service
-            start_script: start:auth-service
+            dockerfile: services/auth/Dockerfile
           - service: catalog-service
             local_image: ticket-booking-catalog-service
-            start_script: start:catalog-service
+            dockerfile: services/catalog/Dockerfile
           - service: booking-service
             local_image: ticket-booking-booking-service
-            start_script: start:booking-service
+            dockerfile: services/booking/Dockerfile
           - service: checkin-service
             local_image: ticket-booking-checkin-service
-            start_script: start:checkin-service
+            dockerfile: services/checkin/Dockerfile
           - service: notification-service
             local_image: ticket-booking-notification-service
-            start_script: start:notification-service
+            dockerfile: services/notification/Dockerfile
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -277,7 +277,7 @@ jobs:
         run: |
           docker build \
             --pull \
-            --build-arg "SERVICE_START_SCRIPT=${{ matrix.start_script }}" \
+            -f "backend/${{ matrix.dockerfile }}" \
             -t "${{ matrix.local_image }}:audit" \
             backend
 

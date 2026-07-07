@@ -1,0 +1,11 @@
+{
+  "name": "@ticket-booking/platform",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Platform-level shared utilities for backend service packages",
+  "main": "src/index.js",
+  "dependencies": {
+    "@ticket-booking/shared": "file:../shared",
+    "axios": "^1.3.0"
+  }
+}
