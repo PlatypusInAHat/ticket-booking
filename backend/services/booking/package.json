@@ -9,6 +9,7 @@
     "dev": "nodemon ../../microservices/booking-service/server.js"
   },
   "dependencies": {
+    "@ticket-booking/platform": "file:../../packages/platform",
     "@ticket-booking/shared": "file:../../packages/shared",
     "axios": "^1.3.0",
     "bwip-js": "^4.11.1",

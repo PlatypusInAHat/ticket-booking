@@ -2,27 +2,22 @@ process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'catalog-service';
 require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
-const companyRoutes = require('../../services/catalog/src/routes/companies');
-const eventRoutes = require('../../services/catalog/src/routes/events');
-const ticketRoutes = require('../../services/catalog/src/routes/tickets');
-const internalCatalogRoutes = require('../../services/catalog/src/routes/internal/catalog');
 const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
 const startCatalogSubscribers = require('../../subscribers/catalogSubscribers');
+const catalogServicePackage = require('../../services/catalog/src');
 
 const SERVICE_NAME = 'catalog-service';
 const PORT = process.env.CATALOG_SERVICE_PORT || 5102;
 
-const uploadRoutes = require('../../services/catalog/src/routes/upload');
-
 const app = createServiceApp({
   serviceName: SERVICE_NAME,
   routes: [
-    { path: '/api/companies', router: companyRoutes },
-    { path: '/api/events', router: eventRoutes },
-    { path: '/api/tickets', router: ticketRoutes },
-    { path: '/api/upload', router: uploadRoutes },
-    { path: '/internal/catalog', router: internalCatalogRoutes }
+    { path: '/api/companies', router: catalogServicePackage.routes.companies },
+    { path: '/api/events', router: catalogServicePackage.routes.events },
+    { path: '/api/tickets', router: catalogServicePackage.routes.tickets },
+    { path: '/api/upload', router: catalogServicePackage.routes.upload },
+    { path: '/internal/catalog', router: catalogServicePackage.routes.internalCatalog }
   ]
 });
 

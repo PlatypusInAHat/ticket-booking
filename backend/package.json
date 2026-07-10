@@ -37,6 +37,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@ticket-booking/platform": "file:packages/platform",
+    "@ticket-booking/shared": "file:packages/shared",
     "@aws-sdk/client-s3": "^3.850.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.78.0",

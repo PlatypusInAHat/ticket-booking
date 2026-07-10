@@ -1,16 +1,11 @@
-const Booking = require('../../../booking/src/models/Booking');
+const CheckInBookingProjection = require('../models/CheckInBookingProjection');
 const CheckInDevice = require('../models/CheckInDevice');
 const CheckInLog = require('../models/CheckInLog');
-const ApiError = require('../../../../utils/ApiError');
-const {
-  buildScanPayload,
-  hashNfcPayload,
-  hashScanToken,
-  normalizeScanInput
-} = require('../../../../utils/passUtils');
-const { hmacSha256 } = require('../../../../utils/cryptoUtils');
-const { publishDomainEvent } = require('../../../../shared/domainEventPublisher');
-const EVENTS = require('../../../../shared/domainEvents');
+const { ApiError } = require('@ticket-booking/shared');
+const { passUtils, cryptoUtils, domainEvents, publishDomainEvent } = require('@ticket-booking/platform');
+const EVENTS = domainEvents;
+const { buildScanPayload, hashNfcPayload, hashScanToken, normalizeScanInput } = passUtils;
+const { hmacSha256 } = cryptoUtils;
 
 const CHECK_IN_MESSAGES = {
   notFound: 'Ticket not found.',
@@ -158,7 +153,7 @@ const findBookingAndPassByScanInput = async (scanInput) => {
   const scanTokenHash = hashScanToken(normalized);
   const nfcPayloadHash = hashNfcPayload(nfcPayload);
 
-  const booking = await Booking.findOne({
+  const booking = await CheckInBookingProjection.findOne({
     $or: [
       { 'passes.passCode': normalizedPassCode },
       { 'passes.barcodeValue': normalizedPassCode },
@@ -299,7 +294,7 @@ const checkInPass = async ({
   }
 
   const checkedInAt = new Date();
-  const updatedBooking = await Booking.findOneAndUpdate(
+  const updatedBooking = await CheckInBookingProjection.findOneAndUpdate(
     {
       _id: booking._id,
       bookingStatus: 'confirmed',
@@ -330,7 +325,7 @@ const checkInPass = async ({
   );
 
   if (!updatedBooking) {
-    const latest = await Booking.findById(booking._id);
+    const latest = await CheckInBookingProjection.findById(booking._id);
     const latestPass = findPassById(latest, pass._id) || pass;
     const latestValidity = getPassValidity(latest, latestPass);
 
@@ -387,7 +382,7 @@ const checkInPass = async ({
 
 const getCheckInStats = async (ticketId) => {
   const match = ticketId ? { 'passes.ticket': ticketId } : {};
-  const bookings = await Booking.find(match);
+  const bookings = await CheckInBookingProjection.find(match);
 
   const stats = bookings.reduce((accumulator, booking) => {
     booking.passes.forEach((pass) => {

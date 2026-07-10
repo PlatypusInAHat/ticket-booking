@@ -1,4 +1,4 @@
-const ApiError = require('../utils/ApiError');
+const { ApiError } = require('@ticket-booking/shared');
 
 const errorHandler = (err, req, res, next) => {
   let error = err;

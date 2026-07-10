@@ -3,13 +3,9 @@ const Company = require('../models/Company');
 const Event = require('../models/Event');
 const Session = require('../../../auth/src/models/Session');
 const Ticket = require('../models/Ticket');
-const ApiError = require('../../../../utils/ApiError');
+const { ApiError, queryUtils } = require('@ticket-booking/shared');
 const { canManageCompany } = require('./companyService');
-const {
-  buildSort,
-  parseDate,
-  parsePositiveInt
-} = require('../../../../utils/queryUtils');
+const { buildSort, parseDate, parsePositiveInt } = queryUtils;
 
 const getEvents = async (query = {}) => {
   const {

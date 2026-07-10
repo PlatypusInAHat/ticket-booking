@@ -1,6 +1,8 @@
-const User = require('../services/auth/src/models/User');
-const EVENTS = require('../packages/platform/src/lib/domainEvents');
+const authServicePackage = require('../services/auth/src');
+const { domainEvents } = require('@ticket-booking/platform');
 const { subscribeEvents } = require('../shared/eventBus');
+const { User } = authServicePackage.models;
+const EVENTS = domainEvents;
 
 const handleBookingCreated = async ({ payload }) => {
   const userId = payload.userId || payload.booking?.user;

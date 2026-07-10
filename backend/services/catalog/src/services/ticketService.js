@@ -1,14 +1,9 @@
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
-const ApiError = require('../../../../utils/ApiError');
+const { ApiError, queryUtils } = require('@ticket-booking/shared');
 const { toPublicTicket } = require('../serializers/ticketSerializer');
 const { canManageCompany } = require('./companyService');
-const {
-  buildSort,
-  parseBoolean,
-  parseDate,
-  parsePositiveInt
-} = require('../../../../utils/queryUtils');
+const { buildSort, parseBoolean, parseDate, parsePositiveInt } = queryUtils;
 
 const getAllTickets = async (query) => {
   const {

@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const {
   getPasswordHashRounds,
   pepperPassword
-} = require('../../../../utils/cryptoUtils');
+} = require('@ticket-booking/platform').cryptoUtils;
 
 const userSchema = new mongoose.Schema({
   name: {

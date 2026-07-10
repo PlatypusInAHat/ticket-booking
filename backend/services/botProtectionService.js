@@ -1,10 +1,12 @@
-const ApiError = require('../utils/ApiError');
+const { ApiError } = require('@ticket-booking/shared');
+const { securityUtils } = require('@ticket-booking/platform');
+const { getClientIp } = require('../middleware/rateLimit');
+
 const {
   hmacSha256,
   sanitizeFingerprint,
   sanitizeToken
-} = require('../utils/securityUtils');
-const { getClientIp } = require('../middleware/rateLimit');
+} = securityUtils;
 
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 

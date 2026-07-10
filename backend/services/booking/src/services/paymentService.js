@@ -3,16 +3,16 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
-const ApiError = require('../../../../utils/ApiError');
+const { ApiError } = require('@ticket-booking/shared');
+const { cryptoUtils, domainEvents, publishDomainEvent } = require('@ticket-booking/platform');
 const catalogClient = require('./catalogClient');
-const { publishDomainEvent } = require('../../../../shared/domainEventPublisher');
-const EVENTS = require('../../../../shared/domainEvents');
+const EVENTS = domainEvents;
 const {
   expirePendingBooking,
   isExpiredPendingBooking,
   serializeBookingForEvent
 } = require('./bookingService');
-const { hashSecret } = require('../../../../utils/cryptoUtils');
+const { hashSecret } = cryptoUtils;
 
 const SUPPORTED_PROVIDERS = ['mock', 'vnpay', 'momo'];
 

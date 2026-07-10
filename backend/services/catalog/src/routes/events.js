@@ -3,7 +3,8 @@ const { body, param, query } = require('express-validator');
 const { authenticateToken, authorizeRole } = require('../../../../middleware/auth');
 const eventController = require('../controllers/eventController');
 const validateRequest = require('../../../../middleware/validateRequest');
-const { cacheMiddleware } = require('../../../../utils/cache');
+const { cache } = require('@ticket-booking/platform');
+const { cacheMiddleware } = cache;
 
 const router = express.Router();
 

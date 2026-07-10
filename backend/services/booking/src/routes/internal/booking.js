@@ -1,12 +1,9 @@
 const express = require('express');
 const Booking = require('../../models/Booking');
 const Payment = require('../../models/Payment');
-const internalAuth = require('../../../../../shared/internalAuth');
-const { publishDomainEvent } = require('../../../../../shared/domainEventPublisher');
-const EVENTS = require('../../../../../shared/domainEvents');
-const asyncHandler = require('../../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../../utils/ApiResponse');
-const ApiError = require('../../../../../utils/ApiError');
+const { ApiError, ApiResponse, asyncHandler } = require('@ticket-booking/shared');
+const { internalAuth, publishDomainEvent, domainEvents } = require('@ticket-booking/platform');
+const EVENTS = domainEvents;
 const catalogClient = require('../../services/catalogClient');
 const { attachTicketSnapshots, serializeBookingForEvent } = require('../../services/bookingService');
 

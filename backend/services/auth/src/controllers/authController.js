@@ -1,6 +1,5 @@
 const authService = require('../services/authService');
-const asyncHandler = require('../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../utils/ApiResponse');
+const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
 
 const register = asyncHandler(async (req, res) => {
   const data = await authService.register(req.body);

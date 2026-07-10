@@ -3,9 +3,9 @@ const EmailLog = require('../models/EmailLog');
 const EmailPreference = require('../models/EmailPreference');
 const EmailSuppression = require('../models/EmailSuppression');
 const MarketingCampaign = require('../models/MarketingCampaign');
-const { sendEmail } = require('../../../../utils/emailService');
-const logger = require('../../../../utils/logger');
-const { hmacSha256 } = require('../../../../utils/cryptoUtils');
+const { emailService, logger, cryptoUtils } = require('@ticket-booking/platform');
+const { sendEmail } = emailService;
+const { hmacSha256 } = cryptoUtils;
 
 const DEFAULT_WORKER_INTERVAL_MS = 5000;
 const DEFAULT_BATCH_SIZE = 10;

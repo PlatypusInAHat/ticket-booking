@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken, authorizeRole } = require('../../../../middleware/auth');
-const { upload, uploadImage } = require('../../../../utils/cloudinary');
+const { mediaStorage } = require('@ticket-booking/platform');
+const { upload, uploadImage } = mediaStorage;
 
 const router = express.Router();
 

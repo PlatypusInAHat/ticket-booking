@@ -1,12 +1,17 @@
 const internalAuth = require('../shared/internalAuth');
-const { isExpiredPendingBooking } = require('../services/booking/src/services/bookingService');
-const { assessBotRisk } = require('../services/botProtectionService');
-const { normalizeTicketSelection } = require('../services/catalog/src/services/catalogInventoryService');
-const { buildUnsubscribeToken } = require('../services/notification/src/services/emailQueueService');
-const { groupEligibleEvents } = require('../services/booking/src/services/eventReminderService');
-const { groupQuantitiesByEvent } = require('../services/purchaseLimitService');
-const { constantTimeEqual } = require('../utils/cryptoUtils');
-const { normalizeServiceUrl } = require('../utils/serviceUrl');
+const bookingServicePackage = require('../services/booking/src');
+const catalogServicePackage = require('../services/catalog/src');
+const notificationServicePackage = require('../services/notification/src');
+const { botProtectionService, cryptoUtils, serviceUrl } = require('@ticket-booking/platform');
+
+const { isExpiredPendingBooking } = bookingServicePackage.services.booking;
+const { groupEligibleEvents } = bookingServicePackage.services.eventReminder;
+const { groupQuantitiesByEvent } = bookingServicePackage.services.purchaseLimit;
+const { assessBotRisk } = botProtectionService;
+const { normalizeTicketSelection } = catalogServicePackage.services.inventory;
+const { buildUnsubscribeToken } = notificationServicePackage.services.emailQueue;
+const { constantTimeEqual } = cryptoUtils;
+const { normalizeServiceUrl } = serviceUrl;
 
 describe('backend safety logic', () => {
   const originalInternalApiKey = process.env.INTERNAL_API_KEY;

@@ -8,7 +8,10 @@ module.exports = {
     booking: require('./services/bookingService'),
     payment: require('./services/paymentService'),
     pass: require('./services/passService'),
-    queue: require('./services/purchaseQueue')
+    queue: require('./services/purchaseQueue'),
+    bookingExpiration: require('./services/bookingExpirationService'),
+    eventReminder: require('./services/eventReminderService'),
+    purchaseLimit: require('./services/purchaseLimitService')
   },
   models: {
     Booking: require('./models/Booking'),

@@ -4,7 +4,7 @@ const {
   buildEnvelope,
   publishEnvelope
 } = require('./eventBus');
-const logger = require('../utils/logger');
+const { logger } = require('@ticket-booking/platform');
 
 let workerTimer = null;
 let isDraining = false;

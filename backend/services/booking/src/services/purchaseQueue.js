@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-const ApiError = require('../../../../utils/ApiError');
+const { ApiError } = require('@ticket-booking/shared');
 const QueueSlot = require('../models/QueueSlot');
 
 const parsePositiveInt = (value, fallback) => {

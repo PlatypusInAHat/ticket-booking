@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const ApiError = require('../../../../utils/ApiError');
-const { getMinimumPasswordLength } = require('../../../../utils/cryptoUtils');
+const { ApiError } = require('@ticket-booking/shared');
+const { cryptoUtils, domainEvents, publishDomainEvent } = require('@ticket-booking/platform');
+const { getMinimumPasswordLength } = cryptoUtils;
+const EVENTS = domainEvents;
 
 const getAccessTokenExpiry = () => process.env.JWT_ACCESS_EXPIRE || '15m';
 const getRefreshTokenExpiry = () => process.env.JWT_REFRESH_EXPIRE || '24h';
@@ -64,9 +66,6 @@ const register = async (userData) => {
 
   const { accessToken, refreshToken, expiresAt, refreshExpiresAt } = generateTokens(user);
 
-  const { publishDomainEvent } = require('../../../../shared/domainEventPublisher');
-  const EVENTS = require('../../../../shared/domainEvents');
-  
   await publishDomainEvent(EVENTS.USER_REGISTERED, { user: { id: user._id, name: user.name, email: user.email } }, { source: 'auth-service' });
 
   return {
@@ -188,9 +187,6 @@ const forgotPassword = async (email) => {
   const resetToken = user.getResetPasswordToken();
   await user.save({ validateBeforeSave: false });
 
-  const { publishDomainEvent } = require('../../../../shared/domainEventPublisher');
-  const EVENTS = require('../../../../shared/domainEvents');
-  
   await publishDomainEvent(EVENTS.PASSWORD_RESET_REQUESTED, { 
     user: { name: user.name, email: user.email },
     resetToken

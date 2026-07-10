@@ -7,6 +7,7 @@ module.exports = {
     checkin: require('./services/checkinService')
   },
   models: {
+    CheckInBookingProjection: require('./models/CheckInBookingProjection'),
     CheckInDevice: require('./models/CheckInDevice'),
     CheckInLog: require('./models/CheckInLog')
   }

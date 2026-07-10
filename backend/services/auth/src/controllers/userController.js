@@ -1,6 +1,5 @@
 const userService = require('../services/userService');
-const asyncHandler = require('../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../utils/ApiResponse');
+const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const user = await userService.getUserProfile(req.user.id);

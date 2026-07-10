@@ -1,7 +1,6 @@
 const bookingService = require('../services/bookingService');
 const { enqueueBookingCreation, getPurchaseQueueStats } = require('../services/purchaseQueue');
-const asyncHandler = require('../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../utils/ApiResponse');
+const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
 
 const createBooking = asyncHandler(async (req, res) => {
   const booking = await enqueueBookingCreation(() => bookingService.createBooking(req.body, req.user, {

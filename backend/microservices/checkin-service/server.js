@@ -2,12 +2,11 @@ process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'checkin-service';
 require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
-const checkinRoutes = require('../../services/checkin/src/routes/checkin');
-const internalCheckinRoutes = require('../../services/checkin/src/routes/internal/checkin');
 const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
 const startCheckinSubscribers = require('../../subscribers/checkinSubscribers');
 const { startOutboxPublisher } = require('../../shared/outboxPublisher');
+const checkinServicePackage = require('../../services/checkin/src');
 
 const SERVICE_NAME = 'checkin-service';
 const PORT = process.env.CHECKIN_SERVICE_PORT || 5104;
@@ -15,8 +14,8 @@ const PORT = process.env.CHECKIN_SERVICE_PORT || 5104;
 const app = createServiceApp({
   serviceName: SERVICE_NAME,
   routes: [
-    { path: '/api/checkin', router: checkinRoutes },
-    { path: '/internal/checkin', router: internalCheckinRoutes }
+    { path: '/api/checkin', router: checkinServicePackage.routes.checkin },
+    { path: '/internal/checkin', router: checkinServicePackage.routes.internalCheckin }
   ]
 });
 

@@ -1,6 +1,5 @@
 const adminService = require('../services/adminService');
-const asyncHandler = require('../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../utils/ApiResponse');
+const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
 
 const getDashboardStats = asyncHandler(async (req, res) => {
   const stats = await adminService.getDashboardStats();

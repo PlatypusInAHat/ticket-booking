@@ -11,10 +11,8 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { correlationIdMiddleware } = require('../../middleware/correlationId');
 const errorHandler = require('../../middleware/error');
-const { constantTimeEqual } = require('../../utils/cryptoUtils');
-const { createCorsOptions } = require('../../utils/corsOptions');
+const { cryptoUtils, corsOptions, serviceUrl } = require('@ticket-booking/platform');
 const { requestInternalService } = require('../../shared/internalHttpClient');
-const { normalizeServiceUrl } = require('../../utils/serviceUrl');
 const {
   buildHealthPayload,
   checkHttpDependency,
@@ -24,6 +22,9 @@ const { createMetricsMiddleware, getServiceMetrics } = require('../../shared/met
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
+const { constantTimeEqual } = cryptoUtils;
+const { createCorsOptions } = corsOptions;
+const { normalizeServiceUrl } = serviceUrl;
 
 const SERVICE_NAME = process.env.SERVICE_NAME || 'api-gateway';
 const PORT = process.env.GATEWAY_PORT || process.env.PORT || 5000;

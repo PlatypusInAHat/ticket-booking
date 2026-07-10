@@ -3,10 +3,8 @@ const EmailJob = require('../../models/EmailJob');
 const EmailLog = require('../../models/EmailLog');
 const EmailPreference = require('../../models/EmailPreference');
 const EmailSuppression = require('../../models/EmailSuppression');
-const internalAuth = require('../../../../../shared/internalAuth');
-const asyncHandler = require('../../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../../utils/ApiResponse');
-const ApiError = require('../../../../../utils/ApiError');
+const { ApiError, ApiResponse, asyncHandler } = require('@ticket-booking/shared');
+const { internalAuth } = require('@ticket-booking/platform');
 const {
   createMarketingCampaign,
   enqueueEmail,

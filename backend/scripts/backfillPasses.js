@@ -1,7 +1,10 @@
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
-const Booking = require('../services/booking/src/models/Booking');
-const { buildPassSecrets, generatePassCode } = require('../packages/platform/src/lib/passUtils');
+const bookingServicePackage = require('../services/booking/src');
+const { passUtils } = require('@ticket-booking/platform');
+
+const { Booking } = bookingServicePackage.models;
+const { buildPassSecrets, generatePassCode } = passUtils;
 
 dotenv.config();
 

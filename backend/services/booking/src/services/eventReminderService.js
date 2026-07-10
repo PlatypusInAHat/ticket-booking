@@ -1,9 +1,8 @@
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
-const { publishDomainEvent } = require('../../../../shared/domainEventPublisher');
-const EVENTS = require('../../../../shared/domainEvents');
-const logger = require('../../../../utils/logger');
+const { domainEvents, logger, publishDomainEvent } = require('@ticket-booking/platform');
+const EVENTS = domainEvents;
 const { serializeBookingForEvent } = require('./bookingService');
 
 const DEFAULT_INTERVAL_MS = 15 * 60 * 1000;

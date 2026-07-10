@@ -3,9 +3,8 @@ const catalogInventoryService = require('../../services/catalogInventoryService'
 const Company = require('../../models/Company');
 const Event = require('../../models/Event');
 const Ticket = require('../../models/Ticket');
-const internalAuth = require('../../../../../shared/internalAuth');
-const asyncHandler = require('../../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../../utils/ApiResponse');
+const { ApiResponse, asyncHandler } = require('@ticket-booking/shared');
+const { internalAuth } = require('@ticket-booking/platform');
 
 const router = express.Router();
 

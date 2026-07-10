@@ -1,5 +1,5 @@
 const { getCorrelationId } = require('../middleware/correlationId');
-const { createInternalHttpRequester } = require('../packages/platform/src/lib/internalHttpClient');
+const { createInternalHttpRequester } = require('@ticket-booking/platform');
 
 const requestInternalService = createInternalHttpRequester({ getCorrelationId });
 

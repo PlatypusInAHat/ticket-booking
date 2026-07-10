@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const ApiError = require('../utils/ApiError');
+const { ApiError } = require('@ticket-booking/shared');
 
 const validateRequest = (req, res, next) => {
   const result = validationResult(req);

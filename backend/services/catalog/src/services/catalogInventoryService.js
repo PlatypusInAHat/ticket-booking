@@ -1,7 +1,7 @@
 const Event = require('../models/Event');
 const SeatLock = require('../models/SeatLock');
 const Ticket = require('../models/Ticket');
-const ApiError = require('../../../../utils/ApiError');
+const { ApiError } = require('@ticket-booking/shared');
 
 const toTicketId = (item = {}) => {
   if (item.ticketId) {

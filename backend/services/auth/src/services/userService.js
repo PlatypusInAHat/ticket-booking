@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const ApiError = require('../../../../utils/ApiError');
+const { ApiError } = require('@ticket-booking/shared');
 
 const getUserProfile = async (userId) => {
   const user = await User.findById(userId);

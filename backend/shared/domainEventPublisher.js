@@ -1,6 +1,6 @@
 const { publishEvent } = require('./eventBus');
 const { enqueueOutboxEvent } = require('./outboxPublisher');
-const logger = require('../utils/logger');
+const { logger } = require('@ticket-booking/platform');
 
 const publishDomainEvent = async (type, payload = {}, options = {}) => {
   const useOutbox = process.env.OUTBOX_ENABLED !== 'false';

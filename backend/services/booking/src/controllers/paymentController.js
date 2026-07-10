@@ -1,6 +1,5 @@
 const paymentService = require('../services/paymentService');
-const asyncHandler = require('../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../utils/ApiResponse');
+const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
 
 const createPaymentSession = asyncHandler(async (req, res) => {
   const { bookingId, provider } = req.body;

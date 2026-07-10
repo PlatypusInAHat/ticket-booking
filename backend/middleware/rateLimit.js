@@ -1,4 +1,4 @@
-const ApiError = require('../utils/ApiError');
+const { ApiError } = require('@ticket-booking/shared');
 const mongoose = require('mongoose');
 const RateLimitCounter = require('../models/RateLimitCounter');
 

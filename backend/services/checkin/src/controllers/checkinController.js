@@ -1,6 +1,5 @@
 const checkinService = require('../services/checkinService');
-const asyncHandler = require('../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../utils/ApiResponse');
+const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
 
 const buildRequestContext = (req) => ({
   ip: req.ip || '',

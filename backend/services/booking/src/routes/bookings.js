@@ -5,7 +5,9 @@ const bookingController = require('../controllers/bookingController');
 const passController = require('../controllers/passController');
 const validateRequest = require('../../../../middleware/validateRequest');
 const { createEnvRateLimiter } = require('../../../../middleware/rateLimit');
-const { verifyCheckoutBotProtection } = require('../../../../services/botProtectionService');
+const { botProtectionService } = require('@ticket-booking/platform');
+
+const { verifyCheckoutBotProtection } = botProtectionService;
 
 const router = express.Router();
 

@@ -2,13 +2,11 @@ process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'auth-service';
 require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
-const authRoutes = require('../../services/auth/src/routes/auth');
-const userRoutes = require('../../services/auth/src/routes/users');
-const adminRoutes = require('../../services/auth/src/routes/admin');
 const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
 const startAuthSubscribers = require('../../subscribers/authSubscribers');
 const { startOutboxPublisher } = require('../../shared/outboxPublisher');
+const authServicePackage = require('../../services/auth/src');
 
 const SERVICE_NAME = 'auth-service';
 const PORT = process.env.AUTH_SERVICE_PORT || 5101;
@@ -16,9 +14,9 @@ const PORT = process.env.AUTH_SERVICE_PORT || 5101;
 const app = createServiceApp({
   serviceName: SERVICE_NAME,
   routes: [
-    { path: '/api/auth', router: authRoutes },
-    { path: '/api/users', router: userRoutes },
-    { path: '/api/admin', router: adminRoutes }
+    { path: '/api/auth', router: authServicePackage.routes.auth },
+    { path: '/api/users', router: authServicePackage.routes.users },
+    { path: '/api/admin', router: authServicePackage.routes.admin }
   ]
 });
 

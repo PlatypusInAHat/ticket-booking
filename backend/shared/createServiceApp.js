@@ -3,8 +3,7 @@ const cors = require('cors');
 const compression = require('compression');
 const errorHandler = require('../middleware/error');
 const { correlationIdMiddleware } = require('../middleware/correlationId');
-const logger = require('../utils/logger');
-const { createCorsOptions } = require('../utils/corsOptions');
+const { logger, corsOptions } = require('@ticket-booking/platform');
 const {
   buildHealthPayload,
   resolveOverallStatus,
@@ -14,6 +13,7 @@ const { createMetricsMiddleware, getServiceMetrics } = require('./metrics');
 const { collectRuntimeMetrics } = require('./runtimeMetrics');
 
 const DEFAULT_BODY_LIMIT = '10mb';
+const { createCorsOptions } = corsOptions;
 
 const createServiceApp = ({
   serviceName,

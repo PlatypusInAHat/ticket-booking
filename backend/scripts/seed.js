@@ -1,14 +1,14 @@
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
-const User = require('../services/auth/src/models/User');
-const Ticket = require('../services/catalog/src/models/Ticket');
-const Booking = require('../services/booking/src/models/Booking');
-const Company = require('../services/catalog/src/models/Company');
-const Event = require('../services/catalog/src/models/Event');
-const Payment = require('../services/booking/src/models/Payment');
-const CheckInLog = require('../services/checkin/src/models/CheckInLog');
-const CheckInDevice = require('../services/checkin/src/models/CheckInDevice');
-const SeatLock = require('../services/catalog/src/models/SeatLock');
+const authServicePackage = require('../services/auth/src');
+const bookingServicePackage = require('../services/booking/src');
+const catalogServicePackage = require('../services/catalog/src');
+const checkinServicePackage = require('../services/checkin/src');
+
+const { User } = authServicePackage.models;
+const { Booking, Payment } = bookingServicePackage.models;
+const { Ticket, Company, Event, SeatLock } = catalogServicePackage.models;
+const { CheckInLog, CheckInDevice } = checkinServicePackage.models;
 
 dotenv.config();
 

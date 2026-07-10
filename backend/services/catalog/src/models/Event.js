@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const slugify = require('../../../../utils/slugify');
+const { slugify } = require('@ticket-booking/platform');
 
 const eventSchema = new mongoose.Schema({
   company: {

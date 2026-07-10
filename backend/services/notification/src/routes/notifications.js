@@ -1,10 +1,9 @@
 const express = require('express');
-const ApiError = require('../../../../utils/ApiError');
-const ApiResponse = require('../../../../utils/ApiResponse');
-const asyncHandler = require('../../../../utils/asyncHandler');
+const { ApiError, ApiResponse, asyncHandler } = require('@ticket-booking/shared');
 const { authenticateToken } = require('../../../../middleware/auth');
 const { buildUnsubscribeToken, updateEmailPreference } = require('../services/emailQueueService');
-const { constantTimeEqual } = require('../../../../utils/cryptoUtils');
+const { cryptoUtils } = require('@ticket-booking/platform');
+const { constantTimeEqual } = cryptoUtils;
 
 const router = express.Router();
 

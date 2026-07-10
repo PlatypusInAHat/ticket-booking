@@ -9,6 +9,7 @@
     "dev": "nodemon ../../microservices/notification-service/server.js"
   },
   "dependencies": {
+    "@ticket-booking/platform": "file:../../packages/platform",
     "@ticket-booking/shared": "file:../../packages/shared",
     "express": "^4.18.2",
     "handlebars": "^4.7.9",

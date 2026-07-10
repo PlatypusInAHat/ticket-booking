@@ -1,7 +1,5 @@
-const { ApiError } = require('@ticket-booking/shared');
-const { cryptoUtils } = require('@ticket-booking/platform');
-
-const { constantTimeEqual } = cryptoUtils;
+const { ApiError } = require('../../../shared/src');
+const { constantTimeEqual } = require('./cryptoUtils');
 
 const internalAuth = (req, res, next) => {
   const expectedKey = process.env.INTERNAL_API_KEY;

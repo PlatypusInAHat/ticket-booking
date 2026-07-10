@@ -1,6 +1,8 @@
-const ApiError = require('../../../../utils/ApiError');
-const { requestInternalService } = require('../../../../shared/internalHttpClient');
-const { normalizeServiceUrl } = require('../../../../utils/serviceUrl');
+const { ApiError } = require('@ticket-booking/shared');
+const { createInternalHttpRequester, serviceUrl } = require('@ticket-booking/platform');
+
+const requestInternalService = createInternalHttpRequester();
+const { normalizeServiceUrl } = serviceUrl;
 
 const getCatalogBaseUrl = () => {
   return normalizeServiceUrl(process.env.CATALOG_SERVICE_URL, 'http://localhost:5102');

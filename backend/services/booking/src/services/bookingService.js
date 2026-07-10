@@ -1,21 +1,16 @@
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
-const ApiError = require('../../../../utils/ApiError');
-const { buildPassSecrets, generatePassCode } = require('../../../../utils/passUtils');
-const { hmacSha256 } = require('../../../../utils/securityUtils');
+const { ApiError, queryUtils } = require('@ticket-booking/shared');
+const { passUtils, securityUtils, domainEvents, publishDomainEvent } = require('@ticket-booking/platform');
 const catalogClient = require('./catalogClient');
 const {
   enforcePurchaseLimits,
   ensurePurchaseLimitStore
-} = require('../../../../services/purchaseLimitService');
-const { publishDomainEvent } = require('../../../../shared/domainEventPublisher');
-const EVENTS = require('../../../../shared/domainEvents');
-const {
-  escapeRegex,
-  buildSort,
-  parseDate,
-  parsePositiveInt
-} = require('../../../../utils/queryUtils');
+} = require('./purchaseLimitService');
+const EVENTS = domainEvents;
+const { buildPassSecrets, generatePassCode } = passUtils;
+const { hmacSha256 } = securityUtils;
+const { escapeRegex, buildSort, parseDate, parsePositiveInt } = queryUtils;
 
 const DEFAULT_BOOKING_HOLD_MINUTES = 15;
 

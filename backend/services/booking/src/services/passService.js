@@ -1,8 +1,9 @@
 const bwipjs = require('bwip-js');
 const QRCode = require('qrcode');
 const Booking = require('../models/Booking');
-const ApiError = require('../../../../utils/ApiError');
-const { buildPassSecrets, buildScanPayload } = require('../../../../utils/passUtils');
+const { ApiError } = require('@ticket-booking/shared');
+const { passUtils } = require('@ticket-booking/platform');
+const { buildPassSecrets, buildScanPayload } = passUtils;
 
 const findBookingWithSecrets = async (bookingId) => {
   return Booking.findById(bookingId).select('+passes.scanToken +passes.nfcPayload');

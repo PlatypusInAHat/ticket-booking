@@ -1,9 +1,6 @@
 const Company = require('../models/Company');
-const ApiError = require('../../../../utils/ApiError');
-const {
-  buildSort,
-  parsePositiveInt
-} = require('../../../../utils/queryUtils');
+const { ApiError, queryUtils } = require('@ticket-booking/shared');
+const { buildSort, parsePositiveInt } = queryUtils;
 
 const canManageCompany = (company, user) => {
   if (!company || !user) {

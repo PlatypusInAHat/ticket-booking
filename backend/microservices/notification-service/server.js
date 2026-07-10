@@ -5,18 +5,17 @@ require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_
 const createServiceApp = require('../../shared/createServiceApp');
 const startHttpService = require('../../shared/startHttpService');
 const { subscribeToDomainEvents } = require('../../shared/domainEventSubscriber');
-const EVENTS = require('../../shared/domainEvents');
-const publicNotificationRoutes = require('../../services/notification/src/routes/notifications');
-const notificationRoutes = require('../../services/notification/src/routes/internal/notifications');
-const { startEmailWorker } = require('../../services/notification/src/services/emailQueueService');
+const { domainEvents, logger } = require('@ticket-booking/platform');
+const notificationServicePackage = require('../../services/notification/src');
+const EVENTS = domainEvents;
+const { startEmailWorker } = notificationServicePackage.services.emailQueue;
 const {
   enqueueBookingCancelledEmail,
   enqueueEventReminderEmail,
   enqueuePasswordResetEmail,
   enqueuePaymentCompletedEmail,
   enqueueWelcomeEmail
-} = require('../../services/notification/src/services/notificationEventService');
-const logger = require('../../utils/logger');
+} = notificationServicePackage.services.notificationEvents;
 
 const SERVICE_NAME = 'notification-service';
 const PORT = process.env.NOTIFICATION_SERVICE_PORT || process.env.PORT || 5105;
@@ -27,8 +26,8 @@ const app = createServiceApp({
     requiredDependencies: ['mongodb', 'eventBroker']
   },
   routes: [
-    { path: '/api/notifications', router: publicNotificationRoutes },
-    { path: '/internal/notifications', router: notificationRoutes }
+    { path: '/api/notifications', router: notificationServicePackage.routes.notifications },
+    { path: '/internal/notifications', router: notificationServicePackage.routes.internalNotifications }
   ]
 });
 

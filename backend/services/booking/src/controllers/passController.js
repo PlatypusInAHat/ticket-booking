@@ -1,6 +1,5 @@
 const passService = require('../services/passService');
-const asyncHandler = require('../../../../utils/asyncHandler');
-const ApiResponse = require('../../../../utils/ApiResponse');
+const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
 
 const getBookingPasses = asyncHandler(async (req, res) => {
   const data = await passService.getBookingPasses(req.params.id, req.user);
