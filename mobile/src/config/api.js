@@ -9,3 +9,4 @@ const getDefaultApiUrl = () => {
 };
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || getDefaultApiUrl();
+export const PAYMENT_PROVIDER = (process.env.EXPO_PUBLIC_PAYMENT_PROVIDER || 'mock').toLowerCase();

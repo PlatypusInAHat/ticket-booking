@@ -36,13 +36,15 @@ function BookingCard({ booking, onOpenPasses, onCancel }) {
 }
 
 export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPasses, onCancelBooking }) {
+  const bookingList = Array.isArray(bookings) ? bookings : [];
+
   return (
     <Screen title="My Tickets" subtitle="View bookings, QR codes, barcodes, and NFC payloads.">
       <ScrollView
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.accent} />}
         scrollEnabled={false}
       >
-        {bookings.map(booking => (
+        {bookingList.map(booking => (
           <BookingCard
             key={booking._id}
             booking={booking}
@@ -50,7 +52,7 @@ export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPass
             onCancel={onCancelBooking}
           />
         ))}
-        {!loading && bookings.length === 0 ? (
+        {!loading && bookingList.length === 0 ? (
           <Card style={styles.emptyCard}>
             <CreditCard size={48} color={colors.muted} style={styles.emptyIcon} />
             <Text style={styles.emptyTitle}>No tickets yet</Text>

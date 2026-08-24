@@ -55,6 +55,13 @@ const collectBookingQueueMetrics = async (serviceName) => {
     return;
   }
 
+  if (process.env.BOOKING_QUEUE_ENABLED === 'false') {
+    ['running', 'pending', 'completed', 'rejected'].forEach((state) => {
+      setQueueDepth(serviceName, 'booking-create', state, 0);
+    });
+    return;
+  }
+
   const purchaseQueue = safeRequire('../services/booking/src/services/purchaseQueue');
   if (!purchaseQueue?.getPurchaseQueueStats) {
     return;

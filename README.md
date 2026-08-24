@@ -1,25 +1,60 @@
-# Ticket Booking App
+# Nền Tảng Đặt Vé
 
-Đây là hệ thống đặt vé gồm web, backend microservices và app mobile. Tài liệu này là file Markdown chính của project, đã gom nội dung từ các file README/setup/schema/security/microservices cũ về một nơi để dễ đọc và dễ bảo trì.
+Hệ thống đặt vé theo mô hình microservices, hỗ trợ web, mobile, check-in bằng QR/barcode/NFC, thanh toán qua gateway và backend hướng sự kiện.
 
-## 1. Tổng Quan
+Tài liệu này là file mô tả chính của dự án. Nội dung phản ánh trạng thái hiện tại của codebase sau các đợt refactor backend, tách package dùng chung và bổ sung projection riêng cho check-in service.
 
-Ứng dụng hỗ trợ:
+## 1. Tổng quan
 
-- Khách hàng xem sự kiện, mua vé, xem vé điện tử, QR, barcode và NFC payload.
-- Nhân viên check-in quét QR, barcode, NFC hoặc nhập thủ công.
-- Admin/organizer quản lý công ty, sự kiện, loại vé, đơn đặt vé, thanh toán và thống kê.
-- Mobile app dùng chung backend với web, có luồng khách hàng và luồng nhân viên check-in.
-- Backend đã chuyển sang mô hình microservices, mỗi service có database riêng và giao tiếp qua API nội bộ + RabbitMQ event broker.
+Hệ thống hỗ trợ 4 nhóm chức năng chính:
 
-## 2. Công Nghệ
+- Khách hàng xem sự kiện, chọn vé, tạo booking, thanh toán, nhận vé điện tử.
+- Nhân viên check-in quét QR, barcode, NFC hoặc nhập tay mã vé.
+- Admin và organizer quản lý công ty, sự kiện, loại vé, booking, thanh toán, dashboard.
+- Mobile app dùng chung backend với web, bao gồm cả luồng mua vé và luồng check-in.
 
-- Backend: Node.js, Express, MongoDB, Mongoose, JWT, bcrypt, VNPay/MoMo-ready, RabbitMQ.
-- Frontend web: React 18, Redux Toolkit, React Router, Axios, Tailwind CSS.
-- Mobile: Expo, React Native, expo-camera, react-native-nfc-manager, Android HCE native.
-- Hạ tầng local: Docker Compose, RabbitMQ Management UI, 4 MongoDB riêng cho service.
+Backend đã được chuyển sang kiến trúc microservices với:
 
-## 3. Cấu Trúc Chính
+- Mỗi service có phạm vi nghiệp vụ riêng.
+- Mỗi service có database riêng.
+- Service-to-service call qua internal API.
+- Domain events đi qua RabbitMQ.
+- Event publish được bảo vệ bằng outbox pattern.
+- Check-in service dùng projection model riêng, không còn phụ thuộc trực tiếp vào booking schema.
+
+## 2. Công nghệ
+
+### Backend
+
+- Node.js
+- Express
+- MongoDB + Mongoose
+- RabbitMQ
+- JWT
+- bcrypt
+- OpenTelemetry
+- Docker Compose
+
+### Frontend Web
+
+- React
+- Redux Toolkit
+- React Router
+- Tailwind CSS
+
+### Mobile
+
+- Expo / React Native
+- NFC support cho Android build native
+- QR / barcode / deep link payment flow
+
+### Infra / Ops
+
+- Docker Compose cho local
+- EKS / Kubernetes / HPA / PDB / observability ở repo infra riêng
+- CI/CD và image tagging đã được tách theo service
+
+## 3. Cấu trúc dự án
 
 ```text
 ticket-booking-app/
@@ -30,111 +65,352 @@ ticket-booking-app/
       catalog-service/
       booking-service/
       checkin-service/
-    controllers/
-    middleware/
-    models/
-    routes/
-      internal/
-    scripts/
-    serializers/
+      notification-service/
+    packages/
+      platform/
+      shared/
     services/
+      auth/
+      booking/
+      catalog/
+      checkin/
+      notification/
     shared/
-    utils/
-  frontend/
-    src/
-  mobile/
-    android/
+    middleware/
     scripts/
-    src/
+    __tests__/
+  frontend/
+  mobile/
   docker-compose.yml
   README.md
 ```
 
-## 4. Kiến Trúc Microservices
+## 4. Kiến trúc backend
 
-Backend hiện chạy theo hướng microservice-only. File `backend/server.js` chỉ đóng vai trò entrypoint để chạy `scripts/startMicroservices.js`.
+### 4.1 Danh sách service
 
-| Service | Port | Database | Vai trò |
+| Service | Port | DB | Vai trò |
 | --- | ---: | --- | --- |
-| `api-gateway` | `5000` | Không sở hữu DB | Public API cho web/mobile, proxy request sang service nội bộ |
-| `auth-service` | `5101` | `ticket-auth` | Người dùng, đăng ký, đăng nhập, JWT, profile |
-| `catalog-service` | `5102` | `ticket-catalog` | Công ty, sự kiện, vé, tồn kho vé |
-| `booking-service` | `5103` | `ticket-booking` | Booking, pass/vé điện tử, thanh toán, seat lock |
-| `checkin-service` | `5104` | `ticket-checkin` | Thiết bị check-in, validate/check-in log, thống kê cổng vào |
-| `rabbitmq` | `5672`, UI `15672` | Volume riêng | Event broker |
+| `api-gateway` | `5000` | không có | public entrypoint cho web/mobile |
+| `auth-service` | `5101` | `ticket-auth` | auth, user, admin |
+| `catalog-service` | `5102` | `ticket-catalog` | company, event, ticket, inventory |
+| `booking-service` | `5103` | `ticket-booking` | booking, pass, payment, queue, outbox |
+| `checkin-service` | `5104` | `ticket-checkin` | validate/check-in, device, log, projection |
+| `notification-service` | `5105` | notification domain | email queue, reminder, campaign |
 
-Nguyên tắc tách service:
+### 4.2 Nguyên tắc tách service
 
-- Không service nào được query trực tiếp database của service khác.
-- Không dùng cross-service `populate`.
-- Không import model thuộc service khác để xử lý nghiệp vụ.
-- Dữ liệu cần hiển thị lâu dài phải được lưu bằng snapshot/projection.
-- Thay đổi nghiệp vụ quan trọng nên phát domain event qua RabbitMQ.
-- API nội bộ phải dùng `INTERNAL_API_KEY`.
+- Không query database của service khác.
+- Không import model nghiệp vụ của service khác để xử lý runtime.
+- Dùng snapshot hoặc projection khi cần dữ liệu từ domain khác.
+- Internal API được bảo vệ bằng `INTERNAL_API_KEY`.
+- Event broker được dùng cho thay đổi domain quan trọng.
 
-Các event chính:
+### 4.3 Giao tiếp giữa các service
 
-- `ticket.reserved`
-- `ticket.reservation_failed`
-- `ticket.released`
+Có 2 kiểu:
+
+- Đồng bộ: HTTP internal call qua gateway helper / internal client.
+- Bất đồng bộ: RabbitMQ domain event.
+
+Ví dụ:
+
+- `booking-service` gọi `catalog-service` để reserve / release inventory.
+- `auth-service` gọi internal APIs khi cần thông tin quản trị.
+- `booking.created`, `payment.completed`, `booking.cancelled`, `pass.checked_in` được phát qua broker.
+
+## 5. Event-driven và outbox
+
+### 5.1 Domain events chính
+
 - `booking.created`
 - `booking.cancelled`
+- `booking.expired`
 - `payment.completed`
-- `payment.failed`
 - `pass.checked_in`
-- `event.revenue_updated`
+- `user.registered`
+- `password.reset_requested`
+- `event.reminder_due`
 
-## 5. Chạy Nhanh Bằng Docker Compose
+### 5.2 Outbox pattern
 
-Yêu cầu: Docker Desktop, Node.js nếu muốn chạy frontend/mobile bên ngoài container.
+Booking và các service phát event quan trọng không publish trực tiếp là đủ.
+
+Luồng:
+
+1. Ghi thay đổi domain và event vào MongoDB transaction.
+2. Event được đưa vào `EventOutbox`.
+3. Outbox publisher worker đọc batch pending.
+4. Publisher đẩy event sang RabbitMQ.
+5. Nếu broker lỗi, event vẫn còn trong outbox và sẽ retry.
+
+Mục tiêu:
+
+- Không mất event nếu service crash sau khi commit DB.
+- Tách luồng write domain với luồng publish broker.
+
+## 6. Database theo service
+
+### 6.1 Auth DB
+
+Collection chính:
+
+- `users`
+
+Nội dung:
+
+- thông tin user
+- role: `user`, `admin`, `staff`, `organizer`
+- password hash, password pepper metadata
+- refresh token version
+- profile, preferences, verification state
+
+### 6.2 Catalog DB
+
+Collection chính:
+
+- `companies`
+- `events`
+- `tickets`
+- `seatlocks`
+
+Quan hệ:
+
+- Mỗi `event` thuộc một `company`
+- Mỗi `ticket` thuộc một `event`
+- Inventory và seat lock nằm ở catalog domain
+
+### 6.3 Booking DB
+
+Collection chính:
+
+- `bookings`
+- `payments`
+- `eventoutboxes`
+- rate limit / purchase limit counters nếu bật store bằng Mongo
+
+Booking lưu:
+
+- danh sách ticket đã mua
+- snapshot thông tin event/ticket tại thời điểm đặt
+- passes
+- pricing
+- payment status
+- booking status
+- source: `web`, `mobile`, `admin`, `api`
+
+### 6.4 Check-in DB
+
+Collection chính:
+
+- `checkin_booking_projections`
+- `checkinlogs`
+- `checkindevices`
+
+Quan trọng:
+
+- Check-in service không còn dùng `Booking` schema của booking-service.
+- Nó dùng `CheckInBookingProjection` riêng chỉ gồm dữ liệu phục vụ quét vé.
+- Projection được cập nhật từ domain events.
+
+### 6.5 Notification
+
+Hiện tại notification service tập trung vào:
+
+- email queue
+- email log / template / preference
+- reminder flow
+
+Nếu mở rộng, có thể tách DB notification riêng rõ hơn theo môi trường.
+
+## 7. Check-in projection model
+
+Đây là thay đổi quan trọng của kiến trúc hiện tại.
+
+### 7.1 Vấn đề cũ
+
+Trước đây, checkin-service dùng trực tiếp model `Booking` của booking-service để:
+
+- lưu projection local
+- validate pass
+- check-in atomic
+
+Cách này chạy được nhưng coupling rất chặt:
+
+- booking schema đổi thì checkin projection đổi theo ngầm
+- checkin DB trở thành bản sao booking domain
+- khó kiểm soát contract read model
+
+### 7.2 Cách hiện tại
+
+Check-in service đã dùng model riêng:
+
+- [backend/services/checkin/src/models/CheckInBookingProjection.js](backend/services/checkin/src/models/CheckInBookingProjection.js)
+
+Projection chỉ lưu:
+
+- `bookingNumber`
+- `user`
+- `bookingStatus`
+- `paymentStatus`
+- `customerInfo`
+- `passes`
+- `ticketSnapshot` trong từng pass
+- `sourceUpdatedAt`
+- `projectedAt`
+
+### 7.3 Event mapping
+
+Subscriber:
+
+- [backend/subscribers/checkinSubscribers.js](backend/subscribers/checkinSubscribers.js)
+
+Hàm mapping chính:
+
+- `toTicketSnapshotMap`
+- `toProjectionPass`
+- `toCheckInBookingProjection`
+
+Projection được cập nhật khi nhận:
+
+- `booking.created`
+- `payment.completed`
+- `booking.cancelled`
+- `booking.expired`
+
+### 7.4 Test contract
+
+Đã có test riêng:
+
+- [backend/__tests__/checkinProjection.test.js](backend/__tests__/checkinProjection.test.js)
+
+Mục tiêu:
+
+- khóa contract mapping event payload -> check-in projection
+- giảm regressions khi booking domain thay đổi
+
+## 8. Mua vé, oversell, queue, rate limit
+
+### 8.1 Luồng mua vé
+
+1. User chọn ticket.
+2. `booking-service` gọi `catalog-service` reserve inventory.
+3. Booking được tạo ở trạng thái `pending`.
+4. Pass được generate trong booking domain.
+5. User tạo payment session.
+6. Webhook / payment callback xác nhận thanh toán.
+7. Booking được chuyển sang `confirmed`.
+8. Event `payment.completed` được phát.
+
+### 8.2 Chống oversell
+
+Có các lớp:
+
+- reserve inventory bằng update có điều kiện
+- booking hold time
+- expiration worker
+- release inventory khi booking hết hạn / hủy
+- payment completion atomic
+
+### 8.3 Queue và spam control
+
+Backend đã có:
+
+- rate limit
+- purchase queue
+- purchase limit grouping theo event
+
+Lưu ý:
+
+- Nếu rate limit / queue đang chạy theo in-memory thì khi scale nhiều pod cần đổi sang shared store để thành quota toàn hệ thống.
+- Nếu đã bật Mongo store cho limiter thì sẽ ổn hơn cho multi-replica.
+
+## 9. Payment flow
+
+Hỗ trợ:
+
+- mock payment cho dev
+- VNPay
+- MoMo
+
+Service:
+
+- [backend/services/booking/src/services/paymentService.js](backend/services/booking/src/services/paymentService.js)
+
+Public API:
+
+- `POST /api/payment/session`
+- `POST /api/payment/process`
+- `GET /api/payment/:bookingId`
+- `POST /api/payment/webhooks/momo`
+- `GET /api/payment/webhooks/vnpay`
+- `GET /api/payment/return/vnpay`
+
+Khuyến nghị:
+
+- Mobile và web nên dùng `createSession` + redirect / deeplink payment thật
+- Không gọi thẳng mock `/payment/process` trong luồng payment thật
+
+## 10. Vé điện tử: QR, barcode, NFC
+
+Mỗi pass có:
+
+- `passCode`
+- `barcodeValue`
+- `scanTokenHash`
+- `nfcPayloadHash`
+- `status`
+- `checkInMethod`
+- `checkedInAt`
+- `checkInGate`
+- `checkInDevice`
+
+Bảo mật:
+
+- Không lưu hay expose secret scan token plain text một cách tùy tiện
+- Dùng hash/HMAC cho payload nhạy cảm
+- Check-in log lưu hash của input scan, không lưu plain token
+
+## 11. Mobile app
+
+Thư mục:
+
+- `mobile/`
+
+Chức năng:
+
+- đăng nhập
+- xem ticket
+- thêm vào giỏ
+- checkout
+- xem booking / passes
+- check-in cho staff/admin
+- NFC support trên Android native build
+
+Lưu ý:
+
+- Expo Go không đủ cho luồng NFC HCE native
+- Cần development build hoặc APK/AAB thật
+- Mobile phải trỏ đúng `API_BASE_URL`
+
+## 12. Chạy local
+
+### 12.1 Docker Compose
 
 ```bash
 docker compose up --build
-```
-
-Sau khi các service đã chạy, seed dữ liệu mẫu:
-
-```bash
 docker compose run --rm seed-microservices
 ```
 
-Các địa chỉ local:
-
-- API Gateway: `http://localhost:5000`
-- Auth service: `http://localhost:5101`
-- Catalog service: `http://localhost:5102`
-- Booking service: `http://localhost:5103`
-- Check-in service: `http://localhost:5104`
-- RabbitMQ UI: `http://localhost:15672`
-- RabbitMQ mặc định: `guest` / `guest`
-- Mongo auth: `mongodb://localhost:27018/ticket-auth`
-- Mongo catalog: `mongodb://localhost:27019/ticket-catalog`
-- Mongo booking: `mongodb://localhost:27020/ticket-booking`
-- Mongo check-in: `mongodb://localhost:27021/ticket-checkin`
-
-## 6. Chạy Local Không Dùng Docker
-
-Backend cần MongoDB và RabbitMQ đang chạy sẵn.
+### 12.2 Backend local
 
 ```bash
 cd backend
 npm install
-copy .env.example .env
-npm run seed
 npm start
 ```
 
-Chạy từng service nếu cần debug riêng:
-
-```bash
-npm run start:gateway
-npm run start:auth-service
-npm run start:catalog-service
-npm run start:booking-service
-npm run start:checkin-service
-```
-
-Frontend web:
+### 12.3 Frontend
 
 ```bash
 cd frontend
@@ -142,9 +418,7 @@ npm install
 npm start
 ```
 
-Frontend mở tại `http://localhost:3000` và proxy API sang `http://localhost:5000`.
-
-Mobile:
+### 12.4 Mobile
 
 ```bash
 cd mobile
@@ -152,50 +426,61 @@ npm install
 npm start
 ```
 
-Nếu chạy trên điện thoại thật, cấu hình API bằng IP LAN của máy đang chạy backend:
+## 13. Biến môi trường quan trọng
 
-```bash
-EXPO_PUBLIC_API_URL=http://192.168.1.10:5000/api
-```
-
-## 7. Tài Khoản Demo
-
-Sau khi chạy seed:
-
-| Vai trò | Email | Mật khẩu |
-| --- | --- | --- |
-| Admin | `admin@ticketbooking.com` | `admin12345` |
-| Khách hàng | `user@ticketbooking.com` | `user12345` |
-| Nhân viên check-in | `staff@ticketbooking.com` | `staff12345` |
-
-## 8. Biến Môi Trường Quan Trọng
-
-Các biến nên đổi khi chạy ngoài môi trường demo:
+### Core
 
 ```env
 NODE_ENV=development
 FRONTEND_URL=http://localhost:3000
+PUBLIC_API_URL=http://localhost:5000
+INTERNAL_API_KEY=change_me
 JWT_SECRET=change_me
 JWT_ACCESS_EXPIRE=15m
 JWT_REFRESH_EXPIRE=24h
-INTERNAL_API_KEY=change_me
 SECRET_HASH_KEY=change_me
 PASSWORD_HASH_ROUNDS=12
 PASSWORD_PEPPER=change_me
 MIN_PASSWORD_LENGTH=8
+```
+
+### Broker / outbox
+
+```env
 EVENT_BROKER_URL=amqp://localhost:5672
 EVENT_EXCHANGE=ticket-booking.events
 OUTBOX_ENABLED=true
 OUTBOX_PUBLISH_INTERVAL_MS=5000
+OUTBOX_BATCH_SIZE=50
+```
+
+### Booking / queue / rate limit
+
+```env
+BOOKING_HOLD_MINUTES=15
+BOOKING_EXPIRATION_INTERVAL_MS=30000
+BOOKING_EXPIRATION_BATCH_SIZE=50
+BOOKING_QUEUE_ENABLED=false
+BOOKING_QUEUE_CONCURRENCY=5
+BOOKING_QUEUE_MAX_SIZE=500
+BOOKING_QUEUE_WAIT_TIMEOUT_MS=30000
+RATE_LIMIT_ENABLED=true
+BOOKING_CREATE_RATE_LIMIT_WINDOW_MS=60000
+BOOKING_CREATE_RATE_LIMIT_MAX=8
+```
+
+### Payment
+
+```env
 VNPAY_TMN_CODE=change_me
 VNPAY_HASH_SECRET=change_me
+VNPAY_PAYMENT_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
 MOMO_PARTNER_CODE=change_me
 MOMO_ACCESS_KEY=change_me
 MOMO_SECRET_KEY=change_me
-PUBLIC_API_URL=http://localhost:5000
 ```
 
-URI database theo service:
+### Databases
 
 ```env
 AUTH_MONGODB_URI=mongodb://localhost:27018/ticket-auth
@@ -204,420 +489,138 @@ BOOKING_MONGODB_URI=mongodb://localhost:27020/ticket-booking
 CHECKIN_MONGODB_URI=mongodb://localhost:27021/ticket-checkin
 ```
 
-## 9. API Public
+## 14. API public chính
 
-Tất cả API public đi qua gateway ở prefix `http://localhost:5000/api`.
+Tất cả đi qua gateway với prefix `/api`.
 
 ### Auth
 
-- `POST /api/auth/register`: đăng ký tài khoản.
-- `POST /api/auth/login`: đăng nhập và nhận JWT.
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `POST /api/auth/refresh-token`
 
-### Users
+### User
 
-- `GET /api/users/profile`: lấy hồ sơ người dùng hiện tại.
-- `PUT /api/users/profile`: cập nhật hồ sơ.
+- `GET /api/users/profile`
+- `PUT /api/users/profile`
 
-### Companies
+### Catalog
 
-- `GET /api/companies`: danh sách công ty.
-- `GET /api/companies/:id`: chi tiết công ty.
-- `POST /api/companies`: tạo công ty, yêu cầu `admin` hoặc `organizer`.
-- `PUT /api/companies/:id`: cập nhật công ty, yêu cầu `admin` hoặc `organizer`.
+- `GET /api/companies`
+- `GET /api/events`
+- `GET /api/tickets`
+- `GET /api/tickets/:id`
 
-### Events
+### Booking
 
-- `GET /api/events`: danh sách sự kiện.
-- `GET /api/events/:id`: chi tiết sự kiện.
-- `POST /api/events`: tạo sự kiện, yêu cầu `admin` hoặc `organizer`.
-- `PUT /api/events/:id`: cập nhật sự kiện, yêu cầu `admin` hoặc `organizer`.
+- `POST /api/bookings`
+- `GET /api/bookings`
+- `GET /api/bookings/:id`
+- `PUT /api/bookings/:id/cancel`
+- `GET /api/bookings/:id/passes`
+- `GET /api/bookings/:id/passes/:passId`
+- `GET /api/bookings/:id/passes/:passId/qr.png`
+- `GET /api/bookings/:id/passes/:passId/barcode.png`
+- `GET /api/bookings/:id/passes/:passId/nfc-payload`
 
-### Tickets
+### Payment
 
-- `GET /api/tickets`: danh sách vé public, đã serialize theo format phía người dùng.
-- `GET /api/tickets/:id`: chi tiết vé public.
-- `POST /api/tickets`: tạo loại vé, yêu cầu `admin` hoặc `organizer`.
-- `PUT /api/tickets/:id`: cập nhật loại vé, yêu cầu `admin` hoặc `organizer`.
-- `DELETE /api/tickets/:id`: xóa/ẩn vé, yêu cầu `admin` hoặc `organizer`.
-
-### Bookings Và Passes
-
-- `POST /api/bookings`: tạo đơn đặt vé.
-- `GET /api/bookings`: danh sách đơn của user hiện tại.
-- `GET /api/bookings/:id`: chi tiết đơn.
-- `POST /api/bookings/:id/cancel`: hủy đơn.
-- `PUT /api/bookings/:id/cancel`: hủy đơn.
-- `GET /api/bookings/:id/passes`: danh sách vé điện tử trong đơn.
-- `GET /api/bookings/:id/passes/:passId`: chi tiết một pass.
-- `GET /api/bookings/:id/passes/:passId/qr.png`: ảnh QR của pass.
-- `GET /api/bookings/:id/passes/:passId/barcode.png`: ảnh barcode của pass.
-- `GET /api/bookings/:id/passes/:passId/nfc-payload`: payload NFC của pass.
-
-### Payments
-
-- `POST /api/payment/session`: tạo phiên thanh toán thật cho `vnpay` hoặc `momo`; `credit_card`/`debit_card` chạy luồng demo nội bộ.
-- `POST /api/payment/process`: xử lý thanh toán mock/dev bằng `paymentToken`.
-- `GET /api/payment/:bookingId`: lấy trạng thái thanh toán theo booking.
-- `POST /api/payment/webhooks/momo`: MoMo IPN webhook, xác thực bằng HMAC.
-- `GET /api/payment/webhooks/vnpay`: VNPay IPN webhook, xác thực `vnp_SecureHash`.
-- `GET /api/payment/return/vnpay`: URL người dùng quay về sau khi thanh toán VNPay.
-
-Với VNPay, cấu hình IPN URL trong merchant portal/sandbox trỏ về `VNPAY_IPN_URL` nếu tài khoản không hỗ trợ truyền IPN URL ngay trong request tạo payment URL.
+- `POST /api/payment/session`
+- `POST /api/payment/process`
+- `GET /api/payment/:bookingId`
 
 ### Check-in
 
-- `POST /api/checkin/validate`: kiểm tra vé trước khi cho vào cổng.
-- `POST /api/checkin`: check-in vé.
-- `GET /api/checkin/stats`: thống kê check-in.
+- `POST /api/checkin/validate`
+- `POST /api/checkin`
+- `GET /api/checkin/stats`
 
-### Admin
+## 15. Test và quality gate
 
-- `GET /api/admin/stats`: thống kê dashboard.
-- `GET /api/admin/bookings`: danh sách toàn bộ booking.
-- `PUT /api/admin/bookings/:id/payment`: cập nhật trạng thái thanh toán.
-
-## 10. Chống Oversell Khi Nhiều Người Cùng Mua
-
-Luồng mua vé được thiết kế theo kiểu giữ vé có thời hạn:
-
-- Khi khách bấm đặt vé, booking service gọi catalog service để reserve tồn kho.
-- Catalog service dùng `findOneAndUpdate` với điều kiện `availableSeats >= quantity` và `$inc` trong cùng một lệnh MongoDB, nên nhiều request đồng thời vẫn không thể trừ quá số vé còn lại.
-- Booking mới ở trạng thái `pending/pending` và có `expiresAt`.
-- `BOOKING_HOLD_MINUTES` cấu hình thời gian giữ vé, mặc định 15 phút.
-- Booking expiration worker chạy định kỳ theo `BOOKING_EXPIRATION_INTERVAL_MS`, mặc định 30 giây.
-- Nếu quá hạn mà chưa thanh toán, booking được chuyển sang `cancelled/failed`, pass bị hủy và event `booking.expired` được phát để catalog service trả vé về kho.
-- Payment service chỉ cho thanh toán booking còn `pending`, chưa hết hạn và chưa có payment completed. Việc chuyển sang `completed/confirmed` dùng update atomic để tránh double-payment.
-- Check-in service cũng dùng update atomic: chỉ pass còn `issued` mới được đổi thành `checked_in`, tránh hai máy quét cùng lúc cùng thành công.
-- API tạo booking có rate limit theo user/IP để chặn spam mua vé.
-- Booking creation đi qua in-process queue có giới hạn concurrency và kích thước hàng đợi, giúp backend không bị dồn tải đột ngột khi mở bán concert.
-- Domain event quan trọng được ghi vào outbox MongoDB trước, worker nền publish sang RabbitMQ và retry khi broker tạm lỗi.
-
-Các biến môi trường liên quan:
-
-```env
-BOOKING_HOLD_MINUTES=15
-BOOKING_EXPIRATION_INTERVAL_MS=30000
-BOOKING_EXPIRATION_BATCH_SIZE=50
-BOOKING_EXPIRATION_WORKER_ENABLED=true
-BOOKING_QUEUE_ENABLED=true
-BOOKING_QUEUE_CONCURRENCY=5
-BOOKING_QUEUE_MAX_SIZE=500
-BOOKING_QUEUE_WAIT_TIMEOUT_MS=30000
-RATE_LIMIT_ENABLED=true
-BOOKING_CREATE_RATE_LIMIT_WINDOW_MS=60000
-BOOKING_CREATE_RATE_LIMIT_MAX=8
-PAYMENT_RATE_LIMIT_WINDOW_MS=60000
-PAYMENT_RATE_LIMIT_MAX=12
-OUTBOX_ENABLED=true
-OUTBOX_PUBLISH_INTERVAL_MS=5000
-OUTBOX_BATCH_SIZE=50
-```
-
-Khi concert rất đông, có thể giảm `BOOKING_HOLD_MINUTES` xuống 5-10 phút và tăng `BOOKING_EXPIRATION_BATCH_SIZE` nếu lượng booking pending quá lớn.
-
-## 11. Vé Điện Tử, QR, Barcode Và NFC
-
-Mỗi booking có thể sinh nhiều `passes`. Mỗi pass là một vé điện tử riêng, có:
-
-- `passCode`: mã vé hiển thị cho người dùng.
-- `barcodeValue`: giá trị barcode.
-- `scanTokenHash`: hash của token quét, dùng server-side để đối chiếu.
-- `nfcPayloadHash`: hash của payload NFC.
-- `holder`: thông tin người giữ vé.
-- `seat`: ghế/khu vực nếu là reserved seating.
-- `status`: `issued`, `checked_in`, `cancelled`, `voided`.
-- `checkInMethod`: `qr`, `barcode`, `nfc`, `manual`.
-- `checkedInAt`, `checkedInBy`, `checkInGate`, `checkInDevice`.
-
-QR/barcode/NFC không nên lưu hoặc trả secret thô rộng rãi. Backend chỉ trả payload cần thiết cho chủ vé hợp lệ hoặc nhân viên có quyền. Dữ liệu nhạy cảm được hash bằng HMAC SHA-256 với `SECRET_HASH_KEY`.
-
-Luồng check-in chuẩn:
-
-1. Khách mở vé điện tử trên web/mobile.
-2. Nhân viên quét QR/barcode hoặc đọc NFC.
-3. App gọi `POST /api/checkin/validate` để kiểm tra.
-4. Nếu hợp lệ, app gọi `POST /api/checkin`.
-5. Booking service cập nhật pass thành `checked_in`.
-6. Check-in service ghi `CheckInLog`.
-7. Hệ thống phát event `pass.checked_in`.
-
-## 12. Mobile App
-
-Mobile app nằm ở thư mục `mobile/`, dùng chung API với web.
-
-Chức năng chính:
-
-- Khách hàng đăng nhập, xem sự kiện, mua vé, xem booking và vé điện tử.
-- Nhân viên đăng nhập bằng role `staff`, quét QR/barcode để validate/check-in.
-- Android hỗ trợ NFC qua native HCE service.
-- iOS nên dùng QR/barcode làm phương án chính vì iPhone không mở HCE tự do như Android.
-
-Chạy dev:
-
-```bash
-cd mobile
-npm install
-npm start
-```
-
-Build Android debug:
-
-```bash
-cd mobile
-npm run android:build
-```
-
-APK debug:
-
-```text
-mobile/android/app/build/outputs/apk/debug/app-debug.apk
-```
-
-Các script Android:
-
-- `npm run android`: build, cài vào thiết bị Android đang kết nối và mở app.
-- `npm run android:install`: chỉ cài APK debug.
-- `npm run android:gradle -- <task>`: chạy Gradle bằng môi trường JDK/SDK đã chuẩn hóa.
-- `npm run android:expo`: chạy Expo CLI gốc nếu môi trường global đã đúng.
-
-NFC Android:
-
-- HCE native nằm tại `mobile/android/app/src/main/java/com/ticketbooking/mobile/nfc`.
-- Expo Go không chạy được HCE native.
-- Cần development build hoặc APK/AAB thật.
-- Project có script dùng JDK 17 local để tránh lỗi `JAVA_HOME` đang trỏ JDK 17 nhưng `java -version` global vẫn là Java 8.
-
-## 13. Database Theo Service
-
-### Auth DB: `ticket-auth`
-
-Collection chính: `users`.
-
-`User` gồm:
-
-- Thông tin cơ bản: `name`, `email`, `phone`, `avatar`, `address`.
-- Phân quyền: `role` gồm `user`, `admin`, `staff`, `organizer`.
-- Trạng thái: `status`, `emailVerified`, `phoneVerified`.
-- Hồ sơ mở rộng: `profile.dateOfBirth`, `gender`, `identityNumber`, `companyName`, `taxCode`.
-- Tùy chọn: `preferences.language`, `currency`, notification email/sms/push.
-- Bảo mật: `password`, `security.passwordChangedAt`, `passwordHashAlgorithm`, `passwordHashRounds`, `passwordPeppered`, `failedLoginAttempts`, `lockedUntil`.
-- Theo dõi: `lastLoginAt`, `createdAt`, `updatedAt`.
-
-### Catalog DB: `ticket-catalog`
-
-Collections chính: `companies`, `events`, `tickets`.
-
-`Company` gồm:
-
-- Danh tính: `name`, `legalName`, `slug`, `taxCode`, `logo`, `description`.
-- Chủ sở hữu và thành viên: `owner`, `members.user`, `members.role`.
-- Liên hệ: `contact.email`, `phone`, `website`, `address`.
-- Trạng thái: `status`.
-- Xác minh: `verification.status`, `verifiedAt`, `verifiedBy`, `documents`.
-- Cài đặt: `settings.defaultCurrency`, `settings.payoutBank`.
-- `metadata`, `createdAt`, `updatedAt`.
-
-`Event` gồm:
-
-- Quan hệ: `company`, `organizer`.
-- Nội dung: `title`, `slug`, `eventType`, `description`, `coverImage`, `gallery`, `tags`.
-- Địa điểm: `location.venue`, `address`, `city`, `state`, `country`, `coordinates`.
-- Thời gian: `startsAt`, `endsAt`, `timezone`.
-- Trạng thái: `status`.
-- Bán vé: `saleWindow.startsAt`, `saleWindow.endsAt`.
-- Check-in: `admission.gatesOpenAt`, `checkInStartsAt`, `checkInEndsAt`, `allowedMethods`.
-- Chính sách: `refundPolicy`, `transferAllowed`, `ageRestriction`.
-- Thống kê: `stats.totalTickets`, `soldTickets`, `revenue`, `views`.
-
-`Ticket` là loại vé thuộc một sự kiện, gồm:
-
-- Quan hệ: `event`, `company`, `organizer`.
-- Nội dung public: `eventName`, `ticketName`, `slug`, `eventType`, `description`, `image`, `artist`, `duration`, `tags`.
-- Địa điểm/thời gian: `location`, `date`, `time`, `timezone`.
-- Giá và tồn kho: `price`, `currency`, `availableSeats`, `totalSeats`, `soldSeats`.
-- Phân loại: `category`, `ticketType`.
-- Trạng thái và hiển thị: `status`, `visibility`, `isActive`.
-- Bán vé: `saleWindow`.
-- Check-in: `admission.allowedMethods`.
-- Ghế: `seatMap.mode`, `sections`, `rows`, `seats`.
-- Chính sách: `refundPolicy`, `transferAllowed`, `maxTicketsPerUser`, `ageRestriction`.
-- Thống kê: `stats.views`, `stats.favorites`.
-
-API `/api/tickets` dùng serializer để chỉ trả format public cho phía người dùng, không lộ field nội bộ không cần thiết.
-
-### Booking DB: `ticket-booking`
-
-Collections chính: `bookings`, `payments`, `seatlocks`, `eventoutboxes`.
-
-`Booking` gồm:
-
-- Định danh: `bookingNumber`.
-- Người mua: `user`, `customerInfo`.
-- Dòng vé: `tickets[].ticket`, `quantity`, `pricePerUnit`, `subtotal`, `snapshot`.
-- Vé điện tử: `passes[]`.
-- Tiền: `totalAmount`, `currency`, `pricing.subtotal`, `discount`, `tax`, `serviceFee`, `grandTotal`, `promoCode`.
-- Thanh toán: `paymentMethod`, `paymentStatus`, `transactionId`, `payments`.
-- Trạng thái: `bookingStatus`, `statusHistory`, `confirmedAt`, `cancelledAt`, `expiresAt`.
-- Nguồn: `source` gồm `web`, `mobile`, `admin`, `api`.
-- Hoàn tiền: `refund.amount`, `reason`, `requestedAt`, `processedAt`, `processedBy`.
-- Ghi chú và mở rộng: `notes`, `metadata`, `createdAt`, `updatedAt`.
-
-`Booking.tickets[].snapshot` lưu lại dữ liệu vé tại thời điểm mua để tránh phụ thuộc catalog service khi hiển thị lịch sử đơn.
-
-`Payment` gồm:
-
-- Quan hệ: `booking`, `user`.
-- Provider/method: `provider`, `method`.
-- Tiền: `amount`, `currency`.
-- Trạng thái: `status`, `processedAt`.
-- Giao dịch: `transactionId`, `idempotencyKey`, `providerReference`, `providerOrderId`.
-- Checkout: `checkoutUrl`, `clientSecret`, `expiresAt`.
-- Secret: `paymentTokenHash`; `paymentToken` cũ là legacy và không nên dùng mới.
-- Gateway data: `gatewayRequest`, `gatewayResponse` được `select: false`.
-- Hoàn tiền: `refund`.
-
-`EventOutbox` lưu domain event chưa publish hoặc cần retry:
-
-- Định danh: `eventId`, `type`, `source`.
-- Nội dung: `envelope`.
-- Trạng thái: `status`, `attempts`, `nextAttemptAt`, `lockedAt`, `publishedAt`, `lastError`.
-
-`SeatLock` gồm:
-
-- `ticket`, `seatCode`, `user`, `booking`.
-- `lockToken`, `status`, `expiresAt`.
-- `releasedAt`, `convertedAt`, `metadata`.
-- TTL index tự hết hạn lock đang ở trạng thái `locked`.
-
-### Check-in DB: `ticket-checkin`
-
-Collections chính: `checkindevices`, `checkinlogs`, `eventoutboxes`.
-
-`CheckInDevice` gồm:
-
-- `deviceId`, `name`, `type`, `status`.
-- `gate`, `location`.
-- `assignedStaff`.
-- `capabilities.qr`, `barcode`, `nfc`, `manual`.
-- `appVersion`, `lastSeenAt`, `lastUsedAt`, `registeredBy`, `notes`, `metadata`.
-
-`CheckInLog` gồm:
-
-- `action`: `validate` hoặc `check_in`.
-- Quan hệ tham chiếu: `booking`, `passId`, `ticket`, `staff`.
-- Cách quét: `method`, `gate`, `deviceId`.
-- Bảo mật: `scanInputHash`, không lưu input thô.
-- Kết quả: `result`, `reason`, `beforeStatus`, `afterStatus`.
-- Request audit: `request.ip`, `request.userAgent`.
-- `metadata`, `createdAt`, `updatedAt`.
-
-## 14. Bảo Mật
-
-Mật khẩu:
-
-- User password được hash bằng bcrypt.
-- Số vòng hash lấy từ `PASSWORD_HASH_ROUNDS`, mặc định `12`.
-- Nếu có `PASSWORD_PEPPER`, mật khẩu được pepper trước khi bcrypt.
-- Login vẫn hỗ trợ password hash legacy chưa pepper, sau đó đánh dấu cần rehash.
-- Độ dài tối thiểu nên cấu hình bằng `MIN_PASSWORD_LENGTH`.
-
-Secret/token:
-
-- Pass scan token, NFC payload, payment token và input quét check-in được hash bằng HMAC SHA-256.
-- Khóa HMAC lấy từ `SECRET_HASH_KEY`.
-- Các field secret thô như `scanToken`, `nfcPayload`, `paymentToken` là legacy/ẩn `select: false`.
-- API không nên trả secret thô trừ endpoint có quyền rõ ràng.
-
-API nội bộ:
-
-- Các route trong `backend/routes/internal` dùng `INTERNAL_API_KEY`.
-- So sánh key bằng hàm an toàn thời gian để giảm rủi ro timing attack.
-
-Lệnh migrate secret legacy:
+Backend test:
 
 ```bash
 cd backend
-npm run security:migrate-secrets
+npm test -- --runInBand
 ```
 
-Nên chạy lệnh này sau khi đổi `SECRET_HASH_KEY` hoặc sau khi import dữ liệu cũ có token thô chưa hash.
+Test hiện có:
 
-## 15. Scripts Backend
+- [backend/__tests__/backendLogic.test.js](backend/__tests__/backendLogic.test.js)
+- [backend/__tests__/checkinProjection.test.js](backend/__tests__/checkinProjection.test.js)
 
-```bash
-npm start                  # chạy toàn bộ microservices
-npm run dev                # chạy toàn bộ microservices bằng nodemon
-npm run seed               # seed dữ liệu microservices
-npm run seed:microservices # alias seed
-npm run backfill:events    # gắn/bổ sung event cho dữ liệu cũ
-npm run backfill:passes    # bổ sung pass cho booking cũ
-npm run security:migrate-secrets
-npm test
-```
+Nên mở rộng thêm:
 
-## 16. Lưu Ý Phát Triển
+- payment webhook integration test
+- inventory reservation concurrency test
+- rate limit / queue shared-store test
+- notification idempotency test
 
-- Khi thêm field mới cho public API, ưu tiên cập nhật serializer thay vì trả nguyên document Mongoose.
-- Khi booking cần thông tin catalog, dùng snapshot hoặc gọi internal API; không query database catalog trực tiếp.
-- Khi check-in cần xác thực pass, gửi token/payload tới API validate; không để app mobile tự quyết định vé hợp lệ.
-- Khi thêm secret mới, lưu hash thay vì lưu plain text.
-- Khi thêm service mới, tạo DB riêng, port riêng, health endpoint, internal API key và event contract rõ ràng.
-- Không commit `.env`, local JDK, Gradle cache, Android local properties hoặc dữ liệu secret.
+## 16. Tài khoản demo
+
+Sau khi seed:
+
+- Admin: `admin@ticketbooking.com` / `admin12345`
+- User: `user@ticketbooking.com` / `user12345`
+- Staff: `staff@ticketbooking.com` / `staff12345`
 
 ## 17. Troubleshooting
 
-MongoDB không kết nối:
+### MongoDB không kết nối
 
-- Kiểm tra container Mongo tương ứng đã chạy.
-- Kiểm tra URI đúng port mapped: `27018`, `27019`, `27020`, `27021`.
-- Nếu chạy local không Docker, đảm bảo MongoDB service đang bật.
+- Kiểm tra URI từng service
+- Kiểm tra port local / container mapping
+- Kiểm tra replica set nếu muốn dùng transaction thật sự
 
-RabbitMQ không kết nối:
+### RabbitMQ lỗi
 
-- Kiểm tra `EVENT_BROKER_URL`.
-- Mở `http://localhost:15672` để xem queue/exchange.
-- Với Docker Compose, service dùng URL nội bộ `amqp://rabbitmq:5672`.
+- Kiểm tra `EVENT_BROKER_URL`
+- Kiểm tra exchange / queue trong management UI
+- Kiểm tra worker outbox có đang chạy không
 
-Port bị chiếm trên Windows:
+### Mobile không gọi được API
 
-```powershell
-netstat -ano | findstr :5000
-taskkill /PID <PID> /F
-```
+- Không dùng `localhost` trên điện thoại thật
+- Dùng IP LAN của máy backend
 
-CORS:
+### NFC không hoạt động
 
-- Kiểm tra `FRONTEND_URL`.
-- Web dev mặc định chạy `http://localhost:3000`.
+- Expo Go không đủ
+- Cần Android native build
+- Kiểm tra thiết bị có NFC và đã bật NFC
 
-Mobile không gọi được API:
+### Thanh toán không redirect
 
-- Không dùng `localhost` trên điện thoại thật.
-- Dùng IP LAN của máy backend, ví dụ `http://192.168.1.10:5000/api`.
-- Đảm bảo điện thoại và máy dev cùng mạng.
+- Kiểm tra env của VNPay / MoMo
+- Kiểm tra `PUBLIC_API_URL`
+- Kiểm tra frontend/mobile đang dùng `createSession`
 
-Android build dùng sai Java:
+## 18. Trạng thái hiện tại của codebase
 
-- Android/Gradle cần JDK 17.
-- Nếu `JAVA_HOME` trỏ JDK 17 nhưng `java -version` vẫn là Java 8, dùng script trong `mobile/scripts`.
-- Lệnh khuyến nghị: `npm run android:build`.
+Đã hoàn thành:
 
-NFC không chạy trong Expo Go:
+- microservices backend tách rõ service packages
+- package `@ticket-booking/shared`
+- package `@ticket-booking/platform`
+- outbox pattern
+- event consumer retry / DLQ logic
+- check-in projection model riêng
+- test contract cho projection mapping
 
-- Đây là giới hạn của Expo Go với native HCE.
-- Dùng development build hoặc APK debug thật.
+Còn nên tiếp tục:
 
-## 18. Checklist Sau Khi Clone
+- bổ sung integration test cho payment và event flow
+- review shared-store cho rate limit / queue khi scale nhiều replica
+- tiếp tục đồng bộ document infra nếu repo infra thay đổi
 
-1. Cài Docker Desktop hoặc chuẩn bị MongoDB + RabbitMQ local.
-2. Chạy `docker compose up --build`.
-3. Seed bằng `docker compose run --rm seed-microservices`.
-4. Chạy frontend bằng `cd frontend && npm install && npm start`.
-5. Chạy mobile bằng `cd mobile && npm install && npm start`.
-6. Đăng nhập bằng tài khoản demo.
-7. Tạo booking, mở pass, quét QR/barcode/NFC để test check-in.
-8. Đổi toàn bộ secret demo trước khi triển khai thật.
+## 19. Ghi chú maintainers
 
-## 19. Trạng Thái Tài Liệu
-
-File này thay thế các tài liệu project cũ như setup, quickstart, schema, microservices, security và mobile README. Nếu cần cập nhật tài liệu, hãy cập nhật trực tiếp tại đây để tránh lệch thông tin giữa nhiều file.
+- Khi thêm field mới cho booking domain, chỉ thêm vào check-in projection nếu check-in cần dùng đến.
+- Không import model của service khác để xử lý nghiệp vụ runtime.
+- Ưu tiên serializer / mapper / projection rõ ràng thay vì trả document Mongoose sống.
+- Khi thêm event mới, cập nhật:
+- publisher
+- subscriber
+- outbox behavior nếu cần
+- test contract nếu event ảnh hưởng projection

@@ -22,6 +22,7 @@ import PassModal from './screens/PassModal';
 import ProfileScreen from './screens/ProfileScreen';
 import TicketDetailModal from './screens/TicketDetailModal';
 import TicketsScreen from './screens/TicketsScreen';
+import { PAYMENT_PROVIDER } from './config';
 
 export default function App() {
   const [auth, setAuth] = useState(null);
@@ -72,7 +73,7 @@ export default function App() {
 
     try {
       const data = await bookingApi.list();
-      setBookings(data || []);
+      setBookings(Array.isArray(data) ? data : (data?.bookings || []));
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -164,21 +165,36 @@ export default function App() {
 
     setCheckingOut(true);
     try {
+      const paymentProvider = PAYMENT_PROVIDER;
+      const bookingPaymentMethod = paymentProvider === 'mock' ? 'credit_card' : paymentProvider;
       const booking = await bookingApi.create({
         tickets: cart.map(item => ({
           ticketId: item._id,
           quantity: item.quantity
         })),
-        paymentMethod: 'vnpay',
+        paymentMethod: bookingPaymentMethod,
         customerName: auth.user.name,
         customerEmail: auth.user.email,
         customerPhone: auth.user.phone || '',
         source: 'mobile',
         deviceFingerprint: await getDeviceFingerprint()
       });
+
+      if (paymentProvider === 'mock') {
+        await paymentApi.process({
+          bookingId: booking._id,
+          paymentToken: `mobile-dev-${Date.now()}`
+        });
+        setCart([]);
+        await loadBookings();
+        setActiveTab('tickets');
+        Alert.alert('Payment completed', 'Your demo payment has been completed and tickets are ready.');
+        return;
+      }
+
       const session = await paymentApi.createSession({
         bookingId: booking._id,
-        provider: 'vnpay'
+        provider: paymentProvider
       });
       const paymentUrl = session.redirectUrl || session.paymentUrl || session.deeplink;
 

@@ -46,7 +46,8 @@ export function Dashboard() {
   const fetchBookings = useCallback(async () => {
     try {
       const response = await bookingsAPI.getAll()
-      setBookings(response.data.data)
+      const payload = response.data.data
+      setBookings(Array.isArray(payload) ? payload : payload?.bookings || [])
     } catch (error) {
       setMessage("Failed to load booking history.")
     } finally {

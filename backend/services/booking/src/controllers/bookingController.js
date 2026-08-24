@@ -1,16 +1,25 @@
 const bookingService = require('../services/bookingService');
-const { enqueueBookingCreation, getPurchaseQueueStats } = require('../services/purchaseQueue');
 const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
 
 const createBooking = asyncHandler(async (req, res) => {
-  const booking = await enqueueBookingCreation(() => bookingService.createBooking(req.body, req.user, {
+  const booking = await bookingService.createBooking(req.body, req.user, {
     botProtection: req.botProtection
-  }));
+  });
   res.status(201).json(new ApiResponse(201, booking, 'Booking created successfully'));
 });
 
 const getQueueStatus = asyncHandler(async (req, res) => {
-  res.status(200).json(new ApiResponse(200, await getPurchaseQueueStats()));
+  res.status(200).json(new ApiResponse(200, {
+    booking: {
+      name: 'booking-create',
+      enabled: false,
+      mode: 'direct',
+      running: 0,
+      pending: 0,
+      completed: 0,
+      rejected: 0
+    }
+  }));
 });
 
 const getUserBookings = asyncHandler(async (req, res) => {

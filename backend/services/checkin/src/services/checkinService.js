@@ -34,6 +34,10 @@ const getTicketId = (pass) => {
 };
 
 const getTicketSnapshot = (booking, pass) => {
+  if (pass?.ticketSnapshot && Object.keys(pass.ticketSnapshot).length > 0) {
+    return pass.ticketSnapshot;
+  }
+
   const ticketId = getTicketId(pass)?.toString();
 
   if (!ticketId) {
@@ -158,12 +162,10 @@ const findBookingAndPassByScanInput = async (scanInput) => {
       { 'passes.passCode': normalizedPassCode },
       { 'passes.barcodeValue': normalizedPassCode },
       { 'passes.scanTokenHash': scanTokenHash },
-      { 'passes.nfcPayloadHash': nfcPayloadHash },
-      { 'passes.scanToken': normalized },
-      { 'passes.nfcPayload': nfcPayload }
+      { 'passes.nfcPayloadHash': nfcPayloadHash }
     ]
   })
-    .select('+passes.scanToken +passes.nfcPayload +passes.scanTokenHash +passes.nfcPayloadHash');
+    .select('+passes.scanTokenHash +passes.nfcPayloadHash');
 
   if (!booking) {
     return { booking: null, pass: null };
@@ -174,9 +176,7 @@ const findBookingAndPassByScanInput = async (scanInput) => {
       item.passCode === normalizedPassCode ||
       item.barcodeValue === normalizedPassCode ||
       item.scanTokenHash === scanTokenHash ||
-      item.nfcPayloadHash === nfcPayloadHash ||
-      item.scanToken === normalized ||
-      item.nfcPayload === nfcPayload
+      item.nfcPayloadHash === nfcPayloadHash
     );
   });
 
