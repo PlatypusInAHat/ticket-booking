@@ -541,3 +541,93 @@ jobs:
             kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${SERVICE}" --timeout=180s
             exit 1
           fi
+
+  backend-gitops-update:
+    name: 07 / Update GitOps Image Tags
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-deploy-target
+      - backend-deploy
+    if: github.event_name != 'pull_request' && needs.resolve-deploy-target.outputs.deploy_allowed == 'true'
+    concurrency:
+      group: backend-gitops-${{ needs.resolve-deploy-target.outputs.deploy_env }}
+      cancel-in-progress: false
+    env:
+      DEPLOY_ENV: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
+      IMAGE_TAG: ${{ needs.resolve-deploy-target.outputs.image_tag }}
+      SERVICE_NAMES: ${{ needs.resolve-deploy-target.outputs.service_names }}
+      INFRA_REPOSITORY: ${{ secrets.INFRA_REPOSITORY }}
+      INFRA_REPO_TOKEN: ${{ secrets.INFRA_REPO_TOKEN }}
+      INFRA_BRANCH: ${{ secrets.INFRA_BRANCH || 'dev' }}
+    steps:
+      - name: Skip GitOps Update When Infra Repo Is Not Configured
+        if: env.INFRA_REPOSITORY == '' || env.INFRA_REPO_TOKEN == ''
+        run: |
+          echo "Skipping GitOps update. Configure INFRA_REPOSITORY and INFRA_REPO_TOKEN to update infra overlays."
+
+      - name: Checkout App Repository
+        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
+        uses: actions/checkout@v4
+        with:
+          path: app
+
+      - name: Checkout Infra Repository
+        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          token: ${{ env.INFRA_REPO_TOKEN }}
+          ref: ${{ env.INFRA_BRANCH }}
+          path: infra
+
+      - name: Configure AWS Credentials
+        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Update Kustomize Image Tags
+        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY_PREFIX: ${{ secrets.BACKEND_ECR_REPOSITORY_PREFIX }}
+        run: |
+          set -euo pipefail
+
+          overlay="infra/k8s/overlays/${DEPLOY_ENV}/kustomization.yaml"
+          repository_prefix="${ECR_REPOSITORY_PREFIX:-${DEPLOY_ENV}}"
+          repository_prefix="${repository_prefix%/}"
+
+          chmod +x app/.github/scripts/update-kustomize-image.sh
+
+          for service in ${SERVICE_NAMES}; do
+            image_name="${ECR_REGISTRY}/${repository_prefix}/${service}"
+            app/.github/scripts/update-kustomize-image.sh "$overlay" "$service" "$image_name" "$IMAGE_TAG"
+          done
+
+      - name: Commit And Push GitOps Image Tags
+        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
+        working-directory: infra
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- "k8s/overlays/${DEPLOY_ENV}/kustomization.yaml"; then
+            echo "No GitOps image tag changes to commit."
+            exit 0
+          fi
+
+          git config user.name "ticketstage-ci"
+          git config user.email "ticketstage-ci@users.noreply.github.com"
+          git add "k8s/overlays/${DEPLOY_ENV}/kustomization.yaml"
+          git commit \
+            -m "chore(gitops): deploy backend ${DEPLOY_ENV} ${IMAGE_TAG}" \
+            -m "Services: ${SERVICE_NAMES}" \
+            -m "Source: ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
+          git push origin "HEAD:${INFRA_BRANCH}"
