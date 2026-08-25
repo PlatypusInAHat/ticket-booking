@@ -7,20 +7,24 @@ on:
       - dev
       - staging
       - prod
+      - 'release/**'
     tags:
       - 'v*'
     paths:
       - 'backend/**'
       - '.github/workflows/backend-cd.yml'
+      - '.github/scripts/update-kustomize-image.sh'
   pull_request:
     branches:
       - main
       - dev
       - staging
       - prod
+      - 'release/**'
     paths:
       - 'backend/**'
       - '.github/workflows/backend-cd.yml'
+      - '.github/scripts/update-kustomize-image.sh'
   workflow_dispatch:
     inputs:
       services:
@@ -28,6 +32,14 @@ on:
         required: false
         default: auto
         type: string
+
+env:
+  BACKEND_IMAGE_PLATFORM: linux/arm64
+
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
 
 jobs:
   resolve-deploy-target:
@@ -83,6 +95,10 @@ jobs:
               staging)
                 deploy_env="staging"
                 ;;
+              release/*)
+                deploy_env="staging"
+                deploy_channel="release"
+                ;;
               main|prod)
                 deploy_env="prod"
                 ;;
@@ -112,7 +128,7 @@ jobs:
           is_global_backend_change() {
             local file="$1"
             case "$file" in
-              .github/workflows/backend-cd.yml|backend/Dockerfile|backend/package.json|backend/package-lock.json|backend/server.js|backend/routes/index.js)
+              .github/workflows/backend-cd.yml|.github/scripts/update-kustomize-image.sh|backend/Dockerfile|backend/package.json|backend/package-lock.json|backend/server.js|backend/routes/index.js)
                 return 0
                 ;;
               backend/config/*|backend/middleware/*|backend/shared/*|backend/utils/*|backend/scripts/*|backend/__tests__/*)
@@ -347,12 +363,41 @@ jobs:
       - name: Run Tests
         run: npm test
 
+  backend-security-gate:
+    name: 03 / Secret & Filesystem Security Gate
+    runs-on: ubuntu-latest
+    needs: backend-quality
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy Backend Filesystem Scan
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" \
+            -w /repo \
+            aquasec/trivy:0.70.0 \
+            fs --skip-version-check \
+            --scanners vuln,misconfig \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --skip-dirs backend/node_modules \
+            backend
+
   backend-image-build:
-    name: 03 / Build Image (${{ matrix.service }})
+    name: 04 / Build Image (${{ matrix.service }})
     runs-on: ubuntu-latest
     needs:
       - resolve-deploy-target
       - backend-quality
+      - backend-security-gate
     strategy:
       fail-fast: false
       matrix:
@@ -360,6 +405,14 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Set Up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set Up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build Service Docker Image
         env:
@@ -369,7 +422,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          docker build \
+          docker buildx build \
+            --platform "${BACKEND_IMAGE_PLATFORM}" \
+            --load \
             --pull \
             -f "backend/${DOCKERFILE}" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
@@ -393,7 +448,7 @@ jobs:
           retention-days: 1
 
   backend-image-scan:
-    name: 04 / Scan Image (${{ matrix.service }})
+    name: 05 / Scan Image (${{ matrix.service }})
     runs-on: ubuntu-latest
     needs:
       - resolve-deploy-target
@@ -421,7 +476,7 @@ jobs:
           severity: HIGH,CRITICAL
 
   backend-image-push:
-    name: 05 / Push Image (${{ matrix.service }})
+    name: 06 / Push Image (${{ matrix.service }})
     runs-on: ubuntu-latest
     needs:
       - resolve-deploy-target
@@ -443,8 +498,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: ticketstage-backend-push-${{ github.run_id }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -486,12 +541,113 @@ jobs:
             docker push "$tag"
           done
 
-  backend-deploy:
-    name: 06 / Deploy (${{ matrix.service }})
+  backend-predeploy-migrate:
+    name: 07 / Run Idempotent Database Migrations
     runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
     needs:
       - resolve-deploy-target
       - backend-image-push
+    if: github.event_name != 'pull_request' && needs.resolve-deploy-target.outputs.deploy_allowed == 'true'
+    concurrency:
+      group: backend-migration-${{ needs.resolve-deploy-target.outputs.deploy_env }}
+      cancel-in-progress: false
+    env:
+      DEPLOY_ENV: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
+      IMAGE_TAG: ${{ needs.resolve-deploy-target.outputs.image_tag }}
+      SHORT_SHA: ${{ needs.resolve-deploy-target.outputs.short_sha }}
+      SERVICE_NAMES: ${{ needs.resolve-deploy-target.outputs.service_names }}
+      K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE || 'ticketstage' }}
+    steps:
+      - name: Skip When Booking Service Is Unchanged
+        id: migration-target
+        shell: bash
+        run: |
+          if [[ " ${SERVICE_NAMES} " == *" booking-service "* ]]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "required=false" >> "$GITHUB_OUTPUT"
+            echo "booking-service is unchanged; skipping payment index migration."
+          fi
+
+      - name: Configure AWS Credentials With OIDC
+        if: steps.migration-target.outputs.required == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: ticketstage-backend-migrate-${{ github.run_id }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: steps.migration-target.outputs.required == 'true'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Update kubeconfig
+        if: steps.migration-target.outputs.required == 'true'
+        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+
+      - name: Run Payment Index Migration Job
+        if: steps.migration-target.outputs.required == 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY_PREFIX: ${{ secrets.BACKEND_ECR_REPOSITORY_PREFIX }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          repository_prefix="${ECR_REPOSITORY_PREFIX:-${DEPLOY_ENV}}"
+          repository_prefix="${repository_prefix%/}"
+          migration_image="${ECR_REGISTRY}/${repository_prefix}/booking-service:${IMAGE_TAG}"
+          job_name="payment-index-${SHORT_SHA}"
+
+          kubectl -n "$K8S_NAMESPACE" delete job "$job_name" --ignore-not-found
+          kubectl -n "$K8S_NAMESPACE" get deployment booking-service -o json | \
+            jq --arg job "$job_name" --arg image "$migration_image" '
+              {
+                apiVersion: "batch/v1",
+                kind: "Job",
+                metadata: {
+                  name: $job,
+                  labels: {"app.kubernetes.io/name": "booking-migration"}
+                },
+                spec: {
+                  backoffLimit: 1,
+                  ttlSecondsAfterFinished: 600,
+                  template: {
+                    metadata: {labels: {"app.kubernetes.io/name": "booking-migration"}},
+                    spec: {
+                      restartPolicy: "Never",
+                      serviceAccountName: .spec.template.spec.serviceAccountName,
+                      imagePullSecrets: (.spec.template.spec.imagePullSecrets // []),
+                      containers: [{
+                        name: "migration",
+                        image: $image,
+                        imagePullPolicy: "IfNotPresent",
+                        command: ["node", "scripts/migratePaymentIndexes.js"],
+                        env: (.spec.template.spec.containers[0].env // []),
+                        envFrom: (.spec.template.spec.containers[0].envFrom // [])
+                      }]
+                    }
+                  }
+                }
+              }
+            ' | kubectl -n "$K8S_NAMESPACE" apply -f -
+
+          if ! kubectl -n "$K8S_NAMESPACE" wait --for=condition=complete "job/${job_name}" --timeout=300s; then
+            kubectl -n "$K8S_NAMESPACE" logs "job/${job_name}" --all-containers=true || true
+            exit 1
+          fi
+
+          kubectl -n "$K8S_NAMESPACE" logs "job/${job_name}" --all-containers=true
+
+  backend-deploy:
+    name: 09 / Verify GitOps Rollout (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
+    needs:
+      - resolve-deploy-target
+      - backend-gitops-update
     if: github.event_name != 'pull_request' && needs.resolve-deploy-target.outputs.deploy_allowed == 'true'
     strategy:
       fail-fast: false
@@ -510,8 +666,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: ticketstage-backend-verify-${{ github.run_id }}-${{ matrix.service }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -521,7 +677,7 @@ jobs:
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
-      - name: Deploy Service To EKS
+      - name: Wait For Argo CD Rollout
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY_PREFIX: ${{ secrets.BACKEND_ECR_REPOSITORY_PREFIX }}
@@ -530,27 +686,41 @@ jobs:
 
           repository_prefix="${ECR_REPOSITORY_PREFIX:-${DEPLOY_ENV}}"
           repository_prefix="${repository_prefix%/}"
-          image_uri="${ECR_REGISTRY}/${repository_prefix}/${SERVICE}:${IMAGE_TAG}"
+          expected_image="${ECR_REGISTRY}/${repository_prefix}/${SERVICE}:${IMAGE_TAG}"
 
-          echo "Deploying service=${SERVICE} channel=${DEPLOY_CHANNEL} env=${DEPLOY_ENV} image=${image_uri}"
+          echo "Waiting for Argo CD: service=${SERVICE} env=${DEPLOY_ENV} image=${expected_image}"
 
-          kubectl -n "$K8S_NAMESPACE" set image "deployment/${SERVICE}" "${SERVICE}=${image_uri}"
-          if ! kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${SERVICE}" --timeout=180s; then
-            echo "Rollout failed for ${SERVICE}. Rolling back to previous ReplicaSet..."
-            kubectl -n "$K8S_NAMESPACE" rollout undo "deployment/${SERVICE}"
-            kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${SERVICE}" --timeout=180s
+          observed_image=""
+          for attempt in $(seq 1 36); do
+            observed_image="$(kubectl -n "$K8S_NAMESPACE" get deployment "$SERVICE" -o "jsonpath={.spec.template.spec.containers[?(@.name=='${SERVICE}')].image}")"
+            if [ "$observed_image" = "$expected_image" ]; then
+              break
+            fi
+            echo "Attempt ${attempt}/36: observed=${observed_image:-missing}"
+            sleep 10
+          done
+
+          if [ "$observed_image" != "$expected_image" ]; then
+            echo "Argo CD did not apply the expected image. Roll back by reverting the infra GitOps commit."
             exit 1
           fi
 
+          kubectl -n "$K8S_NAMESPACE" rollout status "deployment/${SERVICE}" --timeout=300s
+
   backend-gitops-update:
-    name: 07 / Update GitOps Image Tags
+    name: 08 / Update GitOps Image Tags
     runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
+    outputs:
+      gitops_commit: ${{ steps.commit.outputs.gitops_commit }}
+      infra_branch: ${{ steps.infra-target.outputs.branch }}
     needs:
       - resolve-deploy-target
-      - backend-deploy
+      - backend-image-push
+      - backend-predeploy-migrate
     if: github.event_name != 'pull_request' && needs.resolve-deploy-target.outputs.deploy_allowed == 'true'
     concurrency:
-      group: backend-gitops-${{ needs.resolve-deploy-target.outputs.deploy_env }}
+      group: backend-gitops-${{ needs.resolve-deploy-target.outputs.deploy_env == 'prod' && 'main' || 'dev' }}
       cancel-in-progress: false
     env:
       DEPLOY_ENV: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
@@ -558,43 +728,51 @@ jobs:
       SERVICE_NAMES: ${{ needs.resolve-deploy-target.outputs.service_names }}
       INFRA_REPOSITORY: ${{ secrets.INFRA_REPOSITORY }}
       INFRA_REPO_TOKEN: ${{ secrets.INFRA_REPO_TOKEN }}
-      INFRA_BRANCH: ${{ secrets.INFRA_BRANCH || 'dev' }}
     steps:
-      - name: Skip GitOps Update When Infra Repo Is Not Configured
-        if: env.INFRA_REPOSITORY == '' || env.INFRA_REPO_TOKEN == ''
+      - name: Require GitOps Configuration
         run: |
-          echo "Skipping GitOps update. Configure INFRA_REPOSITORY and INFRA_REPO_TOKEN to update infra overlays."
+          set -euo pipefail
+          if [ -z "$INFRA_REPOSITORY" ] || [ -z "$INFRA_REPO_TOKEN" ]; then
+            echo "INFRA_REPOSITORY and INFRA_REPO_TOKEN are required for GitOps deployment."
+            exit 1
+          fi
+
+      - name: Resolve Infra Branch
+        id: infra-target
+        run: |
+          set -euo pipefail
+          if [ "$DEPLOY_ENV" = "prod" ]; then
+            branch="main"
+          else
+            branch="dev"
+          fi
+          echo "branch=${branch}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout App Repository
-        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
         uses: actions/checkout@v4
         with:
           path: app
 
       - name: Checkout Infra Repository
-        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
         uses: actions/checkout@v4
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           token: ${{ env.INFRA_REPO_TOKEN }}
-          ref: ${{ env.INFRA_BRANCH }}
+          ref: ${{ steps.infra-target.outputs.branch }}
           path: infra
 
       - name: Configure AWS Credentials
-        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: ticketstage-gitops-${{ github.run_id }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Update Kustomize Image Tags
-        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY_PREFIX: ${{ secrets.BACKEND_ECR_REPOSITORY_PREFIX }}
@@ -613,13 +791,16 @@ jobs:
           done
 
       - name: Commit And Push GitOps Image Tags
-        if: env.INFRA_REPOSITORY != '' && env.INFRA_REPO_TOKEN != ''
+        id: commit
         working-directory: infra
+        env:
+          INFRA_BRANCH: ${{ steps.infra-target.outputs.branch }}
         run: |
           set -euo pipefail
 
           if git diff --quiet -- "k8s/overlays/${DEPLOY_ENV}/kustomization.yaml"; then
             echo "No GitOps image tag changes to commit."
+            echo "gitops_commit=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -631,3 +812,89 @@ jobs:
             -m "Services: ${SERVICE_NAMES}" \
             -m "Source: ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
           git push origin "HEAD:${INFRA_BRANCH}"
+          echo "gitops_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  backend-smoke-test:
+    name: 10 / Post-Deploy Smoke Test
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
+    needs:
+      - resolve-deploy-target
+      - backend-deploy
+    if: github.event_name != 'pull_request' && needs.resolve-deploy-target.outputs.deploy_allowed == 'true'
+    env:
+      K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE || 'ticketstage' }}
+    steps:
+      - name: Configure AWS Credentials With OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: ticketstage-backend-smoke-${{ github.run_id }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+
+      - name: Verify Gateway Health
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          public_api_url="$(kubectl -n "$K8S_NAMESPACE" get configmap ticketstage-config -o jsonpath='{.data.PUBLIC_API_URL}')"
+          if [[ -z "$public_api_url" ]]; then
+            echo "PUBLIC_API_URL is missing from ticketstage-config"
+            exit 1
+          fi
+
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 "${public_api_url%/}/health/live" >/dev/null
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 "${public_api_url%/}/health/ready" >/dev/null
+          echo "Backend smoke tests passed at ${public_api_url}."
+
+  backend-gitops-rollback:
+    name: 11 / Revert GitOps Commit On Failure
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
+    needs:
+      - resolve-deploy-target
+      - backend-gitops-update
+      - backend-deploy
+      - backend-smoke-test
+    if: >-
+      always() &&
+      needs.resolve-deploy-target.outputs.deploy_allowed == 'true' &&
+      needs.backend-gitops-update.outputs.gitops_commit != '' &&
+      (needs.backend-deploy.result == 'failure' || needs.backend-smoke-test.result == 'failure')
+    concurrency:
+      group: backend-gitops-${{ needs.resolve-deploy-target.outputs.deploy_env == 'prod' && 'main' || 'dev' }}
+      cancel-in-progress: false
+    env:
+      INFRA_REPOSITORY: ${{ secrets.INFRA_REPOSITORY }}
+      INFRA_REPO_TOKEN: ${{ secrets.INFRA_REPO_TOKEN }}
+      INFRA_BRANCH: ${{ needs.backend-gitops-update.outputs.infra_branch }}
+      GITOPS_COMMIT: ${{ needs.backend-gitops-update.outputs.gitops_commit }}
+    steps:
+      - name: Checkout Infra Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          token: ${{ env.INFRA_REPO_TOKEN }}
+          ref: ${{ env.INFRA_BRANCH }}
+          fetch-depth: 0
+
+      - name: Revert Failed Deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "ticketstage-ci"
+          git config user.email "ticketstage-ci@users.noreply.github.com"
+          git pull --ff-only origin "$INFRA_BRANCH"
+
+          if ! git merge-base --is-ancestor "$GITOPS_COMMIT" HEAD; then
+            echo "GitOps commit ${GITOPS_COMMIT} is not on ${INFRA_BRANCH}; refusing an unsafe rollback."
+            exit 1
+          fi
+
+          git revert --no-edit "$GITOPS_COMMIT"
+          git push origin "HEAD:${INFRA_BRANCH}"
+          echo "Reverted failed GitOps deployment ${GITOPS_COMMIT}."

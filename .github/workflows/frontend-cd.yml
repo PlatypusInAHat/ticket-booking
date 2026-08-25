@@ -2,26 +2,22 @@ name: Frontend CI/CD
 
 on:
   push:
-    branches:
-      - main
-      - dev
-      - staging
-      - prod
-    tags:
-      - 'v*'
+    branches: [main, dev, staging, prod, 'release/**']
+    tags: ['v*']
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-cd.yml'
   pull_request:
-    branches:
-      - main
-      - dev
-      - staging
-      - prod
+    branches: [main, dev, staging, prod, 'release/**']
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-cd.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
 
 jobs:
   resolve-deploy-target:
@@ -31,64 +27,80 @@ jobs:
       deploy_allowed: ${{ steps.target.outputs.deploy_allowed }}
       deploy_env: ${{ steps.target.outputs.deploy_env }}
       deploy_channel: ${{ steps.target.outputs.deploy_channel }}
-      image_tag: ${{ steps.target.outputs.image_tag }}
-      short_sha: ${{ steps.target.outputs.short_sha }}
-      safe_ref: ${{ steps.target.outputs.safe_ref }}
+      api_url: ${{ steps.target.outputs.api_url }}
     steps:
-      - name: Resolve branch, tag, and image metadata
+      - name: Resolve environment and public API URL
         id: target
+        shell: bash
+        env:
+          DEV_API_URL: ${{ vars.DEV_VITE_API_URL }}
+          STAGING_API_URL: ${{ vars.STAGING_VITE_API_URL }}
+          PROD_API_URL: ${{ vars.PROD_VITE_API_URL }}
         run: |
           set -euo pipefail
 
           deploy_allowed="true"
-          deploy_env=""
           deploy_channel="branch"
-          short_sha="${GITHUB_SHA::12}"
-          safe_ref="$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_.-]+/-/g')"
 
           if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
             deploy_allowed="false"
             deploy_env="preview"
             deploy_channel="pull_request"
+            api_url="${DEV_API_URL:-/api}"
           elif [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == v* ]]; then
             deploy_env="prod"
             deploy_channel="release"
+            api_url="${PROD_API_URL:-}"
           else
             case "${GITHUB_REF_NAME}" in
               dev)
                 deploy_env="dev"
+                api_url="${DEV_API_URL:-}"
                 ;;
               staging)
                 deploy_env="staging"
+                api_url="${STAGING_API_URL:-}"
+                ;;
+              release/*)
+                deploy_env="staging"
+                deploy_channel="release"
+                api_url="${STAGING_API_URL:-}"
                 ;;
               main|prod)
                 deploy_env="prod"
+                api_url="${PROD_API_URL:-}"
                 ;;
               *)
                 deploy_allowed="false"
                 deploy_env="none"
+                api_url="/api"
                 ;;
             esac
           fi
 
-          image_tag="${deploy_env}-${short_sha}"
+          if [[ "${deploy_allowed}" == "true" && -z "${api_url}" ]]; then
+            echo "Configure the repository variable for ${deploy_env}: DEV_VITE_API_URL, STAGING_VITE_API_URL, or PROD_VITE_API_URL."
+            exit 1
+          fi
 
           {
             echo "deploy_allowed=${deploy_allowed}"
             echo "deploy_env=${deploy_env}"
             echo "deploy_channel=${deploy_channel}"
-            echo "image_tag=${image_tag}"
-            echo "short_sha=${short_sha}"
-            echo "safe_ref=${safe_ref}"
+            echo "api_url=${api_url}"
           } >> "$GITHUB_OUTPUT"
 
   frontend-quality-build:
-    name: 02 / Frontend Install, Audit & Build
+    name: 02 / Install, Audit, Typecheck & Build
     runs-on: ubuntu-latest
     needs: resolve-deploy-target
     defaults:
       run:
         working-directory: frontend
+    env:
+      VITE_API_URL: ${{ needs.resolve-deploy-target.outputs.api_url }}
+      VITE_ALLOW_MOCK_PAYMENT: 'false'
+      VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY || '' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -107,8 +119,6 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Build Frontend
-        env:
-          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY || '' }}
         run: npm run build
 
       - name: Upload Frontend Dist Artifact
@@ -118,152 +128,49 @@ jobs:
           path: frontend/dist
           retention-days: 1
 
-  frontend-image-build:
-    name: 03 / Build Frontend Image
+  frontend-security-gate:
+    name: 03 / Secret & Filesystem Security Gate
     runs-on: ubuntu-latest
-    needs:
-      - resolve-deploy-target
-      - frontend-quality-build
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Build Frontend Docker Image
-        working-directory: frontend
+      - name: Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
         env:
-          IMAGE_TAG: ${{ needs.resolve-deploy-target.outputs.image_tag }}
-          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY || '' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy Frontend Filesystem Scan
         run: |
-          set -euo pipefail
-
-          docker build \
-            --pull \
-            --build-arg "VITE_TURNSTILE_SITE_KEY=${VITE_TURNSTILE_SITE_KEY}" \
-            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
-            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            --label "org.opencontainers.image.version=${IMAGE_TAG}" \
-            -t "ticketstage-frontend:${IMAGE_TAG}" \
-            -t ticketstage-frontend:audit .
-
-      - name: Save Frontend Image Artifact
-        run: docker save ticketstage-frontend:audit -o frontend-image.tar
-
-      - name: Upload Frontend Image Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-image
-          path: frontend-image.tar
-          retention-days: 1
-
-  frontend-image-scan:
-    name: 04 / Scan Frontend Image
-    runs-on: ubuntu-latest
-    needs:
-      - resolve-deploy-target
-      - frontend-image-build
-    steps:
-      - name: Download Frontend Image Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-image
-
-      - name: Load Frontend Image
-        run: docker load -i frontend-image.tar
-
-      - name: Trivy Frontend Image Scan
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ticketstage-frontend:audit
-          scanners: vuln
-          format: table
-          exit-code: '1'
-          severity: HIGH,CRITICAL
-
-  frontend-image-push:
-    name: 05 / Push Frontend Image
-    runs-on: ubuntu-latest
-    needs:
-      - resolve-deploy-target
-      - frontend-image-scan
-    if: github.event_name != 'pull_request' && needs.resolve-deploy-target.outputs.deploy_allowed == 'true'
-    outputs:
-      image_uri: ${{ steps.meta.outputs.image_uri }}
-      image_tag: ${{ steps.meta.outputs.image_tag }}
-    steps:
-      - name: Download Frontend Image Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-image
-
-      - name: Load Frontend Image
-        run: docker load -i frontend-image.tar
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Tag and Push Frontend Image
-        id: meta
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.FRONTEND_ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ needs.resolve-deploy-target.outputs.image_tag }}
-          SAFE_REF: ${{ needs.resolve-deploy-target.outputs.safe_ref }}
-          SHORT_SHA: ${{ needs.resolve-deploy-target.outputs.short_sha }}
-          DEPLOY_ENV: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "${ECR_REPOSITORY}" ]; then
-            echo "Missing required GitHub secret: FRONTEND_ECR_REPOSITORY"
-            exit 1
-          fi
-
-          image_uri="${ECR_REGISTRY}/${ECR_REPOSITORY}"
-          tags=(
-            "${image_uri}:${IMAGE_TAG}"
-            "${image_uri}:sha-${SHORT_SHA}"
-          )
-
-          if [[ "${SAFE_REF}" != "${DEPLOY_ENV}" ]]; then
-            tags+=("${image_uri}:${SAFE_REF}-${SHORT_SHA}")
-          fi
-
-          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == v* ]]; then
-            tags+=("${image_uri}:${GITHUB_REF_NAME}")
-          fi
-
-          for tag in "${tags[@]}"; do
-            docker tag "ticketstage-frontend:audit" "$tag"
-            docker push "$tag"
-          done
-
-          {
-            echo "image_uri=${image_uri}"
-            echo "image_tag=${IMAGE_TAG}"
-          } >> "$GITHUB_OUTPUT"
+          docker run --rm \
+            -v "$PWD:/repo" \
+            -w /repo \
+            aquasec/trivy:0.70.0 \
+            fs --skip-version-check \
+            --scanners vuln,misconfig \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --skip-dirs frontend/node_modules \
+            frontend
 
   frontend-deploy:
-    name: 06 / Deploy Frontend To S3
+    name: 04 / Deploy Frontend To S3
     runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
     needs:
       - resolve-deploy-target
       - frontend-quality-build
-      - frontend-image-push
+      - frontend-security-gate
     if: github.event_name != 'pull_request' && needs.resolve-deploy-target.outputs.deploy_allowed == 'true'
     concurrency:
-      group: frontend-deploy-${{ github.ref_name }}
-      cancel-in-progress: true
+      group: frontend-deploy-${{ needs.resolve-deploy-target.outputs.deploy_env }}
+      cancel-in-progress: false
     env:
       DEPLOY_ENV: ${{ needs.resolve-deploy-target.outputs.deploy_env }}
       DEPLOY_CHANNEL: ${{ needs.resolve-deploy-target.outputs.deploy_channel }}
+      API_URL: ${{ needs.resolve-deploy-target.outputs.api_url }}
       DEV_FRONTEND_S3_BUCKET: ${{ secrets.DEV_FRONTEND_S3_BUCKET }}
       STAGING_FRONTEND_S3_BUCKET: ${{ secrets.STAGING_FRONTEND_S3_BUCKET }}
       PROD_FRONTEND_S3_BUCKET: ${{ secrets.PROD_FRONTEND_S3_BUCKET }}
@@ -279,60 +186,90 @@ jobs:
           name: frontend-dist
           path: dist
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Deploy to S3
+      - name: Require AWS OIDC Role
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
         run: |
-          set -euo pipefail
-
-          bucket="${FRONTEND_S3_BUCKET}"
-          case "${DEPLOY_ENV}" in
-            dev)
-              bucket="${DEV_FRONTEND_S3_BUCKET:-$bucket}"
-              ;;
-            staging)
-              bucket="${STAGING_FRONTEND_S3_BUCKET:-$bucket}"
-              ;;
-            prod)
-              bucket="${PROD_FRONTEND_S3_BUCKET:-$bucket}"
-              ;;
-          esac
-
-          if [ -z "$bucket" ]; then
-            echo "Missing frontend S3 bucket secret for DEPLOY_ENV=${DEPLOY_ENV}"
+          if [ -z "$AWS_DEPLOY_ROLE_ARN" ]; then
+            echo "Missing environment secret: AWS_DEPLOY_ROLE_ARN"
             exit 1
           fi
 
-          echo "Deploying frontend channel=${DEPLOY_CHANNEL} env=${DEPLOY_ENV} to s3://${bucket}"
-          aws s3 sync dist/ "s3://${bucket}" --delete
+      - name: Configure AWS Credentials With OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: ticketstage-frontend-${{ github.run_id }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Invalidate CloudFront Cache
+      - name: Deploy, Smoke Test, And Roll Back On Failure
+        shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
 
+          bucket="${FRONTEND_S3_BUCKET}"
           distribution_id="${CLOUDFRONT_DISTRIBUTION_ID}"
           case "${DEPLOY_ENV}" in
             dev)
+              bucket="${DEV_FRONTEND_S3_BUCKET:-$bucket}"
               distribution_id="${DEV_CLOUDFRONT_DISTRIBUTION_ID:-$distribution_id}"
               ;;
             staging)
+              bucket="${STAGING_FRONTEND_S3_BUCKET:-$bucket}"
               distribution_id="${STAGING_CLOUDFRONT_DISTRIBUTION_ID:-$distribution_id}"
               ;;
             prod)
+              bucket="${PROD_FRONTEND_S3_BUCKET:-$bucket}"
               distribution_id="${PROD_CLOUDFRONT_DISTRIBUTION_ID:-$distribution_id}"
               ;;
           esac
 
-          if [ -z "$distribution_id" ]; then
-            echo "No CloudFront distribution configured for DEPLOY_ENV=${DEPLOY_ENV}; skipping invalidation."
-            exit 0
+          if [[ -z "$bucket" || -z "$distribution_id" ]]; then
+            echo "Missing S3 bucket or CloudFront distribution for ${DEPLOY_ENV}. Run the infra pipeline first."
+            exit 1
           fi
 
-          aws cloudfront create-invalidation \
+          had_previous_index="false"
+          if aws s3 cp "s3://${bucket}/index.html" previous-index.html; then
+            had_previous_index="true"
+          fi
+
+          rollback() {
+            trap - ERR
+            set +e
+            echo "Frontend smoke test failed; restoring previous index.html"
+            if [[ "$had_previous_index" == "true" ]]; then
+              aws s3 cp previous-index.html "s3://${bucket}/index.html" \
+                --cache-control "no-cache, no-store, must-revalidate" \
+                --content-type "text/html"
+              aws cloudfront create-invalidation --distribution-id "$distribution_id" --paths "/*"
+            fi
+            exit 1
+          }
+          trap rollback ERR
+
+          aws s3 sync dist/ "s3://${bucket}" \
+            --exclude "index.html" \
+            --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp dist/index.html "s3://${bucket}/index.html" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "text/html"
+
+          invalidation_id="$(aws cloudfront create-invalidation \
             --distribution-id "$distribution_id" \
-            --paths "/*"
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text)"
+          aws cloudfront wait invalidation-completed --distribution-id "$distribution_id" --id "$invalidation_id"
+
+          frontend_domain="$(aws cloudfront get-distribution \
+            --id "$distribution_id" \
+            --query 'Distribution.DomainName' \
+            --output text)"
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 "https://${frontend_domain}/" >/dev/null
+
+          api_root="${API_URL%/api}"
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 "${api_root}/health/live" >/dev/null
+
+          trap - ERR
+          echo "Frontend and API smoke tests passed."
