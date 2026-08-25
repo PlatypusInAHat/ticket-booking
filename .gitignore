@@ -1,4 +1,5 @@
 node_modules/
+.expo/
 .jdk/
 .gradle-project-cache/
 local.properties
@@ -17,5 +18,15 @@ yarn-error.log*
 *.swp
 *.swo
 *~
+
+# Local AI agent instructions and generated skills
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md
+/STEER.md
+**/AGENTS.md
+**/CLAUDE.md
+**/GEMINI.md
+.claude/skills/generated/
 .eslintignore
 infra/
