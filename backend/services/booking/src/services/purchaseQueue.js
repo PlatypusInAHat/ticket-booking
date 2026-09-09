@@ -14,6 +14,12 @@ const canUseMongoSlots = () => {
   return process.env.BOOKING_QUEUE_STORE !== 'memory' && mongoose.connection.readyState === 1;
 };
 
+const canUseMemoryFallback = () => (
+  process.env.BOOKING_QUEUE_STORE === 'memory' ||
+  process.env.NODE_ENV !== 'production' ||
+  process.env.BOOKING_QUEUE_FAIL_OPEN === 'true'
+);
+
 class InMemoryTaskQueue {
   constructor({
     name,
@@ -209,18 +215,54 @@ class MongoSlotQueue {
     );
   }
 
+  async renewSlot(slot, token) {
+    const now = new Date();
+    const result = await QueueSlot.updateOne(
+      {
+        _id: slot._id,
+        token,
+        expiresAt: { $gt: now }
+      },
+      {
+        $set: {
+          expiresAt: new Date(now.getTime() + this.leaseMs)
+        }
+      }
+    );
+
+    return result.modifiedCount === 1;
+  }
+
   async add(task) {
     if (process.env.BOOKING_QUEUE_ENABLED === 'false') {
       return task();
     }
 
     const lease = await this.acquireSlot();
+    let leaseLost = false;
+    const heartbeatIntervalMs = Math.max(1000, Math.min(Math.floor(this.leaseMs / 3), 30000));
+    const heartbeat = setInterval(() => {
+      this.renewSlot(lease.slot, lease.token)
+        .then((renewed) => {
+          if (!renewed) {
+            leaseLost = true;
+          }
+        })
+        .catch(() => {
+          leaseLost = true;
+        });
+    }, heartbeatIntervalMs);
+    heartbeat.unref?.();
 
     try {
       const result = await task();
+      if (leaseLost) {
+        throw new ApiError(503, 'The booking queue lease was lost. Please verify the booking status before retrying.');
+      }
       this.completed += 1;
       return result;
     } finally {
+      clearInterval(heartbeat);
       await this.releaseSlot(lease.slot, lease.token);
     }
   }
@@ -262,9 +304,17 @@ const mongoBookingQueue = new MongoSlotQueue({
   leaseMs: parsePositiveInt(process.env.BOOKING_QUEUE_LEASE_MS, 5 * 60 * 1000)
 });
 
-const getActiveQueue = () => (
-  canUseMongoSlots() ? mongoBookingQueue : memoryBookingQueue
-);
+const getActiveQueue = () => {
+  if (canUseMongoSlots()) {
+    return mongoBookingQueue;
+  }
+
+  if (canUseMemoryFallback()) {
+    return memoryBookingQueue;
+  }
+
+  throw new ApiError(503, 'Booking queue storage is unavailable. Please try again shortly.');
+};
 
 const enqueueBookingCreation = (task) => getActiveQueue().add(task);
 

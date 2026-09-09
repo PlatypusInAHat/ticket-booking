@@ -187,7 +187,7 @@ app.get('/health/ready', async (req, res, next) => {
   }
 });
 
-app.get('/health/dependencies', async (req, res, next) => {
+app.get('/health/dependencies', requireGatewayAdmin, async (req, res, next) => {
   try {
     const dependencies = await checkGatewayDependencies();
     const hasDownDependency = Object.values(dependencies).some((dependency) => dependency.status === 'DOWN');
@@ -211,7 +211,7 @@ app.get('/metrics', async (req, res, next) => {
   }
 });
 
-const requireGatewayAdmin = (req, res, next) => {
+function requireGatewayAdmin(req, res, next) {
   const internalKey = process.env.INTERNAL_API_KEY;
   const providedInternalKey = req.get('x-internal-api-key');
 
@@ -251,7 +251,7 @@ const requireGatewayAdmin = (req, res, next) => {
     req.user = payload;
     return next();
   });
-};
+}
 
 app.get('/api/health', (req, res) => {
   res.json({

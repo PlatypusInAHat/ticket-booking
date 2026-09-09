@@ -5,7 +5,6 @@ const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
 const { ApiError } = require('@ticket-booking/shared');
 const { cryptoUtils, domainEvents, publishDomainEvent } = require('@ticket-booking/platform');
-const catalogClient = require('./catalogClient');
 const EVENTS = domainEvents;
 const {
   expirePendingBooking,
@@ -15,6 +14,20 @@ const {
 const { hashSecret } = cryptoUtils;
 
 const SUPPORTED_PROVIDERS = ['mock', 'vnpay', 'momo'];
+
+const isMockPaymentEnabled = () => {
+  if (process.env.ALLOW_MOCK_PAYMENT !== undefined) {
+    return process.env.ALLOW_MOCK_PAYMENT === 'true';
+  }
+
+  return process.env.NODE_ENV !== 'production';
+};
+
+const assertMockPaymentEnabled = () => {
+  if (!isMockPaymentEnabled()) {
+    throw new ApiError(403, 'Mock payment is disabled in this environment');
+  }
+};
 
 const isConfigured = (value) => {
   return Boolean(value && !/placeholder|change_this|your_/i.test(value));
@@ -42,6 +55,15 @@ const normalizeProvider = (providerOrMethod = '') => {
   }
 
   return 'mock';
+};
+
+const amountsMatch = (left, right) => {
+  const leftAmount = Number(left);
+  const rightAmount = Number(right);
+
+  return Number.isFinite(leftAmount) &&
+    Number.isFinite(rightAmount) &&
+    Math.round(leftAmount) === Math.round(rightAmount);
 };
 
 const toVnpayAmount = (amount) => {
@@ -220,7 +242,7 @@ const publishPaymentCompleted = async ({ booking, payment, transactionId }, opti
   });
 
   if (!published) {
-    await catalogClient.applyRevenue(booking.tickets);
+    throw new Error('Payment completion event could not be queued');
   }
 };
 
@@ -545,6 +567,10 @@ const createPaymentSession = async (bookingId, providerOrMethod, user, request =
   const booking = await ensurePayableBooking(bookingId, user);
   const provider = normalizeProvider(providerOrMethod || booking.paymentMethod);
 
+  if (provider === 'mock') {
+    assertMockPaymentEnabled();
+  }
+
   if (!SUPPORTED_PROVIDERS.includes(provider)) {
     throw new ApiError(400, 'Unsupported payment provider');
   }
@@ -568,6 +594,7 @@ const createPaymentSession = async (bookingId, providerOrMethod, user, request =
 };
 
 const processPayment = async (bookingId, paymentToken, user) => {
+  assertMockPaymentEnabled();
   const booking = await ensurePayableBooking(bookingId, user);
 
   if (!paymentToken) {
@@ -697,6 +724,10 @@ const handleMomoWebhook = async (payload = {}) => {
   const resultCode = Number(payload.resultCode);
 
   if (resultCode === 0) {
+    if (!amountsMatch(payload.amount, payment.amount)) {
+      throw new ApiError(400, 'MoMo payment amount does not match the booking total');
+    }
+
     await completeBookingPayment({
       bookingId: payment.booking,
       userId: payment.user,
@@ -799,10 +830,12 @@ const handleVnpayResult = async (payload = {}) => {
 };
 
 module.exports = {
+  amountsMatch,
   completeBookingPayment,
   createPaymentSession,
   getPaymentStatus,
   handleMomoWebhook,
   handleVnpayResult,
+  isMockPaymentEnabled,
   processPayment
 };

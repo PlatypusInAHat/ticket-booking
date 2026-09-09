@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { CalendarCheck, XCircle, Save, UserCircle, CreditCard, Ticket } from "lucide-react"
+import { CalendarCheck, XCircle, Save, UserCircle, CreditCard, Ticket, RefreshCw } from "lucide-react"
 import { bookingsAPI, usersAPI } from "@/services/api"
 import { updateProfileSuccess } from "@/store/authSlice"
 import { useAppDispatch, useAppSelector } from "@/store"
@@ -26,6 +26,8 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState("bookings")
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [message, setMessage] = useState("")
+  const [refundBookingId, setRefundBookingId] = useState("")
+  const [refundReason, setRefundReason] = useState("")
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -71,6 +73,23 @@ export function Dashboard() {
       fetchBookings()
     } catch (error: any) {
       setMessage(error.response?.data?.message || "Cannot cancel booking.")
+    }
+  }
+
+  const handleRefundRequest = async (bookingId: string) => {
+    if (refundReason.trim().length < 10) {
+      setMessage("Please provide at least 10 characters explaining the refund request.")
+      return
+    }
+
+    try {
+      await bookingsAPI.requestRefund(bookingId, refundReason.trim())
+      setMessage("Refund request submitted for review.")
+      setRefundBookingId("")
+      setRefundReason("")
+      fetchBookings()
+    } catch (error: any) {
+      setMessage(error.response?.data?.message || "Cannot submit refund request.")
     }
   }
 
@@ -233,7 +252,7 @@ export function Dashboard() {
                         </div>
                       </div>
 
-                      {booking.bookingStatus !== "cancelled" && (
+                      {booking.paymentStatus === "pending" && booking.bookingStatus !== "cancelled" && (
                         <button
                           onClick={() => handleCancelBooking(booking._id)}
                           className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-2 font-semibold text-red-500 transition-colors hover:bg-red-500/20 md:w-auto"
@@ -241,7 +260,36 @@ export function Dashboard() {
                           <XCircle className="h-4 w-4" /> Cancel
                         </button>
                       )}
+                      {booking.paymentStatus === "completed" && booking.bookingStatus === "confirmed" && !["requested", "processing", "processed"].includes(booking.refund?.status) && (
+                        <button
+                          onClick={() => setRefundBookingId(booking._id)}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-2 font-semibold text-amber-500 transition-colors hover:bg-amber-500/20 md:w-auto"
+                        >
+                          <RefreshCw className="h-4 w-4" /> Request refund
+                        </button>
+                      )}
                     </div>
+                    {booking.refund?.status && booking.refund.status !== "none" && (
+                      <p className="mt-4 rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-muted">
+                        Refund status: <strong className="uppercase text-foreground">{booking.refund.status}</strong>
+                      </p>
+                    )}
+                    {refundBookingId === booking._id && (
+                      <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                        <label className="text-sm font-semibold text-foreground">Why are you requesting a refund?</label>
+                        <textarea
+                          value={refundReason}
+                          onChange={(event) => setRefundReason(event.target.value)}
+                          className="form-textarea mt-3"
+                          rows={3}
+                          maxLength={500}
+                        />
+                        <div className="mt-3 flex gap-3">
+                          <button onClick={() => handleRefundRequest(booking._id)} className="btn-primary" type="button">Submit request</button>
+                          <button onClick={() => setRefundBookingId("")} className="btn-ghost" type="button">Close</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </article>
               ))}

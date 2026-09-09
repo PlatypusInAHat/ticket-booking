@@ -19,6 +19,11 @@ const seatLockSchema = new mongoose.Schema({
   booking: {
     type: mongoose.Schema.Types.ObjectId
   },
+  reservationId: {
+    type: String,
+    default: '',
+    index: true
+  },
   lockToken: {
     type: String,
     unique: true,

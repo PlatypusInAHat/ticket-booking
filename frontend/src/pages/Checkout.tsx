@@ -11,6 +11,10 @@ import { paymentMethodLabels } from "@/utils/labels"
 
 const gatewayMethods = new Set(["vnpay", "momo"])
 const turnstileSiteKey = String((import.meta as any).env?.VITE_TURNSTILE_SITE_KEY || "").trim()
+const allowMockPayment = String((import.meta as any).env?.VITE_ALLOW_MOCK_PAYMENT || "").toLowerCase() === "true" || Boolean((import.meta as any).env?.DEV)
+const paymentMethods = allowMockPayment
+  ? ["vnpay", "momo", "credit_card", "bank_transfer"]
+  : ["vnpay", "momo"]
 
 const getPaymentActionText = (paymentMethod: string) => {
   if (paymentMethod === "vnpay") {
@@ -34,11 +38,14 @@ export function Checkout() {
   const [customerName, setCustomerName] = useState(user?.name || "")
   const [customerEmail, setCustomerEmail] = useState(user?.email || "")
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "")
-  const [paymentMethod, setPaymentMethod] = useState("credit_card")
+  const [paymentMethod, setPaymentMethod] = useState(allowMockPayment ? "credit_card" : "vnpay")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [statusText, setStatusText] = useState("")
   const [turnstileToken, setTurnstileToken] = useState("")
+  const [promoCode, setPromoCode] = useState("")
+  const [promoPreview, setPromoPreview] = useState<any>(null)
+  const [promoMessage, setPromoMessage] = useState("")
 
   const resetTurnstile = useCallback(() => {
     setTurnstileToken("")
@@ -48,6 +55,7 @@ export function Checkout() {
     tickets: items.map((item: any) => ({
       ticketId: item._id || item.id,
       quantity: item.quantity,
+      seatCodes: item.seatCodes?.length ? item.seatCodes : undefined,
     })),
     paymentMethod,
     customerName,
@@ -56,7 +64,24 @@ export function Checkout() {
     source: "web",
     deviceFingerprint: security.deviceFingerprint,
     turnstileToken: security.turnstileToken || undefined,
+    promoCode: promoPreview?.code || undefined,
   })
+
+  const applyPromotion = async () => {
+    setPromoMessage("")
+    setPromoPreview(null)
+    try {
+      const response = await bookingsAPI.previewPromotion({
+        code: promoCode,
+        subtotal: totalPrice,
+        eventIds: Array.from(new Set(items.map((item: any) => item.eventId).filter(Boolean))),
+      })
+      setPromoPreview(response.data.data)
+      setPromoMessage(`Promotion ${response.data.data.code} applied.`)
+    } catch (error: any) {
+      setPromoMessage(error.response?.data?.message || "Promotion code is not valid.")
+    }
+  }
 
   const redirectToGateway = (session: any) => {
     const redirectUrl = session.redirectUrl || session.paymentUrl || session.deeplink
@@ -228,7 +253,7 @@ export function Checkout() {
                 onChange={(event) => setPaymentMethod(event.target.value)}
                 className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm text-foreground transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               >
-                {["vnpay", "momo", "credit_card", "bank_transfer"].map((value) => (
+                {paymentMethods.map((value) => (
                   <option key={value} value={value}>
                     {paymentMethodLabels[value as keyof typeof paymentMethodLabels]}
                   </option>
@@ -240,7 +265,9 @@ export function Checkout() {
           <div className="mt-8 rounded-2xl border border-border bg-surface p-5 text-sm text-muted">
             <p className="font-bold text-foreground">Payment note</p>
             <p className="mt-2">
-              VNPay and MoMo require real merchant credentials in `.env`. If they are not configured yet, use card or bank transfer to run the demo flow.
+              {allowMockPayment
+                ? "VNPay and MoMo require merchant credentials. Card and bank transfer are local demo methods only."
+                : "Payments are confirmed only by the selected payment gateway."}
             </p>
           </div>
 
@@ -251,6 +278,26 @@ export function Checkout() {
               onVerify={setTurnstileToken}
               onReset={resetTurnstile}
             />
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-border bg-surface p-5">
+            <label className="text-sm font-bold text-foreground">Promotion code</label>
+            <div className="mt-3 flex gap-3">
+              <input
+                value={promoCode}
+                onChange={(event) => {
+                  setPromoCode(event.target.value.toUpperCase())
+                  setPromoPreview(null)
+                }}
+                className="form-input"
+                maxLength={32}
+                placeholder="EARLYBIRD"
+              />
+              <button type="button" onClick={applyPromotion} disabled={promoCode.length < 3} className="btn-ghost">
+                Apply
+              </button>
+            </div>
+            {promoMessage && <p className="mt-2 text-xs text-muted">{promoMessage}</p>}
           </div>
 
           <button
@@ -273,6 +320,9 @@ export function Checkout() {
                   <span>{item.quantity} ticket{item.quantity === 1 ? "" : "s"}</span>
                   <span className="font-bold text-green-500">{formatCurrency(item.price * item.quantity)}</span>
                 </div>
+                {item.seatCodes?.length > 0 && (
+                  <p className="mt-2 text-xs text-accent">Seats: {item.seatCodes.join(", ")}</p>
+                )}
               </div>
             ))}
           </div>
@@ -284,8 +334,14 @@ export function Checkout() {
             </div>
             <div className="mt-4 flex justify-between text-xl font-black text-foreground">
               <span>Total</span>
-              <span className="text-green-500">{formatCurrency(totalPrice)}</span>
+              <span className="text-green-500">{formatCurrency(promoPreview?.grandTotal ?? totalPrice)}</span>
             </div>
+            {promoPreview?.discount > 0 && (
+              <div className="mt-3 flex justify-between text-sm text-accent">
+                <span>Promotion discount</span>
+                <span>-{formatCurrency(promoPreview.discount)}</span>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex items-start gap-3 rounded-2xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-500">

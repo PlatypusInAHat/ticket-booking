@@ -18,7 +18,8 @@ import {
   UploadCloud,
   Users,
 } from "lucide-react"
-import { adminAPI, eventsAPI, uploadAPI } from "@/services/api"
+import { adminAPI, companiesAPI, eventsAPI, promotionsAPI, uploadAPI } from "@/services/api"
+import { useAppSelector } from "@/store"
 import { formatCurrency, formatDate } from "@/utils/format"
 import {
   bookingStatusLabels,
@@ -164,6 +165,8 @@ const totalTicketRevenue = (sessions: EventSessionForm[]) =>
 const toOptionalDate = (value: string) => (value ? new Date(value).toISOString() : undefined)
 
 export function AdminDashboard() {
+  const { user } = useAppSelector((state: any) => state.auth || {})
+  const isAdmin = user?.role === "admin"
   const [stats, setStats] = useState<any>(null)
   const [bookings, setBookings] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
@@ -174,6 +177,10 @@ export function AdminDashboard() {
   const [eventForm, setEventForm] = useState<EventForm>(emptyEventForm)
   const [sessions, setSessions] = useState<EventSessionForm[]>([createEmptySession()])
   const [isPublishing, setIsPublishing] = useState(false)
+  const [companies, setCompanies] = useState<any[]>([])
+  const [selectedCompanyId, setSelectedCompanyId] = useState("")
+  const [newCompanyName, setNewCompanyName] = useState("")
+  const [promoForm, setPromoForm] = useState({ code: "", name: "", value: 10, discountType: "percentage" })
 
   const fetchStats = useCallback(async () => {
     try {
@@ -197,12 +204,26 @@ export function AdminDashboard() {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const response = await eventsAPI.getEvents({ limit: 100 })
+      const response = await eventsAPI.getEvents({
+        limit: 100,
+        ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}),
+      })
       setEvents(response.data.data?.events || [])
     } catch {
       setMessage("Failed to load events.")
     }
-  }, [])
+  }, [selectedCompanyId])
+
+  const fetchCompanies = useCallback(async () => {
+    try {
+      const response = await companiesAPI.getAll({ mine: isAdmin ? undefined : "true", limit: 100 })
+      const list = response.data.data?.companies || []
+      setCompanies(list)
+      setSelectedCompanyId((current) => current || list[0]?._id || "")
+    } catch {
+      setMessage("Failed to load organizer companies.")
+    }
+  }, [isAdmin])
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -214,11 +235,52 @@ export function AdminDashboard() {
   }, [])
 
   useEffect(() => {
-    fetchStats()
-    fetchBookings()
+    fetchCompanies()
+    if (isAdmin) {
+      fetchStats()
+      fetchBookings()
+      fetchUsers()
+    } else {
+      setLoading(false)
+    }
+  }, [fetchBookings, fetchCompanies, fetchStats, fetchUsers, isAdmin])
+
+  useEffect(() => {
     fetchEvents()
-    fetchUsers()
-  }, [fetchBookings, fetchEvents, fetchStats, fetchUsers])
+  }, [fetchEvents])
+
+  const handleCreateCompany = async () => {
+    if (newCompanyName.trim().length < 2) {
+      setMessage("Company name must contain at least 2 characters.")
+      return
+    }
+
+    try {
+      const response = await companiesAPI.create({ name: newCompanyName.trim() })
+      const company = response.data.data
+      setNewCompanyName("")
+      await fetchCompanies()
+      setSelectedCompanyId(company._id)
+      setMessage("Organizer company created successfully.")
+    } catch (error: any) {
+      setMessage(error.response?.data?.message || "Cannot create organizer company.")
+    }
+  }
+
+  const handleCreatePromotion = async () => {
+    try {
+      await promotionsAPI.create({
+        ...promoForm,
+        code: promoForm.code.toUpperCase(),
+        value: Number(promoForm.value),
+        eventIds: selectedCompanyId ? events.map((event) => event._id) : [],
+      })
+      setPromoForm({ code: "", name: "", value: 10, discountType: "percentage" })
+      setMessage("Promotion created successfully.")
+    } catch (error: any) {
+      setMessage(error.response?.data?.message || "Cannot create promotion.")
+    }
+  }
 
   const statCards = useMemo(
     () =>
@@ -334,6 +396,21 @@ export function AdminDashboard() {
     }
   }
 
+  const handleRefundRequestChange = async (bookingId: string, status: "processing" | "rejected") => {
+    const reason = status === "rejected"
+      ? window.prompt("Explain why this refund request is rejected:") || ""
+      : ""
+    if (status === "rejected" && reason.trim().length < 5) return
+
+    try {
+      await adminAPI.updateRefundRequest(bookingId, status, reason)
+      setMessage(status === "processing" ? "Refund request is under review." : "Refund request rejected.")
+      fetchBookings()
+    } catch (error: any) {
+      setMessage(error.response?.data?.message || "Failed to update refund request.")
+    }
+  }
+
   const handleUserRoleChange = async (userId: string, newRole: string) => {
     try {
       await adminAPI.updateUserRole(userId, newRole)
@@ -351,7 +428,7 @@ export function AdminDashboard() {
       await eventsAPI.delete(eventId)
       setMessage("Event deleted successfully.")
       fetchEvents()
-      fetchStats()
+      if (isAdmin) fetchStats()
     } catch (error: any) {
       setMessage(error.response?.data?.message || "Failed to delete event.")
     }
@@ -392,6 +469,7 @@ export function AdminDashboard() {
 
     return {
       eventData: {
+        companyId: selectedCompanyId,
         title: eventForm.eventName,
         eventType: eventForm.eventType,
         description: eventForm.description,
@@ -463,6 +541,10 @@ export function AdminDashboard() {
     event.preventDefault()
     setMessage("")
 
+    if (!selectedCompanyId) {
+      setMessage("Choose or create an organizer company before publishing an event.")
+      return
+    }
     if (!validateDraft()) return
 
     try {
@@ -500,6 +582,36 @@ export function AdminDashboard() {
         </div>
       )}
 
+      <section className="relative z-10 mb-8 rounded-2xl border border-border bg-surface p-6">
+        <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <label className="space-y-2">
+            <span className="text-sm font-semibold text-foreground">Organizer company</span>
+            <select
+              value={selectedCompanyId}
+              onChange={(event) => setSelectedCompanyId(event.target.value)}
+              className="form-input"
+            >
+              <option value="">Choose a company</option>
+              {companies.map((company) => (
+                <option key={company._id} value={company._id}>{company.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm font-semibold text-foreground">Create another company</span>
+            <input
+              value={newCompanyName}
+              onChange={(event) => setNewCompanyName(event.target.value)}
+              className="form-input"
+              placeholder="Company or organizing team"
+            />
+          </label>
+          <button type="button" onClick={handleCreateCompany} className="btn-primary">
+            <Plus className="h-4 w-4" /> Create company
+          </button>
+        </div>
+      </section>
+
       {stats && (
         <section className="relative z-10 mb-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {statCards.map(({ label, value, icon: Icon, color, bg }) => (
@@ -513,6 +625,25 @@ export function AdminDashboard() {
               </div>
             </div>
           ))}
+        </section>
+      )}
+
+      {isAdmin && (
+        <section className="relative z-10 mb-8 rounded-2xl border border-border bg-surface p-6">
+          <h2 className="font-display text-xl font-black text-foreground">Create promotion</h2>
+          <p className="mt-1 text-sm text-muted">When a company is selected, the code applies to the events currently listed for that company.</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-4">
+            <input value={promoForm.code} onChange={(event) => setPromoForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))} className="form-input" placeholder="Code" />
+            <input value={promoForm.name} onChange={(event) => setPromoForm((current) => ({ ...current, name: event.target.value }))} className="form-input" placeholder="Campaign name" />
+            <select value={promoForm.discountType} onChange={(event) => setPromoForm((current) => ({ ...current, discountType: event.target.value }))} className="form-input">
+              <option value="percentage">Percentage</option>
+              <option value="fixed">Fixed amount</option>
+            </select>
+            <div className="flex gap-3">
+              <input type="number" min="0" max={promoForm.discountType === "percentage" ? 100 : undefined} value={promoForm.value} onChange={(event) => setPromoForm((current) => ({ ...current, value: Number(event.target.value) }))} className="form-input" />
+              <button type="button" onClick={handleCreatePromotion} className="btn-primary">Create</button>
+            </div>
+          </div>
         </section>
       )}
 
@@ -995,7 +1126,9 @@ export function AdminDashboard() {
         onDeleteEvent={handleDeleteEvent}
         onPaymentStatusChange={handlePaymentStatusChange}
         onUserRoleChange={handleUserRoleChange}
+        onRefundRequestChange={handleRefundRequestChange}
         setMessage={setMessage}
+        isAdmin={isAdmin}
       />
     </div>
   )
@@ -1077,7 +1210,9 @@ function ManagementSections({
   onDeleteEvent,
   onPaymentStatusChange,
   onUserRoleChange,
+  onRefundRequestChange,
   setMessage,
+  isAdmin,
 }: {
   events: any[]
   bookings: any[]
@@ -1086,7 +1221,9 @@ function ManagementSections({
   onDeleteEvent: (eventId: string) => void
   onPaymentStatusChange: (bookingId: string, newStatus: string) => void
   onUserRoleChange: (userId: string, newRole: string) => void
+  onRefundRequestChange: (bookingId: string, status: "processing" | "rejected") => void
   setMessage: (message: string) => void
+  isAdmin: boolean
 }) {
   return (
     <>
@@ -1131,7 +1268,7 @@ function ManagementSections({
         </div>
       </section>
 
-      <section className="glass relative z-10 mb-12 rounded-2xl border border-border p-8">
+      {isAdmin && <section className="glass relative z-10 mb-12 rounded-2xl border border-border p-8">
         <h2 className="mb-8 font-display text-2xl font-black text-foreground">Booking Management</h2>
         {loading ? (
           <div className="h-64 animate-pulse rounded-2xl border border-border bg-surface-2" />
@@ -1178,6 +1315,19 @@ function ManagementSections({
                       <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs uppercase tracking-wider">
                         {getLabel(bookingStatusLabels, booking.bookingStatus)}
                       </span>
+                      {booking.refund?.status && booking.refund.status !== "none" && (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs text-amber-500">Refund: {booking.refund.status}</p>
+                          {["requested", "processing"].includes(booking.refund.status) && (
+                            <div className="flex gap-2">
+                              {booking.refund.status === "requested" && (
+                                <button type="button" onClick={() => onRefundRequestChange(booking._id, "processing")} className="btn-ghost">Review</button>
+                              )}
+                              <button type="button" onClick={() => onRefundRequestChange(booking._id, "rejected")} className="btn-danger">Reject</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1185,9 +1335,9 @@ function ManagementSections({
             </table>
           </div>
         )}
-      </section>
+      </section>}
 
-      <section className="glass relative z-10 mb-12 rounded-2xl border border-border p-8">
+      {isAdmin && <section className="glass relative z-10 mb-12 rounded-2xl border border-border p-8">
         <h2 className="mb-8 font-display text-2xl font-black text-foreground">User Management</h2>
         {users.length === 0 ? (
           <div className="rounded-2xl border border-border bg-surface-2 p-10 text-center">
@@ -1228,7 +1378,7 @@ function ManagementSections({
             </table>
           </div>
         )}
-      </section>
+      </section>}
 
       <section className="glass relative z-10 rounded-2xl border border-border p-8">
         <h2 className="mb-8 font-display text-2xl font-black text-foreground">Event Statistics</h2>

@@ -48,6 +48,37 @@ paths:
       responses:
         '200':
           description: Updated booking
+  /internal/booking/bookings/{id}/refund-request:
+    put:
+      summary: Mark a refund request as processing or rejected
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - processing
+                    - rejected
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Updated refund request
+        '409':
+          description: Booking has no active refund request
 components:
   securitySchemes:
     InternalApiKey:

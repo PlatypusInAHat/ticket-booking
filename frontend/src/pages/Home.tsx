@@ -1,10 +1,13 @@
+import { useEffect, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { Music, PartyPopper, Trophy, Drama, Mic, Presentation, ShieldCheck, Zap, RefreshCw } from "lucide-react"
 import { Hero } from "@/components/home/Hero"
 import { EventCard } from "@/components/EventCard"
 import { SectionTitle } from "@/components/ui/SectionTitle"
 import { Button } from "@/components/ui/Button"
-import { events } from "@/data/events"
+import type { EventItem } from "@/data/types"
+import { eventsAPI, notificationsAPI, ticketsAPI } from "@/services/api"
+import { mapApiEventToEventItem } from "@/utils/eventMapper"
 
 const categoryTiles = [
   { name: "Concert", icon: Music },
@@ -22,8 +25,50 @@ const perks = [
 ]
 
 export function Home() {
-  const trending = events.filter((e) => e.popular).slice(0, 4)
+  const [events, setEvents] = useState<EventItem[]>([])
+  const [eventsMessage, setEventsMessage] = useState("")
+  const trending = events.filter((event) => event.popular).slice(0, 4)
   const upcoming = events.slice(0, 8)
+  const [newsletterEmail, setNewsletterEmail] = useState("")
+  const [newsletterStatus, setNewsletterStatus] = useState("")
+  const [newsletterLoading, setNewsletterLoading] = useState(false)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    Promise.all([
+      eventsAPI.getEvents({ status: "published", startsFrom: new Date().toISOString(), limit: 12 }, { signal: controller.signal }),
+      ticketsAPI.getAll({ status: "published", availableOnly: true, limit: 100 }, { signal: controller.signal }),
+    ])
+      .then(([eventResponse, ticketResponse]) => {
+        const apiEvents = eventResponse.data.data?.events || []
+        const apiTickets = ticketResponse.data.data?.tickets || []
+        setEvents(apiEvents.map((event: any) => mapApiEventToEventItem(event, apiTickets)))
+      })
+      .catch((error) => {
+        if (error.name !== "CanceledError" && error.code !== "ERR_CANCELED") {
+          setEventsMessage("Live events are temporarily unavailable. Please try again shortly.")
+        }
+      })
+
+    return () => controller.abort()
+  }, [])
+
+  const subscribeNewsletter = async (event: FormEvent) => {
+    event.preventDefault()
+    setNewsletterLoading(true)
+    setNewsletterStatus("")
+
+    try {
+      await notificationsAPI.subscribe(newsletterEmail)
+      setNewsletterStatus("You're subscribed. Watch your inbox for upcoming events.")
+      setNewsletterEmail("")
+    } catch (error: any) {
+      setNewsletterStatus(error.response?.data?.message || "Subscription could not be saved.")
+    } finally {
+      setNewsletterLoading(false)
+    }
+  }
 
   return (
     <>
@@ -63,8 +108,9 @@ export function Home() {
             View all &rarr;
           </Button>
         </div>
+        {eventsMessage && <p className="mt-6 rounded-2xl border border-border bg-surface p-5 text-sm text-muted">{eventsMessage}</p>}
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {trending.map((event) => (
+          {(trending.length > 0 ? trending : upcoming.slice(0, 4)).map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
         </div>
@@ -119,18 +165,21 @@ export function Home() {
             />
             <form
               className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={subscribeNewsletter}
             >
               <input
                 type="email"
                 required
+                value={newsletterEmail}
+                onChange={(event) => setNewsletterEmail(event.target.value)}
                 placeholder="you@email.com"
                 className="h-12 flex-1 rounded-full border border-border bg-background px-5 text-sm text-foreground placeholder:text-muted-2 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
-              <Button size="lg" type="submit">
-                Subscribe
+              <Button size="lg" type="submit" disabled={newsletterLoading}>
+                {newsletterLoading ? "Saving..." : "Subscribe"}
               </Button>
             </form>
+            {newsletterStatus && <p className="mt-4 text-sm text-muted">{newsletterStatus}</p>}
           </div>
         </div>
       </section>

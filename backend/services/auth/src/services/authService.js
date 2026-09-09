@@ -7,6 +7,8 @@ const EVENTS = domainEvents;
 
 const getAccessTokenExpiry = () => process.env.JWT_ACCESS_EXPIRE || '15m';
 const getRefreshTokenExpiry = () => process.env.JWT_REFRESH_EXPIRE || '24h';
+const getMaxLoginAttempts = () => Number.parseInt(process.env.AUTH_MAX_LOGIN_ATTEMPTS || '5', 10);
+const getAccountLockMs = () => Number.parseInt(process.env.AUTH_ACCOUNT_LOCK_MS || '900000', 10);
 
 const getRefreshSecret = () => (
   process.env.JWT_REFRESH_SECRET || `${process.env.JWT_SECRET}_refresh`
@@ -96,10 +98,25 @@ const login = async (email, password) => {
     throw new ApiError(403, 'This account is not active');
   }
 
+  const now = new Date();
+  if (user.security?.lockedUntil && user.security.lockedUntil > now) {
+    throw new ApiError(423, 'Account is temporarily locked. Please try again later');
+  }
+
+  if (user.security?.lockedUntil) {
+    user.security.lockedUntil = undefined;
+    user.security.failedLoginAttempts = 0;
+  }
+
   const isPasswordCorrect = await user.comparePassword(password);
   if (!isPasswordCorrect) {
     user.security = user.security || {};
     user.security.failedLoginAttempts = (user.security.failedLoginAttempts || 0) + 1;
+
+    if (user.security.failedLoginAttempts >= getMaxLoginAttempts()) {
+      user.security.lockedUntil = new Date(Date.now() + getAccountLockMs());
+    }
+
     await user.save({ validateBeforeSave: false });
     throw new ApiError(401, 'Invalid email or password');
   }
@@ -107,6 +124,7 @@ const login = async (email, password) => {
   user.lastLoginAt = new Date();
   user.security = user.security || {};
   user.security.failedLoginAttempts = 0;
+  user.security.lockedUntil = undefined;
 
   if (user.$locals?.passwordNeedsRehash) {
     user.password = password;
@@ -159,7 +177,22 @@ const refreshAuthToken = async (oldRefreshToken) => {
       throw new ApiError(401, 'Refresh token has expired after password change');
     }
 
-    const { accessToken, refreshToken, expiresAt, refreshExpiresAt } = generateTokens(user);
+    const rotatedUser = await User.findOneAndUpdate(
+      {
+        _id: user._id,
+        'security.refreshTokenVersion': decoded.version || 0
+      },
+      {
+        $inc: { 'security.refreshTokenVersion': 1 }
+      },
+      { new: true }
+    );
+
+    if (!rotatedUser) {
+      throw new ApiError(401, 'Refresh token has already been used');
+    }
+
+    const { accessToken, refreshToken, expiresAt, refreshExpiresAt } = generateTokens(rotatedUser);
 
     return {
       token: accessToken,
@@ -167,10 +200,10 @@ const refreshAuthToken = async (oldRefreshToken) => {
       expiresAt,
       refreshExpiresAt,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
+        id: rotatedUser._id,
+        name: rotatedUser.name,
+        email: rotatedUser.email,
+        role: rotatedUser.role
       }
     };
   } catch (err) {
@@ -181,7 +214,7 @@ const refreshAuthToken = async (oldRefreshToken) => {
 const forgotPassword = async (email) => {
   const user = await User.findOne({ email });
   if (!user) {
-    throw new ApiError(404, 'There is no user with that email');
+    return { message: 'If the account exists, a reset email will be sent' };
   }
 
   const resetToken = user.getResetPasswordToken();
@@ -192,7 +225,7 @@ const forgotPassword = async (email) => {
     resetToken
   }, { source: 'auth-service' });
 
-  return { message: 'Email sent' };
+  return { message: 'If the account exists, a reset email will be sent' };
 };
 
 const resetPassword = async (resetToken, newPassword) => {

@@ -1,6 +1,7 @@
 const { Types } = require('mongoose');
 const {
   toTicketSnapshotMap,
+  toTicketEventMap,
   toProjectionPass,
   toCheckInBookingProjection
 } = require('../subscribers/checkinSubscribers');
@@ -10,6 +11,7 @@ describe('checkin projection mapping', () => {
     const bookingId = new Types.ObjectId();
     const userId = new Types.ObjectId();
     const ticketId = new Types.ObjectId();
+    const eventId = new Types.ObjectId();
     const passId = new Types.ObjectId();
     const checkedInBy = new Types.ObjectId();
     const startsAt = new Date('2026-08-18T19:30:00.000Z');
@@ -31,6 +33,7 @@ describe('checkin projection mapping', () => {
       tickets: [
         {
           ticket: ticketId,
+          event: eventId,
           snapshot: {
             ticketName: 'VIP',
             eventName: 'Summer Concert',
@@ -104,6 +107,7 @@ describe('checkin projection mapping', () => {
     expect(projection.passes).toHaveLength(1);
     expect(projection.passes[0]).toMatchObject({
       _id: passId,
+      event: eventId,
       ticket: ticketId,
       passCode: 'TB-ABC-123',
       barcodeValue: 'TB-ABC-123',
@@ -138,13 +142,15 @@ describe('checkin projection mapping', () => {
     const ticketId = new Types.ObjectId();
     const passId = new Types.ObjectId();
     const ticketSnapshotMap = toTicketSnapshotMap([]);
+    const ticketEventMap = toTicketEventMap([]);
 
     expect(ticketSnapshotMap.size).toBe(0);
+    expect(ticketEventMap.size).toBe(0);
 
     const projectionPass = toProjectionPass({
       _id: passId,
       ticket: ticketId
-    }, ticketSnapshotMap);
+    }, ticketSnapshotMap, ticketEventMap);
 
     expect(projectionPass).toMatchObject({
       _id: passId,

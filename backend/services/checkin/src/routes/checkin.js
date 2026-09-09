@@ -44,6 +44,8 @@ router.post('/', [
   validateRequest
 ], checkinController.checkInPass);
 
+router.get('/events', checkinController.getCheckInEvents);
+
 router.get('/stats', [
   query('ticketId')
     .optional()
@@ -51,5 +53,26 @@ router.get('/stats', [
     .withMessage('Ticket ID is invalid'),
   validateRequest
 ], checkinController.getCheckInStats);
+
+router.post('/offline/manifest', [
+  body('eventId').isMongoId().withMessage('Event ID is invalid'),
+  body('deviceId').trim().isLength({ min: 3, max: 120 }).withMessage('Device ID is invalid'),
+  body('gate').optional().trim().isLength({ max: 80 }).withMessage('Gate name is too long'),
+  body('appVersion').optional().trim().isLength({ max: 40 }).withMessage('App version is too long'),
+  validateRequest
+], checkinController.createOfflineManifest);
+
+router.post('/offline/sync', [
+  body('deviceId').trim().isLength({ min: 3, max: 120 }).withMessage('Device ID is invalid'),
+  body('eventId').isMongoId().withMessage('Event ID is invalid'),
+  body('items').isArray({ min: 1, max: 100 }).withMessage('Sync batch must contain 1 to 100 scans'),
+  body('items.*.localId').trim().isLength({ min: 8, max: 120 }).withMessage('Offline scan ID is invalid'),
+  body('items.*.code').trim().isLength({ min: 3, max: 512 }).withMessage('Offline scan code is invalid'),
+  body('items.*.method').isIn(['qr', 'barcode', 'nfc', 'manual']).withMessage('Check-in method is invalid'),
+  body('items.*.scannedAt').isISO8601().withMessage('Offline scan time is invalid'),
+  body('gate').optional().trim().isLength({ max: 80 }).withMessage('Gate name is too long'),
+  body('appVersion').optional().trim().isLength({ max: 40 }).withMessage('App version is too long'),
+  validateRequest
+], checkinController.syncOfflineCheckIns);
 
 module.exports = router;

@@ -35,6 +35,23 @@ export function mapApiTicketToTier(ticket: any): TicketTier {
     ],
     remaining,
     badge: remaining <= 20 && remaining > 0 ? "Almost sold out" : undefined,
+    seatMap: ticket.seatMap
+      ? {
+          mode: ticket.seatMap.mode,
+          sections: (ticket.seatMap.sections || []).map((section: any) => ({
+            name: section.name || "Section",
+            code: section.code || section.name || "section",
+            rows: (section.rows || []).map((row: any) => ({
+              label: row.label || "",
+              seats: (row.seats || []).map((seat: any) => ({
+                code: seat.code,
+                label: seat.label || seat.number || seat.code,
+                status: seat.status || "available",
+              })),
+            })),
+          })),
+        }
+      : undefined,
   }
 }
 

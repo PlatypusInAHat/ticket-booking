@@ -79,5 +79,12 @@ checkInLogSchema.index({ staff: 1, createdAt: -1 });
 checkInLogSchema.index({ deviceId: 1, createdAt: -1 });
 checkInLogSchema.index({ result: 1, createdAt: -1 });
 checkInLogSchema.index({ scanInputHash: 1, createdAt: -1 });
+checkInLogSchema.index(
+  { deviceId: 1, 'metadata.localId': 1 },
+  {
+    unique: true,
+    partialFilterExpression: { 'metadata.localId': { $type: 'string' } }
+  }
+);
 
 module.exports = mongoose.model('CheckInLog', checkInLogSchema);

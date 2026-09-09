@@ -14,6 +14,7 @@ const {
   enqueueEventReminderEmail,
   enqueuePasswordResetEmail,
   enqueuePaymentCompletedEmail,
+  enqueueRefundStatusEmail,
   enqueueWelcomeEmail
 } = notificationServicePackage.services.notificationEvents;
 
@@ -36,6 +37,8 @@ const startNotificationSubscribers = async () => {
     group: SERVICE_NAME,
     handlers: {
       [EVENTS.PAYMENT_COMPLETED]: enqueuePaymentCompletedEmail,
+      [EVENTS.REFUND_REQUESTED]: enqueueRefundStatusEmail,
+      [EVENTS.REFUND_UPDATED]: enqueueRefundStatusEmail,
       [EVENTS.USER_REGISTERED]: enqueueWelcomeEmail,
       [EVENTS.PASSWORD_RESET_REQUESTED]: enqueuePasswordResetEmail,
       [EVENTS.BOOKING_CANCELLED]: enqueueBookingCancelledEmail,

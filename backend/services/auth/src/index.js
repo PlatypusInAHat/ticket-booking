@@ -10,7 +10,6 @@ module.exports = {
     admin: require('./services/adminService')
   },
   models: {
-    User: require('./models/User'),
-    Session: require('./models/Session')
+    User: require('./models/User')
   }
 };

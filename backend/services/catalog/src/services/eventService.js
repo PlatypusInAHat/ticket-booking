@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Company = require('../models/Company');
 const Event = require('../models/Event');
-const Session = require('../../../auth/src/models/Session');
+const EventSession = require('../models/EventSession');
 const Ticket = require('../models/Ticket');
 const { ApiError, queryUtils } = require('@ticket-booking/shared');
 const { canManageCompany } = require('./companyService');
@@ -204,7 +204,7 @@ const createEventBundle = async (bundleData, user) => {
       for (const sessionItem of sessionsData) {
         const sessionStartsAt = new Date(sessionItem.startDate);
         const sessionEndsAt = new Date(sessionItem.endDate);
-        const newSession = new Session({
+        const newSession = new EventSession({
           event: newEvent._id,
           startsAt: sessionStartsAt,
           endsAt: sessionEndsAt
@@ -278,6 +278,10 @@ const createEventBundle = async (bundleData, user) => {
   } catch (error) {
     await sess.abortTransaction();
     sess.endSession();
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
     throw new ApiError(500, 'Failed to create event bundle: ' + error.message);
   }
 };
@@ -314,7 +318,7 @@ const deleteEvent = async (id, user) => {
 
   try {
     await Ticket.deleteMany({ event: event._id }, { session: sess });
-    await Session.deleteMany({ event: event._id }, { session: sess });
+    await EventSession.deleteMany({ event: event._id }, { session: sess });
     await Event.deleteOne({ _id: event._id }, { session: sess });
 
     await sess.commitTransaction();

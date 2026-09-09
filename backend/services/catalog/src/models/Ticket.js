@@ -110,6 +110,18 @@ const ticketSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  inventoryMode: {
+    type: String,
+    enum: ['document', 'buckets'],
+    default: 'document',
+    index: true
+  },
+  inventoryBucketCount: {
+    type: Number,
+    min: 2,
+    max: 1024,
+    default: 32
+  },
   soldSeats: {
     type: Number,
     default: 0

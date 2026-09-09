@@ -35,8 +35,26 @@ const getCheckInStats = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, data));
 });
 
+const getCheckInEvents = asyncHandler(async (req, res) => {
+  const data = await checkinService.getCheckInEvents();
+  res.status(200).json(new ApiResponse(200, data));
+});
+
+const createOfflineManifest = asyncHandler(async (req, res) => {
+  const data = await checkinService.createOfflineManifest(req.body, req.user);
+  res.status(200).json(new ApiResponse(200, data, 'Offline manifest downloaded'));
+});
+
+const syncOfflineCheckIns = asyncHandler(async (req, res) => {
+  const data = await checkinService.syncOfflineCheckIns(req.body, req.user, buildRequestContext(req));
+  res.status(200).json(new ApiResponse(200, data, 'Offline check-ins synchronized'));
+});
+
 module.exports = {
   checkInPass,
+  createOfflineManifest,
+  getCheckInEvents,
   getCheckInStats,
+  syncOfflineCheckIns,
   validatePass
 };

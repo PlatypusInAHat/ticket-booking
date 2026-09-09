@@ -90,7 +90,7 @@ export function Navbar() {
               Dashboard
             </NavLink>
           )}
-          {user?.role === "admin" && (
+          {["admin", "organizer"].includes(user?.role) && (
             <>
               <NavLink
                 to="/admin"
@@ -101,8 +101,9 @@ export function Navbar() {
                   )
                 }
               >
-                Admin
+                {user?.role === "admin" ? "Admin" : "Organizer"}
               </NavLink>
+              {user?.role === "admin" && (
               <NavLink
                 to="/api-management"
                 className={({ isActive }) =>
@@ -114,6 +115,7 @@ export function Navbar() {
               >
                 API
               </NavLink>
+              )}
             </>
           )}
         </nav>
@@ -190,7 +192,7 @@ export function Navbar() {
                 Dashboard
               </NavLink>
             )}
-            {user?.role === "admin" && (
+            {["admin", "organizer"].includes(user?.role) && (
               <>
                 <NavLink
                   to="/admin"
@@ -201,8 +203,9 @@ export function Navbar() {
                     )
                   }
                 >
-                  Admin
+                  {user?.role === "admin" ? "Admin" : "Organizer"}
                 </NavLink>
+                {user?.role === "admin" && (
                 <NavLink
                   to="/api-management"
                   className={({ isActive }) =>
@@ -214,6 +217,7 @@ export function Navbar() {
                 >
                   API
                 </NavLink>
+                )}
               </>
             )}
             <div className="my-2 h-px bg-border" />

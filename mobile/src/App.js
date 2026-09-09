@@ -38,6 +38,9 @@ export default function App() {
   const [passes, setPasses] = useState([]);
   const [cart, setCart] = useState([]);
   const [message, setMessage] = useState('');
+  const [promoCode, setPromoCode] = useState('');
+  const [promoPreview, setPromoPreview] = useState(null);
+  const [promoMessage, setPromoMessage] = useState('');
 
   const canCheckIn = auth?.user?.role === 'admin' || auth?.user?.role === 'staff';
 
@@ -111,6 +114,23 @@ export default function App() {
     }
   }, [auth?.token, loadBookings]);
 
+  useEffect(() => {
+    if (!auth?.token) return undefined;
+
+    const handlePaymentReturn = async ({ url }) => {
+      if (!url || (!url.includes('payment') && !url.includes('booking'))) return;
+      setActiveTab('bookings');
+      await Promise.all([loadBookings(), loadTickets()]);
+    };
+
+    const subscription = Linking.addEventListener('url', handlePaymentReturn);
+    Linking.getInitialURL().then(url => {
+      if (url) handlePaymentReturn({ url });
+    });
+
+    return () => subscription.remove();
+  }, [auth?.token, loadBookings, loadTickets]);
+
   const handleAuthenticated = (nextAuth) => {
     setAuth(nextAuth);
     setActiveTab('tickets');
@@ -130,16 +150,27 @@ export default function App() {
   };
 
   const addToCart = (ticket) => {
+    if (ticket.seatMap?.mode === 'reserved_seating' && !ticket.seatCodes?.length) {
+      setSelectedTicket(ticket);
+      Alert.alert('Seat selection required', 'Open event details and choose your seats before adding this ticket.');
+      return;
+    }
+
     setCart(current => {
       const existing = current.find(item => item._id === ticket._id);
 
       if (existing) {
+        if (ticket.seatCodes?.length) {
+          return current.map(item => item._id === ticket._id
+            ? { ...ticket, quantity: ticket.seatCodes.length }
+            : item);
+        }
         return current.map(item => item._id === ticket._id
           ? { ...item, quantity: Math.min(item.quantity + 1, item.availableSeats) }
           : item);
       }
 
-      return [...current, { ...ticket, quantity: 1 }];
+      return [...current, { ...ticket, quantity: ticket.seatCodes?.length || ticket.quantity || 1 }];
     });
     setSelectedTicket(null);
     setActiveTab('cart');
@@ -157,6 +188,22 @@ export default function App() {
     setCart(current => current.filter(item => item._id !== ticketId));
   };
 
+  const applyPromotion = async () => {
+    try {
+      const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const preview = await bookingApi.previewPromotion({
+        code: promoCode,
+        subtotal,
+        eventIds: [...new Set(cart.map(item => item.eventId).filter(Boolean))]
+      });
+      setPromoPreview(preview);
+      setPromoMessage(`Promotion ${preview.code} applied.`);
+    } catch (error) {
+      setPromoPreview(null);
+      setPromoMessage(error.message);
+    }
+  };
+
   const checkoutCart = async () => {
     if (cart.length === 0) {
       Alert.alert('Cart is empty', 'Add tickets before checkout.');
@@ -170,14 +217,16 @@ export default function App() {
       const booking = await bookingApi.create({
         tickets: cart.map(item => ({
           ticketId: item._id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          seatCodes: item.seatCodes?.length ? item.seatCodes : undefined
         })),
         paymentMethod: bookingPaymentMethod,
         customerName: auth.user.name,
         customerEmail: auth.user.email,
         customerPhone: auth.user.phone || '',
         source: 'mobile',
-        deviceFingerprint: await getDeviceFingerprint()
+        deviceFingerprint: await getDeviceFingerprint(),
+        promoCode: promoPreview?.code || undefined
       });
 
       if (paymentProvider === 'mock') {
@@ -186,6 +235,8 @@ export default function App() {
           paymentToken: `mobile-dev-${Date.now()}`
         });
         setCart([]);
+        setPromoCode('');
+        setPromoPreview(null);
         await loadBookings();
         setActiveTab('tickets');
         Alert.alert('Payment completed', 'Your demo payment has been completed and tickets are ready.');
@@ -205,6 +256,8 @@ export default function App() {
       await Linking.openURL(paymentUrl);
       Alert.alert('Payment started', 'Complete payment in the gateway. Your tickets will appear after the payment webhook confirms the booking.');
       setCart([]);
+      setPromoCode('');
+      setPromoPreview(null);
       setActiveTab('bookings');
       await loadBookings();
       await loadTickets();
@@ -242,6 +295,22 @@ export default function App() {
         }
       }
     ]);
+  };
+
+  const requestRefund = async (booking, reason) => {
+    if (String(reason || '').trim().length < 10) {
+      Alert.alert('Refund reason required', 'Please enter at least 10 characters.');
+      throw new Error('Refund reason is too short');
+    }
+
+    try {
+      await bookingApi.requestRefund(booking._id, reason.trim());
+      await loadBookings();
+      Alert.alert('Request submitted', 'Your refund request is waiting for review.');
+    } catch (error) {
+      Alert.alert('Could not request refund', error.message);
+      throw error;
+    }
   };
 
   if (booting) {
@@ -295,6 +364,15 @@ export default function App() {
             onRemove={removeFromCart}
             onCheckout={checkoutCart}
             loading={checkingOut}
+            promoCode={promoCode}
+            onPromoCodeChange={(value) => {
+              setPromoCode(value.toUpperCase());
+              setPromoPreview(null);
+              setPromoMessage('');
+            }}
+            promoPreview={promoPreview}
+            onApplyPromotion={applyPromotion}
+            promoMessage={promoMessage}
           />
         )}
         {activeTab === 'bookings' && (
@@ -304,6 +382,7 @@ export default function App() {
             refresh={loadBookings}
             onOpenPasses={openPasses}
             onCancelBooking={cancelBooking}
+            onRequestRefund={requestRefund}
           />
         )}
         {activeTab === 'checkin' && canCheckIn && <CheckInScreen />}

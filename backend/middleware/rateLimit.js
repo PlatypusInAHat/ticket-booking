@@ -1,6 +1,8 @@
 const { ApiError } = require('@ticket-booking/shared');
 const mongoose = require('mongoose');
 const RateLimitCounter = require('../models/RateLimitCounter');
+const crypto = require('crypto');
+const { getRedisClient } = require('../shared/redisClient');
 
 const stores = new Map();
 
@@ -10,18 +12,23 @@ const parsePositiveInt = (value, fallback) => {
 };
 
 const getClientIp = (req) => {
-  const forwardedFor = req.headers['x-forwarded-for'];
-
-  if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
-    return forwardedFor.split(',')[0].trim();
-  }
-
+  // Express only derives req.ip from forwarded headers when its trusted proxy setting allows it.
   return req.ip || req.connection?.remoteAddress || 'unknown';
 };
 
 const canUseMongoStore = () => {
   return process.env.RATE_LIMIT_STORE !== 'memory' && mongoose.connection.readyState === 1;
 };
+
+const canUseRedisStore = () => (
+  process.env.RATE_LIMIT_STORE === 'redis' && Boolean(process.env.REDIS_URL)
+);
+
+const canUseMemoryFallback = () => (
+  process.env.RATE_LIMIT_STORE === 'memory' ||
+  process.env.NODE_ENV !== 'production' ||
+  process.env.RATE_LIMIT_FAIL_OPEN === 'true'
+);
 
 const incrementMongoCounter = async ({
   limiterName,
@@ -65,6 +72,23 @@ const incrementMongoCounter = async ({
   }
 };
 
+const incrementRedisCounter = async ({ limiterName, identity, windowMs, now }) => {
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const resetAt = windowStart + windowMs;
+  const identityHash = crypto.createHash('sha256').update(identity).digest('hex');
+  const key = `ticketstage:ratelimit:${limiterName}:${identityHash}:${windowStart}`;
+  const client = await getRedisClient();
+  const result = await client.multi()
+    .incr(key)
+    .pExpire(key, windowMs + 60 * 1000)
+    .exec();
+
+  return {
+    count: Number(result[0]),
+    resetAt
+  };
+};
+
 const createRateLimiter = ({
   name,
   windowMs = 60 * 1000,
@@ -90,7 +114,16 @@ const createRateLimiter = ({
       let count;
       let resetAt;
 
-      if (canUseMongoStore()) {
+      if (canUseRedisStore()) {
+        const counter = await incrementRedisCounter({
+          limiterName,
+          identity,
+          windowMs,
+          now
+        });
+        count = counter.count;
+        resetAt = counter.resetAt;
+      } else if (canUseMongoStore()) {
         const counter = await incrementMongoCounter({
           limiterName,
           identity,
@@ -99,7 +132,7 @@ const createRateLimiter = ({
         });
         count = counter.count;
         resetAt = counter.resetAt.getTime();
-      } else {
+      } else if (canUseMemoryFallback()) {
         const key = `${limiterName}:${identity}`;
         const current = store.get(key);
 
@@ -115,6 +148,9 @@ const createRateLimiter = ({
           count = current.count;
           resetAt = current.resetAt;
         }
+      } else {
+        next(new ApiError(503, 'Rate limit storage is unavailable. Please try again shortly.'));
+        return;
       }
 
       const remaining = Math.max(0, max - count);

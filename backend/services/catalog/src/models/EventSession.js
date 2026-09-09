@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const sessionSchema = new mongoose.Schema({
+const eventSessionSchema = new mongoose.Schema({
   event: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Event',
@@ -21,9 +21,10 @@ const sessionSchema = new mongoose.Schema({
     default: 'active'
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'sessions'
 });
 
-sessionSchema.index({ event: 1, startsAt: 1 });
+eventSessionSchema.index({ event: 1, startsAt: 1 });
 
-module.exports = mongoose.model('Session', sessionSchema);
+module.exports = mongoose.model('EventSession', eventSessionSchema);

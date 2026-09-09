@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const checkInPassProjectionSchema = new mongoose.Schema({
+  event: {
+    type: mongoose.Schema.Types.ObjectId,
+    index: true
+  },
   ticket: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
@@ -189,6 +193,7 @@ checkInBookingProjectionSchema.index({ 'passes.barcodeValue': 1 }, { sparse: tru
 checkInBookingProjectionSchema.index({ 'passes.scanTokenHash': 1 }, { unique: true, sparse: true });
 checkInBookingProjectionSchema.index({ 'passes.nfcPayloadHash': 1 }, { unique: true, sparse: true });
 checkInBookingProjectionSchema.index({ 'passes.status': 1 });
+checkInBookingProjectionSchema.index({ 'passes.event': 1, 'passes.status': 1 });
 checkInBookingProjectionSchema.index({ 'passes.ticket': 1, 'passes.status': 1 });
 
 module.exports = mongoose.model('CheckInBookingProjection', checkInBookingProjectionSchema);

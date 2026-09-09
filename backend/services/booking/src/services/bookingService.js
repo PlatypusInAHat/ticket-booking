@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const Booking = require('../models/Booking');
 const { ApiError, queryUtils } = require('@ticket-booking/shared');
 const { passUtils, securityUtils, domainEvents, publishDomainEvent } = require('@ticket-booking/platform');
 const catalogClient = require('./catalogClient');
+const { validatePromoCode } = require('./promoCodeService');
 const {
   enforcePurchaseLimits,
   ensurePurchaseLimitStore
@@ -32,6 +34,13 @@ const isExpiredPendingBooking = (booking, now = new Date()) => {
     booking.expiresAt <= now
   );
 };
+
+const buildExpirationClaimFilter = (bookingId, now) => ({
+  _id: bookingId,
+  bookingStatus: 'pending',
+  paymentStatus: 'pending',
+  expiresAt: { $lte: now }
+});
 
 const createAdmissionPasses = (bookingTickets, holder = {}) => {
   const passes = [];
@@ -79,6 +88,17 @@ const serializeBookingForEvent = (booking) => {
   const plainBooking = typeof booking.toObject === 'function'
     ? booking.toObject({ depopulate: true })
     : { ...booking };
+
+  plainBooking.passes = (plainBooking.passes || []).map((pass) => {
+    const secrets = buildPassSecrets(pass.passCode);
+
+    return {
+      ...pass,
+      scanTokenHash: pass.scanTokenHash || secrets.scanTokenHash,
+      nfcPayloadHash: pass.nfcPayloadHash || secrets.nfcPayloadHash,
+      secretVersion: pass.secretVersion || secrets.secretVersion
+    };
+  });
 
   if (plainBooking.security) {
     plainBooking.security = {
@@ -140,7 +160,8 @@ const publishBookingReleased = async (eventType, booking, extraPayload = {}, opt
 
   if (!published) {
     await catalogClient.releaseTickets(booking.tickets, {
-      restoreRevenue: false
+      restoreRevenue: false,
+      reservationId: booking.inventoryReservationId
     });
   }
 
@@ -165,9 +186,11 @@ const createBooking = async (bookingData, user, options = {}) => {
   }
 
   const expiresAt = getBookingExpiryDate();
+  const inventoryReservationId = crypto.randomUUID();
   const reservation = await catalogClient.reserveTickets(tickets, {
     userId: user.id,
-    expiresAt
+    expiresAt,
+    reservationId: inventoryReservationId
   });
   const bookingTickets = reservation.items.map((item) => ({
     ticket: item.ticket,
@@ -179,7 +202,20 @@ const createBooking = async (bookingData, user, options = {}) => {
     snapshot: item.snapshot
   }));
 
-  const totalAmount = reservation.totalAmount;
+  let promoPricing;
+  try {
+    promoPricing = await validatePromoCode({
+      code: promoCode,
+      subtotal: reservation.totalAmount,
+      eventIds: reservation.items.map(item => item.event).filter(Boolean),
+      userId: user.id
+    });
+  } catch (error) {
+    await catalogClient.releaseTickets(bookingTickets, { reservationId: inventoryReservationId });
+    throw error;
+  }
+
+  const totalAmount = promoPricing.grandTotal;
   const customerInfo = {
     name: customerName || '',
     email: customerEmail || '',
@@ -194,18 +230,19 @@ const createBooking = async (bookingData, user, options = {}) => {
     totalAmount,
     currency,
     pricing: {
-      subtotal: totalAmount,
-      discount: 0,
+      subtotal: reservation.totalAmount,
+      discount: promoPricing.discount,
       tax: 0,
       serviceFee: 0,
       grandTotal: totalAmount,
-      promoCode
+      promoCode: promoPricing.code
     },
     paymentMethod,
     bookingStatus: 'pending',
     paymentStatus: 'pending',
     source,
     expiresAt,
+    inventoryReservationId,
     statusHistory: [{
       bookingStatus: 'pending',
       paymentStatus: 'pending',
@@ -245,7 +282,7 @@ const createBooking = async (bookingData, user, options = {}) => {
     return booking;
   } catch (error) {
     await session.abortTransaction();
-    await catalogClient.releaseTickets(bookingTickets);
+    await catalogClient.releaseTickets(bookingTickets, { reservationId: inventoryReservationId });
     throw error;
   } finally {
     session.endSession();
@@ -261,12 +298,7 @@ const expirePendingBooking = async (bookingId, options = {}) => {
 
   try {
     const booking = await Booking.findOneAndUpdate(
-      {
-        _id: bookingId,
-        bookingStatus: 'pending',
-        paymentStatus: 'pending',
-        expiresAt: { $lte: now }
-      },
+      buildExpirationClaimFilter(bookingId, now),
       {
         $set: {
           bookingStatus: 'cancelled',
@@ -432,6 +464,10 @@ const cancelBooking = async (id, user) => {
     throw new ApiError(400, 'Failed bookings cannot be cancelled again');
   }
 
+  if (booking.paymentStatus === 'completed') {
+    throw new ApiError(409, 'Paid bookings require a refund request before cancellation');
+  }
+
   const previousPaymentStatus = booking.paymentStatus;
 
   booking.bookingStatus = 'cancelled';
@@ -441,16 +477,6 @@ const cancelBooking = async (id, user) => {
       pass.status = 'cancelled';
     }
   });
-
-  if (previousPaymentStatus === 'completed') {
-    booking.paymentStatus = 'refunded';
-    booking.refund = {
-      amount: booking.totalAmount,
-      reason: 'Booking cancelled after payment completed',
-      processedAt: new Date(),
-      processedBy: user.id
-    };
-  }
 
   if (previousPaymentStatus === 'pending') {
     booking.paymentStatus = 'failed';
@@ -486,7 +512,8 @@ const cancelBooking = async (id, user) => {
 
     if (!published) {
       await catalogClient.releaseTickets(booking.tickets, {
-        restoreRevenue: previousPaymentStatus === 'completed'
+        restoreRevenue: previousPaymentStatus === 'completed',
+        reservationId: booking.inventoryReservationId
       });
     }
 
@@ -500,8 +527,78 @@ const cancelBooking = async (id, user) => {
   }
 };
 
+const requestRefund = async (id, user, reason) => {
+  const booking = await Booking.findById(id);
+
+  if (!booking) {
+    throw new ApiError(404, 'Booking not found');
+  }
+
+  if (booking.user.toString() !== user.id && user.role !== 'admin') {
+    throw new ApiError(403, 'Not authorized to request a refund for this booking');
+  }
+
+  if (booking.paymentStatus !== 'completed' || booking.bookingStatus !== 'confirmed') {
+    throw new ApiError(409, 'Only confirmed paid bookings can be refunded');
+  }
+
+  if (booking.passes.some(pass => pass.status === 'checked_in')) {
+    throw new ApiError(409, 'Checked-in tickets are not eligible for a refund');
+  }
+
+  const eventDates = booking.tickets
+    .map(item => item.snapshot?.date)
+    .filter(Boolean)
+    .map(value => new Date(value));
+  if (eventDates.some(date => date <= new Date())) {
+    throw new ApiError(409, 'Refund requests are closed after the event starts');
+  }
+
+  if (['requested', 'processing'].includes(booking.refund?.status)) {
+    return booking;
+  }
+
+  booking.refund = {
+    ...booking.refund?.toObject?.(),
+    status: 'requested',
+    amount: booking.totalAmount,
+    reason: String(reason || '').trim(),
+    requestedAt: new Date(),
+    processedAt: undefined,
+    processedBy: undefined,
+    rejectedAt: undefined,
+    rejectionReason: ''
+  };
+  booking.statusHistory.push({
+    bookingStatus: booking.bookingStatus,
+    paymentStatus: booking.paymentStatus,
+    changedBy: user.id,
+    reason: 'Customer requested a refund'
+  });
+  booking.updatedAt = new Date();
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    await booking.save({ session });
+    await publishDomainEvent(EVENTS.REFUND_REQUESTED, {
+      booking: serializeBookingForEvent(booking),
+      bookingId: booking._id.toString(),
+      userId: booking.user.toString(),
+      refund: booking.refund.toObject()
+    }, { source: 'booking-service', session });
+    await session.commitTransaction();
+    return booking;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
 module.exports = {
   attachTicketSnapshots,
+  buildExpirationClaimFilter,
   createBooking,
   expirePendingBooking,
   expirePendingBookings,
@@ -511,5 +608,6 @@ module.exports = {
   getBookingExpiryDate,
   isExpiredPendingBooking,
   cancelBooking,
+  requestRefund,
   serializeBookingForEvent
 };

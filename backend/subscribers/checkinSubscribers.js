@@ -11,11 +11,19 @@ const toTicketSnapshotMap = (tickets = []) => {
   ]));
 };
 
-const toProjectionPass = (pass = {}, ticketSnapshotMap = new Map()) => {
+const toTicketEventMap = (tickets = []) => {
+  return new Map(tickets.map((item) => [
+    item.ticket?.toString?.() || String(item.ticket),
+    item.event
+  ]));
+};
+
+const toProjectionPass = (pass = {}, ticketSnapshotMap = new Map(), ticketEventMap = new Map()) => {
   const ticketId = pass.ticket?.toString?.() || String(pass.ticket || '');
 
   return {
     _id: pass._id,
+    event: ticketEventMap.get(ticketId),
     ticket: pass.ticket,
     passCode: pass.passCode || '',
     barcodeValue: pass.barcodeValue || '',
@@ -46,6 +54,7 @@ const toProjectionPass = (pass = {}, ticketSnapshotMap = new Map()) => {
 
 const toCheckInBookingProjection = (booking = {}) => {
   const ticketSnapshotMap = toTicketSnapshotMap(booking.tickets || []);
+  const ticketEventMap = toTicketEventMap(booking.tickets || []);
 
   return {
     _id: booking._id,
@@ -59,7 +68,7 @@ const toCheckInBookingProjection = (booking = {}) => {
       phone: booking.customerInfo?.phone || '',
       address: booking.customerInfo?.address || ''
     },
-    passes: (booking.passes || []).map((pass) => toProjectionPass(pass, ticketSnapshotMap)),
+    passes: (booking.passes || []).map((pass) => toProjectionPass(pass, ticketSnapshotMap, ticketEventMap)),
     confirmedAt: booking.confirmedAt,
     cancelledAt: booking.cancelledAt,
     expiresAt: booking.expiresAt,
@@ -164,5 +173,6 @@ const startCheckinSubscribers = async () => {
 
 module.exports = startCheckinSubscribers;
 module.exports.toTicketSnapshotMap = toTicketSnapshotMap;
+module.exports.toTicketEventMap = toTicketEventMap;
 module.exports.toProjectionPass = toProjectionPass;
 module.exports.toCheckInBookingProjection = toCheckInBookingProjection;

@@ -1,0 +1,62 @@
+name: Release Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semantic version without prefix, for example 1.2.3'
+        required: true
+        type: string
+      tag_type:
+        description: 'Release target'
+        required: true
+        default: app
+        type: choice
+        options:
+          - app
+          - mobile
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    name: Create Annotated Release Tag
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: ${{ 'prod' }}
+    steps:
+      - name: Checkout Main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Version And Create Tag
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          TAG_TYPE: ${{ inputs.tag_type }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must follow MAJOR.MINOR.PATCH, for example 1.2.3."
+            exit 1
+          fi
+
+          case "$TAG_TYPE" in
+            app) tag="v${RELEASE_VERSION}" ;;
+            mobile) tag="mobile-v${RELEASE_VERSION}" ;;
+            *) echo "Unsupported tag type: $TAG_TYPE"; exit 1 ;;
+          esac
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists on origin."
+            exit 1
+          fi
+
+          git config user.name "ticketstage-release-bot"
+          git config user.email "ticketstage-release-bot@users.noreply.github.com"
+          git tag -a "$tag" -m "Release ${tag}"
+          git push origin "$tag"
+          echo "Created and pushed ${tag} from ${GITHUB_SHA}."

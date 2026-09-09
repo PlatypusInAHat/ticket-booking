@@ -11,11 +11,13 @@ module.exports = {
     queue: require('./services/purchaseQueue'),
     bookingExpiration: require('./services/bookingExpirationService'),
     eventReminder: require('./services/eventReminderService'),
-    purchaseLimit: require('./services/purchaseLimitService')
+    purchaseLimit: require('./services/purchaseLimitService'),
+    promoCode: require('./services/promoCodeService')
   },
   models: {
     Booking: require('./models/Booking'),
     Payment: require('./models/Payment'),
-    QueueSlot: require('./models/QueueSlot')
+    QueueSlot: require('./models/QueueSlot'),
+    PromoCode: require('./models/PromoCode')
   }
 };

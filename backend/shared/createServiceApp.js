@@ -3,7 +3,7 @@ const cors = require('cors');
 const compression = require('compression');
 const errorHandler = require('../middleware/error');
 const { correlationIdMiddleware } = require('../middleware/correlationId');
-const { logger, corsOptions } = require('@ticket-booking/platform');
+const { logger, corsOptions, internalAuth } = require('@ticket-booking/platform');
 const {
   buildHealthPayload,
   resolveOverallStatus,
@@ -23,6 +23,11 @@ const createServiceApp = ({
   health = {}
 }) => {
   const app = express();
+  const trustProxy = process.env.TRUST_PROXY;
+
+  if (trustProxy) {
+    app.set('trust proxy', trustProxy === 'true' ? 1 : trustProxy);
+  }
   const requiredDependencies = health.requiredDependencies || ['mongodb'];
   const includeDatabase = health.includeDatabase !== false;
   const includeBroker = health.includeBroker !== false;
@@ -70,7 +75,7 @@ const createServiceApp = ({
 
   app.get('/health/ready', readinessHandler);
 
-  app.get('/health/dependencies', async (req, res, next) => {
+  app.get('/health/dependencies', internalAuth, async (req, res, next) => {
     try {
       const dependencies = await runDependencyChecks({
         serviceName,

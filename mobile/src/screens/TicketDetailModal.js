@@ -1,5 +1,5 @@
-import React from 'react';
-import { Image, Modal, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Plus, X, MapPin, Calendar } from 'lucide-react-native';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -8,6 +8,20 @@ import { colors, radius } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 
 export default function TicketDetailModal({ ticket, onClose, onBook }) {
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const reservedSeating = ticket?.seatMap?.mode === 'reserved_seating';
+  const seats = useMemo(() => (ticket?.seatMap?.sections || []).flatMap(section =>
+    (section.rows || []).flatMap(row => (row.seats || []).map(seat => ({ ...seat, row: row.label, section: section.name })))
+  ), [ticket]);
+
+  useEffect(() => setSelectedSeats([]), [ticket?._id]);
+
+  const toggleSeat = (seat) => {
+    if (seat.status !== 'available') return;
+    setSelectedSeats(current => current.includes(seat.code)
+      ? current.filter(code => code !== seat.code)
+      : current.length >= 10 ? current : [...current, seat.code]);
+  };
   return (
     <Modal visible={Boolean(ticket)} animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalWrap}>
@@ -34,8 +48,35 @@ export default function TicketDetailModal({ ticket, onClose, onBook }) {
               <Text style={styles.price}>{formatCurrency(ticket.price)}</Text>
               <Text style={styles.description}>{ticket.description || 'This event does not have a detailed description yet.'}</Text>
 
+              {reservedSeating ? (
+                <View style={styles.seatArea}>
+                  <Text style={styles.seatTitle}>Select seats</Text>
+                  <View style={styles.seatGrid}>
+                    {seats.map(seat => {
+                      const selected = selectedSeats.includes(seat.code);
+                      return (
+                        <Pressable
+                          key={seat.code}
+                          disabled={seat.status !== 'available'}
+                          onPress={() => toggleSeat(seat)}
+                          style={[styles.seat, selected && styles.seatSelected, seat.status !== 'available' && styles.seatDisabled]}
+                        >
+                          <Text style={[styles.seatText, selected && styles.seatSelectedText]}>{seat.code}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
+
               <View style={styles.actions}>
-                <Button title="Add to cart" icon={Plus} onPress={() => onBook(ticket)} style={styles.flexButton} />
+                <Button
+                  title={reservedSeating ? `Add ${selectedSeats.length} seat(s)` : 'Add to cart'}
+                  icon={Plus}
+                  disabled={reservedSeating && selectedSeats.length === 0}
+                  onPress={() => onBook({ ...ticket, seatCodes: selectedSeats, quantity: selectedSeats.length || 1 })}
+                  style={styles.flexButton}
+                />
               </View>
             </Card>
           ) : null}
@@ -86,6 +127,44 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '900',
     marginTop: 12
+  },
+  seat: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    minWidth: 52,
+    padding: 10
+  },
+  seatArea: {
+    marginTop: 20
+  },
+  seatDisabled: {
+    opacity: 0.3
+  },
+  seatGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12
+  },
+  seatSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent
+  },
+  seatSelectedText: {
+    color: colors.accentForeground
+  },
+  seatText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  seatTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '900'
   },
   actions: {
     marginTop: 24

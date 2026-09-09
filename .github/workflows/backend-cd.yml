@@ -558,16 +558,17 @@ jobs:
       SHORT_SHA: ${{ needs.resolve-deploy-target.outputs.short_sha }}
       SERVICE_NAMES: ${{ needs.resolve-deploy-target.outputs.service_names }}
       K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE || 'ticketstage' }}
+      RUN_INVENTORY_BUCKET_MIGRATION: ${{ vars.ENABLE_INVENTORY_BUCKET_MIGRATION || 'false' }}
     steps:
-      - name: Skip When Booking Service Is Unchanged
+      - name: Resolve Migration Targets
         id: migration-target
         shell: bash
         run: |
-          if [[ " ${SERVICE_NAMES} " == *" booking-service "* ]]; then
+          if [[ " ${SERVICE_NAMES} " == *" booking-service "* || " ${SERVICE_NAMES} " == *" catalog-service "* ]]; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           else
             echo "required=false" >> "$GITHUB_OUTPUT"
-            echo "booking-service is unchanged; skipping payment index migration."
+            echo "No service with database migrations changed; skipping migration jobs."
           fi
 
       - name: Configure AWS Credentials With OIDC
@@ -587,7 +588,7 @@ jobs:
         if: steps.migration-target.outputs.required == 'true'
         run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
-      - name: Run Payment Index Migration Job
+      - name: Run Service Database Migration Jobs
         if: steps.migration-target.outputs.required == 'true'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -598,24 +599,27 @@ jobs:
 
           repository_prefix="${ECR_REPOSITORY_PREFIX:-${DEPLOY_ENV}}"
           repository_prefix="${repository_prefix%/}"
-          migration_image="${ECR_REGISTRY}/${repository_prefix}/booking-service:${IMAGE_TAG}"
-          job_name="payment-index-${SHORT_SHA}"
+          run_migration() {
+            local service_name="$1"
+            local job_name="$2"
+            local script_path="$3"
+            local migration_image="${ECR_REGISTRY}/${repository_prefix}/${service_name}:${IMAGE_TAG}"
 
-          kubectl -n "$K8S_NAMESPACE" delete job "$job_name" --ignore-not-found
-          kubectl -n "$K8S_NAMESPACE" get deployment booking-service -o json | \
-            jq --arg job "$job_name" --arg image "$migration_image" '
+            kubectl -n "$K8S_NAMESPACE" delete job "$job_name" --ignore-not-found
+            kubectl -n "$K8S_NAMESPACE" get deployment "$service_name" -o json | \
+              jq --arg job "$job_name" --arg image "$migration_image" --arg script "$script_path" --arg service "$service_name" '
               {
                 apiVersion: "batch/v1",
                 kind: "Job",
                 metadata: {
                   name: $job,
-                  labels: {"app.kubernetes.io/name": "booking-migration"}
+                  labels: {"app.kubernetes.io/name": ($service + "-migration")}
                 },
                 spec: {
                   backoffLimit: 1,
                   ttlSecondsAfterFinished: 600,
                   template: {
-                    metadata: {labels: {"app.kubernetes.io/name": "booking-migration"}},
+                    metadata: {labels: {"app.kubernetes.io/name": ($service + "-migration")}},
                     spec: {
                       restartPolicy: "Never",
                       serviceAccountName: .spec.template.spec.serviceAccountName,
@@ -624,7 +628,7 @@ jobs:
                         name: "migration",
                         image: $image,
                         imagePullPolicy: "IfNotPresent",
-                        command: ["node", "scripts/migratePaymentIndexes.js"],
+                        command: ["node", $script],
                         env: (.spec.template.spec.containers[0].env // []),
                         envFrom: (.spec.template.spec.containers[0].envFrom // [])
                       }]
@@ -632,14 +636,27 @@ jobs:
                   }
                 }
               }
-            ' | kubectl -n "$K8S_NAMESPACE" apply -f -
+              ' | kubectl -n "$K8S_NAMESPACE" apply -f -
 
-          if ! kubectl -n "$K8S_NAMESPACE" wait --for=condition=complete "job/${job_name}" --timeout=300s; then
-            kubectl -n "$K8S_NAMESPACE" logs "job/${job_name}" --all-containers=true || true
-            exit 1
+            if ! kubectl -n "$K8S_NAMESPACE" wait --for=condition=complete "job/${job_name}" --timeout=300s; then
+              kubectl -n "$K8S_NAMESPACE" logs "job/${job_name}" --all-containers=true || true
+              return 1
+            fi
+
+            kubectl -n "$K8S_NAMESPACE" logs "job/${job_name}" --all-containers=true
+          }
+
+          if [[ " ${SERVICE_NAMES} " == *" booking-service "* ]]; then
+            run_migration "booking-service" "payment-index-${SHORT_SHA}" "scripts/migratePaymentIndexes.js"
           fi
 
-          kubectl -n "$K8S_NAMESPACE" logs "job/${job_name}" --all-containers=true
+          if [[ " ${SERVICE_NAMES} " == *" catalog-service "* ]]; then
+            run_migration "catalog-service" "inventory-reservation-index-${SHORT_SHA}" "scripts/migrateInventoryReservationIndexes.js"
+            if [[ "${RUN_INVENTORY_BUCKET_MIGRATION}" == "true" ]]; then
+              run_migration "catalog-service" "inventory-bucket-${SHORT_SHA}" "scripts/migrateInventoryBuckets.js"
+              run_migration "catalog-service" "inventory-bucket-sync-${SHORT_SHA}" "scripts/syncInventoryBucketSummaries.js"
+            fi
+          fi
 
   backend-deploy:
     name: 09 / Verify GitOps Rollout (${{ matrix.service }})

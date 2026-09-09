@@ -125,6 +125,12 @@ export const eventsAPI = {
   delete: (id) => API.delete(`/events/${id}`)
 };
 
+export const companiesAPI = {
+  getAll: (params = {}) => API.get('/companies', { params }),
+  create: (data) => API.post('/companies', data),
+  update: (id, data) => API.put(`/companies/${id}`, data)
+};
+
 // Tickets API
 export const ticketsAPI = {
   getAll: (params, config = {}) => API.get('/tickets', { params, ...config }),
@@ -139,7 +145,23 @@ export const bookingsAPI = {
   create: (data) => API.post('/bookings', data),
   getAll: () => API.get('/bookings'),
   getById: (id) => API.get(`/bookings/${id}`),
-  cancel: (id) => API.put(`/bookings/${id}/cancel`)
+  cancel: (id) => API.put(`/bookings/${id}/cancel`),
+  requestRefund: (id, reason) => API.post(`/bookings/${id}/refund-request`, { reason }),
+  previewPromotion: (data) => API.post('/bookings/promotions/preview', data)
+};
+
+export const notificationsAPI = {
+  subscribe: (email, locale = 'en') => API.post('/notifications/subscribe', {
+    email,
+    locale,
+    source: 'website-home'
+  }),
+  updatePreferences: (data) => API.put('/notifications/preferences', data)
+};
+
+export const promotionsAPI = {
+  list: () => API.get('/bookings/promotions'),
+  create: (data) => API.post('/bookings/promotions', data)
 };
 
 // Users API
@@ -161,6 +183,8 @@ export const adminAPI = {
   getBookings: () => API.get('/admin/bookings'),
   updatePaymentStatus: (bookingId, status) =>
     API.put(`/admin/bookings/${bookingId}/payment`, { paymentStatus: status }),
+  updateRefundRequest: (bookingId, status, reason = '') =>
+    API.put(`/admin/bookings/${bookingId}/refund-request`, { status, reason }),
   getGatewayStatus: () => API.get('/admin/gateway/status'),
   getUsers: () => API.get('/admin/users'),
   updateUserRole: (userId, role) => API.put(`/admin/users/${userId}/role`, { role })

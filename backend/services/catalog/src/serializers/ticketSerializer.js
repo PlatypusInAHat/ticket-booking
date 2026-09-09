@@ -119,7 +119,8 @@ const toPublicTicket = (ticket, { detail = false } = {}) => {
     soldSeats: plainTicket.soldSeats,
     status: plainTicket.status,
     isActive: plainTicket.isActive,
-    visibility: plainTicket.visibility
+    visibility: plainTicket.visibility,
+    seatMap: plainTicket.seatMap
   };
 
   if (company?.name) {

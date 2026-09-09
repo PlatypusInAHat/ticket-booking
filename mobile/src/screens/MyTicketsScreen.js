@@ -1,14 +1,17 @@
 import React from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { QrCode, XCircle, CreditCard } from 'lucide-react-native';
+import { QrCode, XCircle, CreditCard, RefreshCw } from 'lucide-react-native';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Screen from '../components/Screen';
+import Field from '../components/Field';
 import { colors, radius } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 import { bookingStatusLabels, getLabel } from '../utils/labels';
 
-function BookingCard({ booking, onOpenPasses, onCancel }) {
+function BookingCard({ booking, onOpenPasses, onCancel, onRequestRefund }) {
+  const [showRefund, setShowRefund] = React.useState(false);
+  const [refundReason, setRefundReason] = React.useState('');
   return (
     <Card style={styles.card}>
       <View style={styles.rowBetween}>
@@ -27,15 +30,34 @@ function BookingCard({ booking, onOpenPasses, onCancel }) {
 
       <View style={styles.actions}>
         <Button title="Mobile passes" icon={QrCode} onPress={() => onOpenPasses(booking)} style={styles.flexButton} />
-        {booking.bookingStatus !== 'cancelled' ? (
+        {booking.paymentStatus === 'pending' && booking.bookingStatus !== 'cancelled' ? (
           <Button title="Cancel" icon={XCircle} variant="danger" onPress={() => onCancel(booking)} style={styles.flexButton} />
         ) : null}
+        {booking.paymentStatus === 'completed' && booking.bookingStatus === 'confirmed' && !['requested', 'processing', 'processed'].includes(booking.refund?.status) ? (
+          <Button title="Refund" icon={RefreshCw} variant="secondary" onPress={() => setShowRefund(value => !value)} style={styles.flexButton} />
+        ) : null}
       </View>
+      {showRefund ? (
+        <View style={styles.refundBox}>
+          <Field label="Refund reason" value={refundReason} onChangeText={setRefundReason} multiline />
+          <Button
+            title="Submit refund request"
+            icon={RefreshCw}
+            onPress={() => onRequestRefund(booking, refundReason).then(() => {
+              setShowRefund(false);
+              setRefundReason('');
+            })}
+          />
+        </View>
+      ) : null}
+      {booking.refund?.status && booking.refund.status !== 'none' ? (
+        <Text style={styles.muted}>Refund status: {booking.refund.status}</Text>
+      ) : null}
     </Card>
   );
 }
 
-export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPasses, onCancelBooking }) {
+export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPasses, onCancelBooking, onRequestRefund }) {
   const bookingList = Array.isArray(bookings) ? bookings : [];
 
   return (
@@ -50,6 +72,7 @@ export default function MyTicketsScreen({ bookings, loading, refresh, onOpenPass
             booking={booking}
             onOpenPasses={onOpenPasses}
             onCancel={onCancelBooking}
+            onRequestRefund={onRequestRefund}
           />
         ))}
         {!loading && bookingList.length === 0 ? (
@@ -131,6 +154,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
     marginTop: 8
+  },
+  refundBox: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    marginTop: 16,
+    padding: 14
   },
   rowBetween: {
     alignItems: 'center',

@@ -113,8 +113,24 @@ const paymentSchema = new mongoose.Schema({
 paymentSchema.index({ booking: 1, createdAt: -1 });
 paymentSchema.index({ user: 1, createdAt: -1 });
 paymentSchema.index({ status: 1, createdAt: -1 });
-paymentSchema.index({ provider: 1, providerReference: 1 });
-paymentSchema.index({ provider: 1, providerOrderId: 1 });
+paymentSchema.index(
+  { provider: 1, providerReference: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      providerReference: { $type: 'string', $gt: '' }
+    }
+  }
+);
+paymentSchema.index(
+  { provider: 1, providerOrderId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      providerOrderId: { $type: 'string', $gt: '' }
+    }
+  }
+);
 paymentSchema.index({ expiresAt: 1 });
 
 module.exports = mongoose.model('Payment', paymentSchema);

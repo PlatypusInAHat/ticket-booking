@@ -33,6 +33,30 @@ const unsubscribeEmail = async (email, token) => {
   });
 };
 
+router.post('/subscribe', asyncHandler(async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    throw new ApiError(400, 'A valid email is required');
+  }
+
+  const preference = await updateEmailPreference({
+    email,
+    marketingOptIn: true,
+    unsubscribedAt: null,
+    locale: req.body.locale === 'vi' ? 'vi' : 'en',
+    metadata: {
+      source: String(req.body.source || 'website').slice(0, 80),
+      subscribedAt: new Date()
+    }
+  });
+
+  res.status(200).json(new ApiResponse(200, {
+    email: preference.email,
+    marketingOptIn: preference.marketingOptIn
+  }, 'Newsletter subscription saved'));
+}));
+
 router.get('/unsubscribe', asyncHandler(async (req, res) => {
   const email = normalizeEmail(req.query.email);
   await unsubscribeEmail(email, req.query.token);

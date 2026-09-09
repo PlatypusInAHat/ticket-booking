@@ -160,7 +160,7 @@ const processEventReminders = async (options = {}) => {
   const horizon = new Date(now.getTime() + reminderWindowHours * 60 * 60 * 1000);
   const limit = parsePositiveInt(options.limit || process.env.EVENT_REMINDER_BATCH_SIZE, DEFAULT_BATCH_SIZE);
 
-  const bookings = await Booking.find({
+  const bookingCursor = Booking.find({
     bookingStatus: 'confirmed',
     paymentStatus: 'completed',
     'tickets.snapshot.date': {
@@ -168,13 +168,15 @@ const processEventReminders = async (options = {}) => {
       $lte: horizon
     }
   })
-    .sort({ confirmedAt: 1, createdAt: 1 })
-    .limit(limit);
+    .sort({ _id: 1 })
+    .cursor();
 
   let publishedCount = 0;
+  let checkedBookingCount = 0;
   let checkedEventCount = 0;
 
-  for (const booking of bookings) {
+  for await (const booking of bookingCursor) {
+    checkedBookingCount += 1;
     const events = groupEligibleEvents(booking, now, horizon);
     checkedEventCount += events.length;
 
@@ -189,11 +191,19 @@ const processEventReminders = async (options = {}) => {
       if (published) {
         publishedCount += 1;
       }
+
+      if (publishedCount >= limit) {
+        break;
+      }
+    }
+
+    if (publishedCount >= limit) {
+      break;
     }
   }
 
   return {
-    checkedBookingCount: bookings.length,
+    checkedBookingCount,
     checkedEventCount,
     publishedCount,
     reminderWindowHours

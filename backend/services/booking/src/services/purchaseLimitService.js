@@ -66,6 +66,13 @@ const groupQuantitiesByEvent = (bookingTickets = []) => {
   return quantities;
 };
 
+const buildPurchaseLimitKey = ({ eventId, userId, windowStart }) => [
+  'purchase-limit',
+  eventId,
+  userId,
+  windowStart
+].join(':');
+
 const incrementEventCounter = async ({
   eventId,
   userId,
@@ -79,14 +86,7 @@ const incrementEventCounter = async ({
   session
 }) => {
   const normalizedDevice = deviceFingerprintHash || 'unknown-device';
-  const key = [
-    'purchase-limit',
-    eventId,
-    userId,
-    paymentMethod,
-    normalizedDevice,
-    windowStart
-  ].join(':');
+  const key = buildPurchaseLimitKey({ eventId, userId, windowStart });
 
   const insertUpdate = {
     $setOnInsert: {
@@ -179,6 +179,7 @@ const enforcePurchaseLimits = async ({
 };
 
 module.exports = {
+  buildPurchaseLimitKey,
   ensurePurchaseLimitStore,
   enforcePurchaseLimits,
   getPurchaseLimitConfig,

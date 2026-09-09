@@ -24,6 +24,7 @@ yarn-error.log*
 /CLAUDE.md
 /GEMINI.md
 /STEER.md
+/docs/technical/DEPLOYMENT_VARIABLES.local.md
 **/AGENTS.md
 **/CLAUDE.md
 **/GEMINI.md

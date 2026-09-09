@@ -28,19 +28,24 @@ const reserveTickets = async (tickets, options = {}) => {
   return requestCatalog('/internal/catalog/tickets/reserve', {
     tickets,
     userId: options.userId,
-    expiresAt: options.expiresAt
+    expiresAt: options.expiresAt,
+    reservationId: options.reservationId
   });
 };
 
 const releaseTickets = async (tickets, options = {}) => {
   return requestCatalog('/internal/catalog/tickets/release', {
     tickets,
-    restoreRevenue: Boolean(options.restoreRevenue)
+    restoreRevenue: Boolean(options.restoreRevenue),
+    reservationId: options.reservationId
   });
 };
 
-const applyRevenue = async (tickets) => {
-  return requestCatalog('/internal/catalog/events/revenue', { tickets });
+const applyRevenue = async (tickets, options = {}) => {
+  return requestCatalog('/internal/catalog/events/revenue', {
+    tickets,
+    reservationId: options.reservationId
+  });
 };
 
 module.exports = {

@@ -37,6 +37,44 @@ router.get('/bookings', asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, bookings.map(attachTicketSnapshots)));
 }));
 
+router.put('/bookings/:id/refund-request', asyncHandler(async (req, res) => {
+  const { status, reason = '', changedBy } = req.body;
+  if (!['processing', 'rejected'].includes(status)) {
+    throw new ApiError(400, 'Refund request status is invalid');
+  }
+
+  const booking = await Booking.findById(req.params.id);
+  if (!booking) throw new ApiError(404, 'Booking not found');
+  if (!['requested', 'processing'].includes(booking.refund?.status)) {
+    throw new ApiError(409, 'Booking does not have an active refund request');
+  }
+  if (status === 'rejected' && String(reason).trim().length < 5) {
+    throw new ApiError(400, 'A rejection reason is required');
+  }
+
+  booking.refund.status = status;
+  if (status === 'rejected') {
+    booking.refund.rejectedAt = new Date();
+    booking.refund.rejectionReason = String(reason).trim();
+  }
+  booking.statusHistory.push({
+    bookingStatus: booking.bookingStatus,
+    paymentStatus: booking.paymentStatus,
+    reason: status === 'processing' ? 'Refund request is being reviewed' : `Refund request rejected: ${String(reason).trim()}`,
+    changedBy
+  });
+  booking.updatedAt = new Date();
+  await booking.save();
+  await publishDomainEvent(EVENTS.REFUND_UPDATED, {
+    booking: serializeBookingForEvent(booking),
+    bookingId: booking._id.toString(),
+    userId: booking.user.toString(),
+    refund: booking.refund.toObject()
+  }, { source: 'booking-service' });
+
+  res.status(200).json(new ApiResponse(200, booking));
+}));
+
 const VALID_PAYMENT_STATUSES = ['pending', 'completed', 'failed', 'refunded'];
 
 const publishBookingCancellation = async (booking, { restoreRevenue = false, reason = '' } = {}) => {
@@ -51,12 +89,15 @@ const publishBookingCancellation = async (booking, { restoreRevenue = false, rea
   });
 
   if (!published) {
-    await catalogClient.releaseTickets(booking.tickets, { restoreRevenue });
+    await catalogClient.releaseTickets(booking.tickets, {
+      restoreRevenue,
+      reservationId: booking.inventoryReservationId
+    });
   }
 };
 
 router.put('/bookings/:id/payment', asyncHandler(async (req, res) => {
-  const { paymentStatus } = req.body;
+  const { paymentStatus, changedBy } = req.body;
 
   if (!VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
     throw new ApiError(400, 'Invalid payment status');
@@ -102,6 +143,25 @@ router.put('/bookings/:id/payment', asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Only completed payments can be refunded');
   }
 
+  let refundablePayment = null;
+  if (paymentStatus === 'refunded') {
+    refundablePayment = await Payment.findOne({
+      booking: booking._id,
+      status: 'completed'
+    }).sort({ processedAt: -1, createdAt: -1 });
+
+    if (!refundablePayment) {
+      throw new ApiError(409, 'No completed payment was found for this booking');
+    }
+
+    if (refundablePayment.provider !== 'mock') {
+      throw new ApiError(
+        501,
+        `Automatic refunds for ${refundablePayment.provider} are not configured. Keep the request in processing until the provider confirms the refund.`
+      );
+    }
+  }
+
   booking.paymentStatus = paymentStatus;
 
   if (paymentStatus === 'completed') {
@@ -118,9 +178,19 @@ router.put('/bookings/:id/payment', asyncHandler(async (req, res) => {
       }
     });
     booking.refund = {
+      status: 'processed',
       amount: booking.totalAmount,
       reason: 'Admin marked booking as refunded',
-      processedAt: now
+      processedAt: now,
+      processedBy: changedBy
+    };
+
+    refundablePayment.status = 'refunded';
+    refundablePayment.refund = {
+      amount: booking.totalAmount,
+      reason: 'Admin approved mock payment refund',
+      refundedAt: now,
+      refundedBy: changedBy
     };
   }
 
@@ -138,10 +208,15 @@ router.put('/bookings/:id/payment', asyncHandler(async (req, res) => {
   booking.statusHistory.push({
     bookingStatus: booking.bookingStatus,
     paymentStatus: booking.paymentStatus,
-    reason: `Admin updated payment status from ${previousPaymentStatus} to ${paymentStatus}`
+    reason: `Admin updated payment status from ${previousPaymentStatus} to ${paymentStatus}`,
+    changedBy
   });
   booking.updatedAt = now;
   await booking.save();
+
+  if (refundablePayment) {
+    await refundablePayment.save();
+  }
 
   if (paymentStatus === 'completed') {
     await publishDomainEvent(EVENTS.PAYMENT_COMPLETED, {
@@ -172,6 +247,12 @@ router.put('/bookings/:id/payment', asyncHandler(async (req, res) => {
   }
 
   if (paymentStatus === 'refunded') {
+    await publishDomainEvent(EVENTS.REFUND_UPDATED, {
+      booking: serializeBookingForEvent(booking),
+      bookingId: booking._id.toString(),
+      userId: booking.user.toString(),
+      refund: booking.refund.toObject()
+    }, { source: 'booking-service' });
     await publishBookingCancellation(booking, {
       restoreRevenue: true,
       reason: 'Admin marked payment as refunded'

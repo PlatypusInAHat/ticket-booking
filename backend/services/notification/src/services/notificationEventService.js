@@ -172,11 +172,43 @@ const enqueueEventReminderEmail = async ({ booking = {}, event = {}, reminderWin
   });
 };
 
+const enqueueRefundStatusEmail = async ({ booking = {}, refund = {} }) => {
+  const customer = getCustomer(booking);
+  if (!customer.email) return null;
+
+  const status = refund.status || booking.refund?.status || 'requested';
+  const statusMessage = {
+    requested: 'Your refund request has been received and is waiting for review.',
+    processing: 'Your refund request is currently being reviewed.',
+    rejected: `Your refund request was rejected. ${refund.rejectionReason || ''}`.trim(),
+    processed: 'Your refund has been approved and marked as processed.'
+  }[status] || 'Your refund request has been updated.';
+
+  return enqueueEmail({
+    to: customer.email,
+    user: booking.user,
+    type: 'transactional',
+    category: 'refund_status',
+    subject: `Refund update for booking ${booking.bookingNumber}`,
+    template: 'refundStatus',
+    context: {
+      userName: customer.name,
+      bookingNumber: booking.bookingNumber,
+      status,
+      statusMessage,
+      amount: formatCurrency(refund.amount || booking.refund?.amount || booking.totalAmount, booking.currency)
+    },
+    idempotencyKey: `refund:${booking._id || booking.id}:${status}`,
+    sourceEvent: status === 'requested' ? 'refund.requested' : 'refund.updated'
+  });
+};
+
 module.exports = {
   enqueueBookingCancelledEmail,
   enqueueEventReminderEmail,
   enqueuePasswordResetEmail,
   enqueuePaymentCompletedEmail,
+  enqueueRefundStatusEmail,
   enqueueWelcomeEmail,
   formatCurrency,
   getCustomer,

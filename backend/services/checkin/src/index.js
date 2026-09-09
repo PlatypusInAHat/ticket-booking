@@ -8,6 +8,7 @@ module.exports = {
   },
   models: {
     CheckInBookingProjection: require('./models/CheckInBookingProjection'),
+    OfflineSyncReceipt: require('./models/OfflineSyncReceipt'),
     CheckInDevice: require('./models/CheckInDevice'),
     CheckInLog: require('./models/CheckInLog')
   }

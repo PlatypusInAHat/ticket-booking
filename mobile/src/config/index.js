@@ -1,1 +1,1 @@
-export { API_BASE_URL, PAYMENT_PROVIDER } from './api';
+export { ALLOW_MOCK_PAYMENT, API_BASE_URL, PAYMENT_PROVIDER } from './api';

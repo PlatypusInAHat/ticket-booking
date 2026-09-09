@@ -3,7 +3,35 @@ const { body } = require('express-validator');
 const authController = require('../controllers/authController');
 const validateRequest = require('../../../../middleware/validateRequest');
 const { authenticateToken } = require('../../../../middleware/auth');
+const { createEnvRateLimiter } = require('../../../../middleware/rateLimit');
 const router = express.Router();
+
+const loginLimiter = createEnvRateLimiter({
+  name: 'auth-login',
+  windowEnv: 'AUTH_LOGIN_RATE_LIMIT_WINDOW_MS',
+  maxEnv: 'AUTH_LOGIN_RATE_LIMIT_MAX',
+  defaultWindowMs: 15 * 60 * 1000,
+  defaultMax: 10,
+  message: 'Too many login attempts. Please try again later.'
+});
+
+const forgotPasswordLimiter = createEnvRateLimiter({
+  name: 'auth-forgot-password',
+  windowEnv: 'AUTH_FORGOT_RATE_LIMIT_WINDOW_MS',
+  maxEnv: 'AUTH_FORGOT_RATE_LIMIT_MAX',
+  defaultWindowMs: 60 * 60 * 1000,
+  defaultMax: 5,
+  message: 'Too many password reset requests. Please try again later.'
+});
+
+const refreshLimiter = createEnvRateLimiter({
+  name: 'auth-refresh-token',
+  windowEnv: 'AUTH_REFRESH_RATE_LIMIT_WINDOW_MS',
+  maxEnv: 'AUTH_REFRESH_RATE_LIMIT_MAX',
+  defaultWindowMs: 60 * 1000,
+  defaultMax: 30,
+  message: 'Too many token refresh requests. Please try again later.'
+});
 
 const emailRule = () => body('email')
   .isEmail()
@@ -26,6 +54,7 @@ router.post('/register', [
 ], authController.register);
 
 router.post('/login', [
+  loginLimiter,
   emailRule(),
   body('password')
     .isString()
@@ -35,6 +64,7 @@ router.post('/login', [
 ], authController.login);
 
 router.post('/forgot-password', [
+  forgotPasswordLimiter,
   emailRule(),
   validateRequest
 ], authController.forgotPassword);
@@ -47,6 +77,7 @@ router.put('/reset-password/:token', [
 ], authController.resetPassword);
 
 router.post('/refresh-token', [
+  refreshLimiter,
   body('refreshToken')
     .isString()
     .notEmpty()

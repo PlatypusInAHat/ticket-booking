@@ -15,7 +15,9 @@ module.exports = {
   models: {
     Company: require('./models/Company'),
     Event: require('./models/Event'),
+    EventSession: require('./models/EventSession'),
     Ticket: require('./models/Ticket'),
-    SeatLock: require('./models/SeatLock')
+    SeatLock: require('./models/SeatLock'),
+    InventoryBucket: require('./models/InventoryBucket')
   }
 };

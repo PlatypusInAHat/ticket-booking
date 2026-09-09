@@ -3,6 +3,7 @@ import { clearAuth, loadAuth, saveAuth } from './storage';
 
 let token = null;
 let refreshToken = null;
+let refreshPromise = null;
 
 export const setAuthToken = (nextToken, nextRefreshToken = refreshToken) => {
   token = nextToken;
@@ -29,24 +30,34 @@ const buildQuery = (params = {}) => {
 };
 
 const refreshAuthSession = async () => {
-  if (!refreshToken) {
-    const savedAuth = await loadAuth();
-    refreshToken = savedAuth?.refreshToken || null;
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      if (!refreshToken) {
+        const savedAuth = await loadAuth();
+        refreshToken = savedAuth?.refreshToken || null;
+      }
+
+      if (!refreshToken) {
+        throw new Error('Your session has expired. Please log in again.');
+      }
+
+      const refreshed = await request('/auth/refresh-token', {
+        method: 'POST',
+        body: { refreshToken },
+        skipAuthRefresh: true
+      });
+
+      setAuthToken(refreshed.token, refreshed.refreshToken);
+      await saveAuth(refreshed);
+      return refreshed.token;
+    })();
   }
 
-  if (!refreshToken) {
-    throw new Error('Your session has expired. Please log in again.');
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
   }
-
-  const refreshed = await request('/auth/refresh-token', {
-    method: 'POST',
-    body: { refreshToken },
-    skipAuthRefresh: true
-  });
-
-  setAuthToken(refreshed.token, refreshed.refreshToken);
-  await saveAuth(refreshed);
-  return refreshed.token;
 };
 
 const request = async (path, options = {}) => {
@@ -92,6 +103,7 @@ export const imageUrl = (path) => `${API_BASE_URL}${path}`;
 export const authApi = {
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
   register: (data) => request('/auth/register', { method: 'POST', body: data }),
+  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: { email } }),
   logout: () => request('/auth/logout', { method: 'POST' })
 };
 
@@ -105,6 +117,8 @@ export const bookingApi = {
   list: () => request('/bookings'),
   detail: (id) => request(`/bookings/${id}`),
   cancel: (id) => request(`/bookings/${id}/cancel`, { method: 'PUT' }),
+  requestRefund: (id, reason) => request(`/bookings/${id}/refund-request`, { method: 'POST', body: { reason } }),
+  previewPromotion: (data) => request('/bookings/promotions/preview', { method: 'POST', body: data }),
   passes: (bookingId) => request(`/bookings/${bookingId}/passes`),
   passDetail: (bookingId, passId) => request(`/bookings/${bookingId}/passes/${passId}`),
   nfcPayload: (bookingId, passId) => request(`/bookings/${bookingId}/passes/${passId}/nfc-payload`)
@@ -124,5 +138,8 @@ export const userApi = {
 export const checkinApi = {
   validate: (data) => request('/checkin/validate', { method: 'POST', body: data }),
   checkIn: (data) => request('/checkin', { method: 'POST', body: data }),
+  events: () => request('/checkin/events'),
+  offlineManifest: (data) => request('/checkin/offline/manifest', { method: 'POST', body: data }),
+  syncOffline: (data) => request('/checkin/offline/sync', { method: 'POST', body: data }),
   stats: () => request('/checkin/stats')
 };

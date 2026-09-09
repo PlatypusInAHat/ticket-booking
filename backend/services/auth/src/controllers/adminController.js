@@ -13,8 +13,18 @@ const getAllBookings = asyncHandler(async (req, res) => {
 
 const updatePaymentStatus = asyncHandler(async (req, res) => {
   const { paymentStatus } = req.body;
-  const booking = await adminService.updatePaymentStatus(req.params.id, paymentStatus);
+  const booking = await adminService.updatePaymentStatus(req.params.id, paymentStatus, req.user.id);
   res.status(200).json(new ApiResponse(200, booking, 'Payment status updated'));
+});
+
+const updateRefundRequest = asyncHandler(async (req, res) => {
+  const booking = await adminService.updateRefundRequest(
+    req.params.id,
+    req.body.status,
+    req.body.reason,
+    req.user.id
+  );
+  res.status(200).json(new ApiResponse(200, booking, 'Refund request updated'));
 });
 
 const getAllUsers = asyncHandler(async (req, res) => {
@@ -32,6 +42,7 @@ module.exports = {
   getDashboardStats,
   getAllBookings,
   updatePaymentStatus,
+  updateRefundRequest,
   getAllUsers,
   updateUserRole
 };

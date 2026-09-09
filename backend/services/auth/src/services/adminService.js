@@ -57,12 +57,21 @@ const getAllBookings = async () => {
   });
 };
 
-const updatePaymentStatus = async (bookingId, paymentStatus) => {
+const updatePaymentStatus = async (bookingId, paymentStatus, changedBy) => {
   return requestInternal({
     baseUrl: BOOKING_SERVICE_URL,
     path: `/internal/booking/bookings/${bookingId}/payment`,
     method: 'put',
-    data: { paymentStatus }
+    data: { paymentStatus, changedBy }
+  });
+};
+
+const updateRefundRequest = async (bookingId, status, reason, changedBy) => {
+  return requestInternal({
+    baseUrl: BOOKING_SERVICE_URL,
+    path: `/internal/booking/bookings/${bookingId}/refund-request`,
+    method: 'put',
+    data: { status, reason, changedBy }
   });
 };
 
@@ -90,6 +99,7 @@ module.exports = {
   getDashboardStats,
   getAllBookings,
   updatePaymentStatus,
+  updateRefundRequest,
   getAllUsers,
   updateUserRole
 };

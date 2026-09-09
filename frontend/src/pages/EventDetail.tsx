@@ -15,6 +15,7 @@ import { StatusBadge, Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { SectionTitle } from "@/components/ui/SectionTitle"
 import { TicketTierCard } from "@/components/TicketTierCard"
+import { SeatMap } from "@/components/SeatMap"
 import { EventCard } from "@/components/EventCard"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
 import { useAppDispatch } from "@/store"
@@ -23,13 +24,14 @@ import { eventsAPI, ticketsAPI } from "@/services/api"
 import { mapApiEventToEventItem } from "@/utils/eventMapper"
 
 export function EventDetail() {
-  const { slug } = useParams<{ slug: string }>()
+  const { id: slug } = useParams<{ id: string }>()
   const dispatch = useAppDispatch()
 
   const [event, setEvent] = useState<EventItem | null>(null)
   const [related, setRelated] = useState<EventItem[]>([])
   const [selectedTier, setSelectedTier] = useState("")
   const [quantity, setQuantity] = useState(1)
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([])
   const [added, setAdded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -86,10 +88,12 @@ export function EventDetail() {
     [event, selectedTier],
   )
   const effectiveQuantity = quantity
-  const total = (tier?.price ?? 0) * effectiveQuantity
+  const reservedSeating = tier?.seatMap?.mode === "reserved_seating"
+  const checkoutQuantity = reservedSeating ? selectedSeats.length : effectiveQuantity
+  const total = (tier?.price ?? 0) * checkoutQuantity
 
   const handleAdd = () => {
-    if (!event || !tier || soldOut || effectiveQuantity === 0) return
+    if (!event || !tier || soldOut || checkoutQuantity === 0) return
     dispatch(
       addToCart({
         _id: tier.id,
@@ -105,7 +109,8 @@ export function EventDetail() {
         category: tier.name,
         price: tier.price,
         availableSeats: tier.remaining || 1,
-        quantity: effectiveQuantity,
+        quantity: checkoutQuantity,
+        seatCodes: reservedSeating ? selectedSeats : [],
       }),
     )
     setAdded(true)
@@ -221,6 +226,7 @@ export function EventDetail() {
                       onSelect={() => {
                         setSelectedTier(item.id)
                         setQuantity(1)
+                        setSelectedSeats([])
                       }}
                       onQuantity={setQuantity}
                     />
@@ -231,6 +237,19 @@ export function EventDetail() {
                   This event is not selling tickets yet.
                 </div>
               )}
+              {reservedSeating && tier?.seatMap?.sections?.length ? (
+                <div className="mt-6">
+                  <p className="mb-3 text-sm font-semibold text-foreground">
+                    Select {Math.min(10, tier.remaining)} available seats
+                  </p>
+                  <SeatMap
+                    key={tier.id}
+                    sections={tier.seatMap.sections}
+                    maxSelectable={Math.min(10, tier.remaining)}
+                    onSelectionChange={setSelectedSeats}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -251,7 +270,7 @@ export function EventDetail() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Quantity</span>
-                  <span className="font-medium">{tier ? effectiveQuantity : 0}</span>
+                  <span className="font-medium">{tier ? checkoutQuantity : 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Price per ticket</span>
@@ -269,10 +288,12 @@ export function EventDetail() {
                 className="mt-5 w-full"
                 size="lg"
                 onClick={handleAdd}
-                disabled={soldOut || !tier || tier.remaining <= 0}
+                disabled={soldOut || !tier || tier.remaining <= 0 || (reservedSeating && selectedSeats.length === 0)}
               >
                 {soldOut || !tier || tier.remaining <= 0 ? (
                   "Sold out"
+                ) : reservedSeating && selectedSeats.length === 0 ? (
+                  "Select seats"
                 ) : added ? (
                   <>
                     <Check className="h-4 w-4" />
