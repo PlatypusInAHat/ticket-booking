@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2600" height="2060" viewBox="0 0 2600 2060" role="img"><title>Triển khai theo Availability Zone &amp; đường mạng</title><defs><marker id="blue" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#28649d"/></marker><marker id="orange" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#d3750e"/></marker><marker id="green" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#218167"/></marker><marker id="purple" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#7850ad"/></marker><marker id="pink" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#b6417c"/></marker></defs><rect width="2600" height="2060" fill="white"/><g font-family="Segoe UI,DejaVu Sans,sans-serif">
+<text x="50" y="55" font-size="22" fill="#d3750e" font-weight="700">TICKETSTAGE / ARCHITECTURE DETAILS</text>
+<text x="50" y="109" font-size="40" fill="#172b45" font-weight="700">Triển khai theo Availability Zone &amp; đường mạng</text>
+<text x="50" y="147" font-size="22" fill="#53677e" font-weight="400">Mặc định module networking: 3 AZ • VPC 10.0.0.0/16 • vị trí pod minh họa, không phải kết quả scheduler</text>
+<rect x="50" y="190" width="460" height="110" rx="10" fill="#f8fbfd" stroke="#d3750e" stroke-width="1.6"/>
+<rect x="64" y="210" width="46" height="46" rx="5" fill="#d3750e"/><path d="M74 222h26v22h-26zM80 218v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="125" y="227" font-size="22" fill="#172b45" font-weight="700">Web / Mobile → Cloudflare</text>
+<text x="125" y="257" font-size="19" fill="#53677e" font-weight="400">WAF / rate limit / Turnstile</text>
+<text x="125" y="283" font-size="19" fill="#53677e" font-weight="400">HTTPS đến API public</text>
+<rect x="610" y="190" width="740" height="110" rx="10" fill="#f8fbfd" stroke="#7850ad" stroke-width="1.6"/>
+<rect x="624" y="210" width="46" height="46" rx="5" fill="#7850ad"/><path d="M634 222h26v22h-26zM640 218v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="685" y="227" font-size="22" fill="#172b45" font-weight="700">Internet-facing ALB · một load balancer</text>
+<text x="685" y="257" font-size="19" fill="#53677e" font-weight="400">Hiện diện ở public subnets được chọn</text>
+<text x="685" y="283" font-size="19" fill="#53677e" font-weight="400">Listener 443 → target IP pod gateway :5000</text>
+<rect x="1450" y="190" width="1100" height="110" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<rect x="1464" y="210" width="46" height="46" rx="5" fill="#28649d"/><path d="M1474 222h26v22h-26zM1480 218v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1525" y="227" font-size="22" fill="#172b45" font-weight="700">EKS control plane / AWS managed</text>
+<text x="1525" y="257" font-size="19" fill="#53677e" font-weight="400">Worker node groups dùng private_subnets; control plane không nằm trong worker node</text>
+<text x="1525" y="283" font-size="19" fill="#53677e" font-weight="400">API endpoint private/public và CIDR truy cập do cấu hình EKS quyết định</text>
+<polyline points="510,245 610,245" fill="none" stroke="#28649d" stroke-width="2.2" marker-end="url(#blue)"/>
+<rect x="50" y="335" width="2500" height="1035" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<text x="70" y="367" font-size="23" fill="#28649d" font-weight="700">AWS REGION / VPC</text>
+<text x="70" y="398" font-size="20" fill="#53677e" font-weight="400">Tên AZ lấy động từ AWS; A/B/C là ký hiệu, không hard-code us-east-1a/b/c.</text>
+<rect x="80" y="420" width="780" height="915" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<text x="100" y="452" font-size="23" fill="#28649d" font-weight="700">AVAILABILITY ZONE A</text>
+<text x="100" y="483" font-size="20" fill="#53677e" font-weight="400">Một public subnet + một private subnet</text>
+<rect x="100" y="508" width="740" height="192" rx="10" fill="#f8fbfd" stroke="#218167" stroke-width="1.6"/>
+<text x="120" y="540" font-size="23" fill="#218167" font-weight="700">Public subnet · 10.0.1.0/24</text>
+<text x="120" y="571" font-size="20" fill="#53677e" font-weight="400">Public route table: 0.0.0.0/0 → Internet Gateway</text>
+<rect x="118" y="585" width="345" height="110" rx="10" fill="#f8fbfd" stroke="#7850ad" stroke-width="1.6"/>
+<rect x="132" y="605" width="46" height="46" rx="5" fill="#7850ad"/><path d="M142 617h26v22h-26zM148 613v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="193" y="622" font-size="22" fill="#172b45" font-weight="700">ALB attachment</text>
+<text x="193" y="652" font-size="19" fill="#53677e" font-weight="400">Nhận traffic HTTPS</text>
+<rect x="480" y="585" width="342" height="110" rx="10" fill="#f8fbfd" stroke="#d3750e" stroke-width="1.6"/>
+<rect x="494" y="605" width="46" height="46" rx="5" fill="#d3750e"/><path d="M504 617h26v22h-26zM510 613v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="555" y="622" font-size="22" fill="#172b45" font-weight="700">NAT Gateway A</text>
+<text x="555" y="652" font-size="19" fill="#53677e" font-weight="400">Elastic IP riêng</text>
+<rect x="100" y="730" width="740" height="570" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<text x="120" y="762" font-size="23" fill="#28649d" font-weight="700">Private subnet · 10.0.11.0/24</text>
+<text x="120" y="793" font-size="20" fill="#53677e" font-weight="400">Private route: 0.0.0.0/0 → NAT A cùng AZ</text>
+<rect x="120" y="817" width="700" height="110" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<rect x="134" y="837" width="46" height="46" rx="5" fill="#28649d"/><path d="M144 849h26v22h-26zM150 845v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="195" y="854" font-size="22" fill="#172b45" font-weight="700">System node group · On-Demand</text>
+<text x="195" y="884" font-size="19" fill="#53677e" font-weight="400">CoreDNS / controllers / monitoring theo scheduling</text>
+<text x="195" y="910" font-size="19" fill="#53677e" font-weight="400">Node group trải trên danh sách private subnets</text>
+<rect x="120" y="945" width="700" height="110" rx="10" fill="#f8fbfd" stroke="#d3750e" stroke-width="1.6"/>
+<rect x="134" y="965" width="46" height="46" rx="5" fill="#d3750e"/><path d="M144 977h26v22h-26zM150 973v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="195" y="982" font-size="22" fill="#172b45" font-weight="700">General node group · Spot</text>
+<text x="195" y="1012" font-size="19" fill="#53677e" font-weight="400">Gateway / auth / catalog / notification / waiting room</text>
+<text x="195" y="1038" font-size="19" fill="#53677e" font-weight="400">Pod được gán theo workload=general</text>
+<rect x="120" y="1073" width="700" height="110" rx="10" fill="#f8fbfd" stroke="#218167" stroke-width="1.6"/>
+<rect x="134" y="1093" width="46" height="46" rx="5" fill="#218167"/><path d="M144 1105h26v22h-26zM150 1101v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="195" y="1110" font-size="22" fill="#172b45" font-weight="700">Critical node group · On-Demand</text>
+<text x="195" y="1140" font-size="19" fill="#53677e" font-weight="400">Booking / check-in</text>
+<text x="195" y="1166" font-size="19" fill="#53677e" font-weight="400">workload=critical + capacity=on-demand</text>
+<text x="120" y="1223" font-size="20" fill="#53677e" font-weight="400">Pod → Service DNS → endpoint pod ở AZ bất kỳ</text>
+<text x="120" y="1260" font-size="20" fill="#d3750e" font-weight="600">Không có queue hay signing key riêng cho mỗi AZ</text>
+<polyline points="647,730 647,695" fill="none" stroke="#d3750e" stroke-width="2.2" marker-end="url(#orange)"/>
+<polyline points="280,700 280,723 92,723 92,1000 120,1000" fill="none" stroke="#28649d" stroke-width="2.2" marker-end="url(#blue)"/>
+<rect x="910" y="420" width="780" height="915" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<text x="930" y="452" font-size="23" fill="#28649d" font-weight="700">AVAILABILITY ZONE B</text>
+<text x="930" y="483" font-size="20" fill="#53677e" font-weight="400">Một public subnet + một private subnet</text>
+<rect x="930" y="508" width="740" height="192" rx="10" fill="#f8fbfd" stroke="#218167" stroke-width="1.6"/>
+<text x="950" y="540" font-size="23" fill="#218167" font-weight="700">Public subnet · 10.0.2.0/24</text>
+<text x="950" y="571" font-size="20" fill="#53677e" font-weight="400">Public route table: 0.0.0.0/0 → Internet Gateway</text>
+<rect x="948" y="585" width="345" height="110" rx="10" fill="#f8fbfd" stroke="#7850ad" stroke-width="1.6"/>
+<rect x="962" y="605" width="46" height="46" rx="5" fill="#7850ad"/><path d="M972 617h26v22h-26zM978 613v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1023" y="622" font-size="22" fill="#172b45" font-weight="700">ALB attachment</text>
+<text x="1023" y="652" font-size="19" fill="#53677e" font-weight="400">Nhận traffic HTTPS</text>
+<rect x="1310" y="585" width="342" height="110" rx="10" fill="#f8fbfd" stroke="#d3750e" stroke-width="1.6"/>
+<rect x="1324" y="605" width="46" height="46" rx="5" fill="#d3750e"/><path d="M1334 617h26v22h-26zM1340 613v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1385" y="622" font-size="22" fill="#172b45" font-weight="700">NAT Gateway B</text>
+<text x="1385" y="652" font-size="19" fill="#53677e" font-weight="400">Elastic IP riêng</text>
+<rect x="930" y="730" width="740" height="570" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<text x="950" y="762" font-size="23" fill="#28649d" font-weight="700">Private subnet · 10.0.12.0/24</text>
+<text x="950" y="793" font-size="20" fill="#53677e" font-weight="400">Private route: 0.0.0.0/0 → NAT B cùng AZ</text>
+<rect x="950" y="817" width="700" height="110" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<rect x="964" y="837" width="46" height="46" rx="5" fill="#28649d"/><path d="M974 849h26v22h-26zM980 845v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1025" y="854" font-size="22" fill="#172b45" font-weight="700">System node group · On-Demand</text>
+<text x="1025" y="884" font-size="19" fill="#53677e" font-weight="400">CoreDNS / controllers / monitoring theo scheduling</text>
+<text x="1025" y="910" font-size="19" fill="#53677e" font-weight="400">Node group trải trên danh sách private subnets</text>
+<rect x="950" y="945" width="700" height="110" rx="10" fill="#f8fbfd" stroke="#d3750e" stroke-width="1.6"/>
+<rect x="964" y="965" width="46" height="46" rx="5" fill="#d3750e"/><path d="M974 977h26v22h-26zM980 973v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1025" y="982" font-size="22" fill="#172b45" font-weight="700">General node group · Spot</text>
+<text x="1025" y="1012" font-size="19" fill="#53677e" font-weight="400">Gateway / auth / catalog / notification / waiting room</text>
+<text x="1025" y="1038" font-size="19" fill="#53677e" font-weight="400">Pod được gán theo workload=general</text>
+<rect x="950" y="1073" width="700" height="110" rx="10" fill="#f8fbfd" stroke="#218167" stroke-width="1.6"/>
+<rect x="964" y="1093" width="46" height="46" rx="5" fill="#218167"/><path d="M974 1105h26v22h-26zM980 1101v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1025" y="1110" font-size="22" fill="#172b45" font-weight="700">Critical node group · On-Demand</text>
+<text x="1025" y="1140" font-size="19" fill="#53677e" font-weight="400">Booking / check-in</text>
+<text x="1025" y="1166" font-size="19" fill="#53677e" font-weight="400">workload=critical + capacity=on-demand</text>
+<text x="950" y="1223" font-size="20" fill="#53677e" font-weight="400">Pod → Service DNS → endpoint pod ở AZ bất kỳ</text>
+<text x="950" y="1260" font-size="20" fill="#d3750e" font-weight="600">Không có queue hay signing key riêng cho mỗi AZ</text>
+<polyline points="1477,730 1477,695" fill="none" stroke="#d3750e" stroke-width="2.2" marker-end="url(#orange)"/>
+<polyline points="1110,700 1110,723 922,723 922,1000 950,1000" fill="none" stroke="#28649d" stroke-width="2.2" marker-end="url(#blue)"/>
+<rect x="1740" y="420" width="780" height="915" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<text x="1760" y="452" font-size="23" fill="#28649d" font-weight="700">AVAILABILITY ZONE C</text>
+<text x="1760" y="483" font-size="20" fill="#53677e" font-weight="400">Một public subnet + một private subnet</text>
+<rect x="1760" y="508" width="740" height="192" rx="10" fill="#f8fbfd" stroke="#218167" stroke-width="1.6"/>
+<text x="1780" y="540" font-size="23" fill="#218167" font-weight="700">Public subnet · 10.0.3.0/24</text>
+<text x="1780" y="571" font-size="20" fill="#53677e" font-weight="400">Public route table: 0.0.0.0/0 → Internet Gateway</text>
+<rect x="1778" y="585" width="345" height="110" rx="10" fill="#f8fbfd" stroke="#7850ad" stroke-width="1.6"/>
+<rect x="1792" y="605" width="46" height="46" rx="5" fill="#7850ad"/><path d="M1802 617h26v22h-26zM1808 613v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1853" y="622" font-size="22" fill="#172b45" font-weight="700">ALB attachment</text>
+<text x="1853" y="652" font-size="19" fill="#53677e" font-weight="400">Nhận traffic HTTPS</text>
+<rect x="2140" y="585" width="342" height="110" rx="10" fill="#f8fbfd" stroke="#d3750e" stroke-width="1.6"/>
+<rect x="2154" y="605" width="46" height="46" rx="5" fill="#d3750e"/><path d="M2164 617h26v22h-26zM2170 613v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="2215" y="622" font-size="22" fill="#172b45" font-weight="700">NAT Gateway C</text>
+<text x="2215" y="652" font-size="19" fill="#53677e" font-weight="400">Elastic IP riêng</text>
+<rect x="1760" y="730" width="740" height="570" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<text x="1780" y="762" font-size="23" fill="#28649d" font-weight="700">Private subnet · 10.0.13.0/24</text>
+<text x="1780" y="793" font-size="20" fill="#53677e" font-weight="400">Private route: 0.0.0.0/0 → NAT C cùng AZ</text>
+<rect x="1780" y="817" width="700" height="110" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<rect x="1794" y="837" width="46" height="46" rx="5" fill="#28649d"/><path d="M1804 849h26v22h-26zM1810 845v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1855" y="854" font-size="22" fill="#172b45" font-weight="700">System node group · On-Demand</text>
+<text x="1855" y="884" font-size="19" fill="#53677e" font-weight="400">CoreDNS / controllers / monitoring theo scheduling</text>
+<text x="1855" y="910" font-size="19" fill="#53677e" font-weight="400">Node group trải trên danh sách private subnets</text>
+<rect x="1780" y="945" width="700" height="110" rx="10" fill="#f8fbfd" stroke="#d3750e" stroke-width="1.6"/>
+<rect x="1794" y="965" width="46" height="46" rx="5" fill="#d3750e"/><path d="M1804 977h26v22h-26zM1810 973v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1855" y="982" font-size="22" fill="#172b45" font-weight="700">General node group · Spot</text>
+<text x="1855" y="1012" font-size="19" fill="#53677e" font-weight="400">Gateway / auth / catalog / notification / waiting room</text>
+<text x="1855" y="1038" font-size="19" fill="#53677e" font-weight="400">Pod được gán theo workload=general</text>
+<rect x="1780" y="1073" width="700" height="110" rx="10" fill="#f8fbfd" stroke="#218167" stroke-width="1.6"/>
+<rect x="1794" y="1093" width="46" height="46" rx="5" fill="#218167"/><path d="M1804 1105h26v22h-26zM1810 1101v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
+<text x="1855" y="1110" font-size="22" fill="#172b45" font-weight="700">Critical node group · On-Demand</text>
+<text x="1855" y="1140" font-size="19" fill="#53677e" font-weight="400">Booking / check-in</text>
+<text x="1855" y="1166" font-size="19" fill="#53677e" font-weight="400">workload=critical + capacity=on-demand</text>
+<text x="1780" y="1223" font-size="20" fill="#53677e" font-weight="400">Pod → Service DNS → endpoint pod ở AZ bất kỳ</text>
+<text x="1780" y="1260" font-size="20" fill="#d3750e" font-weight="600">Không có queue hay signing key riêng cho mỗi AZ</text>
+<polyline points="2307,730 2307,695" fill="none" stroke="#d3750e" stroke-width="2.2" marker-end="url(#orange)"/>
+<polyline points="1940,700 1940,723 1752,723 1752,1000 1780,1000" fill="none" stroke="#28649d" stroke-width="2.2" marker-end="url(#blue)"/>
+<rect x="50" y="1405" width="790" height="245" rx="10" fill="#f8fbfd" stroke="#218167" stroke-width="1.6"/>
+<text x="70" y="1437" font-size="23" fill="#218167" font-weight="700">DATA PLANE CHUNG</text>
+<text x="72" y="1481" font-size="21" fill="#53677e" font-weight="400">Redis: một primary endpoint dùng chung mọi pod.</text>
+<text x="72" y="1513" font-size="21" fill="#53677e" font-weight="400">Replica / failover chỉ có khi bật nhiều node + Multi-AZ.</text>
+<text x="72" y="1545" font-size="21" fill="#53677e" font-weight="400">Mặc định: enable_redis=false; 1 node nếu bật theo default.</text>
+<text x="72" y="1577" font-size="21" fill="#53677e" font-weight="400">RabbitMQ: endpoint chung; topology phụ thuộc mode.</text>
+<text x="72" y="1609" font-size="21" fill="#53677e" font-weight="400">Atlas: cluster ngoài VPC app; DB tách theo domain.</text>
+<rect x="880" y="1405" width="790" height="245" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
+<text x="900" y="1437" font-size="23" fill="#28649d" font-weight="700">HA / SCALE THỰC TẾ TRONG REPO</text>
+<text x="902" y="1481" font-size="21" fill="#53677e" font-weight="400">HPA → tăng pod; Cluster Autoscaler → tăng node.</text>
+<text x="902" y="1513" font-size="21" fill="#53677e" font-weight="400">Domain services: spread zone + hostname (soft).</text>
+<text x="902" y="1545" font-size="21" fill="#53677e" font-weight="400">Waiting room: mới spread hostname (ScheduleAnyway).</text>
+<text x="902" y="1577" font-size="21" fill="#53677e" font-weight="400">PDB bảo vệ khi disruption tự nguyện, không bảo vệ mất AZ.</text>
+<text x="902" y="1609" font-size="21" fill="#53677e" font-weight="400">Sơ đồ không có nghĩa mỗi AZ luôn có đủ mọi service.</text>
+<rect x="1710" y="1405" width="840" height="245" rx="10" fill="#f8fbfd" stroke="#7850ad" stroke-width="1.6"/>
+<text x="1730" y="1437" font-size="23" fill="#7850ad" font-weight="700">EGRESS / SECURITY</text>
+<text x="1732" y="1481" font-size="21" fill="#53677e" font-weight="400">Public Internet: private pod → NAT cùng AZ → IGW.</text>
+<text x="1732" y="1513" font-size="21" fill="#53677e" font-weight="400">Đích: VNPay/MoMo, SMTP, API ngoài, public Atlas...</text>
+<text x="1732" y="1545" font-size="21" fill="#53677e" font-weight="400">Redis/MQ private: định tuyến nội bộ VPC, không qua NAT.</text>
+<text x="1732" y="1577" font-size="21" fill="#53677e" font-weight="400">SG + NetworkPolicy phải cùng cho phép đường gọi.</text>
+<text x="1732" y="1609" font-size="21" fill="#53677e" font-weight="400">Có NAT không đồng nghĩa SG đã mở egress Internet.</text>
+<rect x="50" y="1690" width="2500" height="260" rx="10" fill="#fffbf4" stroke="#d3750e" stroke-width="1.6" stroke-dasharray="10 6"/>
+<text x="70" y="1722" font-size="23" fill="#d3750e" font-weight="700">CÁC ĐIỂM CHƯA ĐƯỢC COI LÀ HA HOÀN CHỈNH</text>
+<text x="70" y="1753" font-size="20" fill="#53677e" font-weight="400">Phân biệt ranh giới hạ tầng với bảo đảm vận hành.</text>
+<text x="75" y="1780" font-size="22" fill="#53677e" font-weight="400">1. Hai pod waiting room có thể cùng AZ vì chưa có zone spread; soft scheduling cũng không bảo đảm trải đều khi thiếu capacity.</text>
+<text x="75" y="1812" font-size="22" fill="#53677e" font-weight="400">2. Redis một node không chịu được mất node/AZ. Bật Multi-AZ cần replica và phải kiểm thử failover, RPO của queue.</text>
+<text x="75" y="1844" font-size="22" fill="#53677e" font-weight="400">3. NAT được tạo một chiếc mỗi AZ trong module hiện tại; có chi phí cố định. Đây không phải cấu hình single-NAT tiết kiệm.</text>
+<text x="75" y="1876" font-size="22" fill="#53677e" font-weight="400">4. Node group dùng nhiều subnet không có nghĩa pod tự động trải đều. Cần đối chiếu pod/node/zone sau triển khai.</text>
+<text x="75" y="1908" font-size="22" fill="#53677e" font-weight="400">5. ALB certificate, SG/NetworkPolicy, secrets, broker mode và Atlas connectivity còn cần validate trên môi trường thật.</text>
+<text x="55" y="2007" font-size="20" fill="#53677e" font-weight="400">Nguồn: ticket-infra/aws/terraform/modules/{vpc,eks,elasticache-redis} và k8s/base. Không thay đổi IaC trong lần bổ sung sơ đồ này.</text></g></svg>

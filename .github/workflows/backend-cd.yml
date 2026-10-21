@@ -72,7 +72,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          all_services=(api-gateway auth-service catalog-service booking-service checkin-service notification-service)
+          all_services=(api-gateway auth-service catalog-service booking-service checkin-service notification-service waiting-room-service)
 
           deploy_allowed="true"
           deploy_env=""
@@ -232,6 +232,12 @@ jobs:
                   "$file" == backend/models/EmailTemplate.js ||
                   "$file" == backend/models/MarketingCampaign.js ]]
                 ;;
+              waiting-room-service)
+                [[ "$file" == backend/microservices/waiting-room-service/* ||
+                  "$file" == backend/services/waiting-room/* ||
+                  "$file" == backend/shared/waitingRoomToken.js ||
+                  "$file" == backend/shared/redisClient.js ]]
+                ;;
             esac
           }
 
@@ -314,7 +320,8 @@ jobs:
                   elif . == "catalog-service" then "services/catalog/Dockerfile"
                   elif . == "booking-service" then "services/booking/Dockerfile"
                   elif . == "checkin-service" then "services/checkin/Dockerfile"
-                  else "services/notification/Dockerfile"
+                  elif . == "notification-service" then "services/notification/Dockerfile"
+                  else "services/waiting-room/Dockerfile"
                   end
                 )
               })
@@ -648,6 +655,7 @@ jobs:
 
           if [[ " ${SERVICE_NAMES} " == *" booking-service "* ]]; then
             run_migration "booking-service" "payment-index-${SHORT_SHA}" "scripts/migratePaymentIndexes.js"
+            run_migration "booking-service" "waiting-room-index-${SHORT_SHA}" "scripts/migrateWaitingRoomIndexes.js"
           fi
 
           if [[ " ${SERVICE_NAMES} " == *" catalog-service "* ]]; then

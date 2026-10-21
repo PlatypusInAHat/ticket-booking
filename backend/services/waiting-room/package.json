@@ -1,0 +1,13 @@
+{
+  "name": "@ticket-booking/waiting-room-service",
+  "private": true,
+  "version": "1.0.0",
+  "main": "src/routes.js",
+  "scripts": { "start": "node ../../microservices/waiting-room-service/server.js" },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-validator": "^7.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "redis": "^4.7.1"
+  }
+}

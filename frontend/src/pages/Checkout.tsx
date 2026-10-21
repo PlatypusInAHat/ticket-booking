@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, CreditCard, Lock, Receipt } from "lucide-react
 import { TurnstileWidget } from "@/components/TurnstileWidget"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { clearCart } from "@/store/cartSlice"
-import { bookingsAPI, paymentAPI } from "@/services/api"
+import { bookingsAPI, paymentAPI, waitingRoomAPI } from "@/services/api"
 import { getDeviceFingerprint } from "@/utils/deviceFingerprint"
 import { formatCurrency } from "@/utils/format"
 import { paymentMethodLabels } from "@/utils/labels"
@@ -46,6 +46,27 @@ export function Checkout() {
   const [promoCode, setPromoCode] = useState("")
   const [promoPreview, setPromoPreview] = useState<any>(null)
   const [promoMessage, setPromoMessage] = useState("")
+
+  const waitForAdmission = async (deviceFingerprint: string) => {
+    const eventIds = Array.from(new Set(items.map((item: any) => item.eventId || item.event?._id || item.event).filter(Boolean)))
+    if (eventIds.length === 0) throw new Error("Event information is missing from the cart.")
+
+    const joinResponse = await waitingRoomAPI.join({ eventIds, deviceFingerprint })
+    const entryToken = joinResponse.data.data.entryToken
+    const deadline = Date.now() + 30 * 60 * 1000
+
+    while (Date.now() < deadline) {
+      const statusResponse = await waitingRoomAPI.getStatus(entryToken)
+      const queue = statusResponse.data.data
+      if (queue.state === "admitted") {
+        return queue.accessToken
+      }
+      setStatusText(`You are number ${queue.position} in line. Estimated wait: ${Math.ceil(queue.estimatedWaitSeconds / 60)} min.`)
+      await new Promise((resolve) => window.setTimeout(resolve, (queue.retryAfterSeconds || 5) * 1000))
+    }
+
+    throw new Error("Your waiting-room session timed out. Please try again.")
+  }
 
   const resetTurnstile = useCallback(() => {
     setTurnstileToken("")
@@ -117,10 +138,13 @@ export function Checkout() {
       }
 
       const deviceFingerprint = await getDeviceFingerprint()
+      setStatusText("Joining the ticket waiting room...")
+      const waitingRoomToken = await waitForAdmission(deviceFingerprint)
+      setStatusText("Holding your tickets...")
       const bookingResponse = await bookingsAPI.create(createBookingPayload({
         deviceFingerprint,
         turnstileToken
-      }))
+      }), waitingRoomToken)
       const booking = bookingResponse.data.data
 
       window.localStorage.setItem("lastPendingBookingId", booking._id)

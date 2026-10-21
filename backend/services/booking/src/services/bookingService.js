@@ -202,6 +202,16 @@ const createBooking = async (bookingData, user, options = {}) => {
     snapshot: item.snapshot
   }));
 
+  if (process.env.WAITING_ROOM_ENABLED === 'true') {
+    const admittedEvents = new Set((options.waitingRoomEventIds || []).map(String));
+    const reservationEvents = [...new Set(reservation.items.map(item => String(item.event)).filter(Boolean))];
+    const isCovered = reservationEvents.length > 0 && reservationEvents.every(eventId => admittedEvents.has(eventId));
+    if (!isCovered) {
+      await catalogClient.releaseTickets(bookingTickets, { reservationId: inventoryReservationId });
+      throw new ApiError(403, 'Waiting-room access does not cover the selected event.');
+    }
+  }
+
   let promoPricing;
   try {
     promoPricing = await validatePromoCode({
@@ -254,6 +264,7 @@ const createBooking = async (bookingData, user, options = {}) => {
 
   const botProtection = options.botProtection || {};
   booking.security = {
+    waitingRoomEntryId: options.waitingRoomEntryId || '',
     deviceFingerprintHash: botProtection.deviceFingerprintHash || '',
     remoteIpHash: botProtection.remoteIp ? hmacSha256(botProtection.remoteIp) : '',
     riskScore: botProtection.risk?.score || 0,
@@ -283,6 +294,9 @@ const createBooking = async (bookingData, user, options = {}) => {
   } catch (error) {
     await session.abortTransaction();
     await catalogClient.releaseTickets(bookingTickets, { reservationId: inventoryReservationId });
+    if (error?.code === 11000 && error?.keyPattern?.['security.waitingRoomEntryId']) {
+      throw new ApiError(409, 'This waiting-room admission has already been used.');
+    }
     throw error;
   } finally {
     session.endSession();

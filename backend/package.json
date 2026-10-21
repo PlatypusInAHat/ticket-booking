@@ -10,6 +10,7 @@
     "security:migrate-secrets": "node scripts/migrateSecrets.js",
     "db:migrate-payment-indexes": "node scripts/migratePaymentIndexes.js",
     "db:migrate-inventory-reservation-indexes": "node scripts/migrateInventoryReservationIndexes.js",
+    "db:migrate-waiting-room-indexes": "node scripts/migrateWaitingRoomIndexes.js",
     "db:migrate-inventory-buckets": "node scripts/migrateInventoryBuckets.js",
     "db:sync-inventory-buckets": "node scripts/syncInventoryBucketSummaries.js",
     "seed": "node scripts/seedMicroservices.js",
@@ -23,6 +24,7 @@
     "start:booking-service": "node microservices/booking-service/server.js",
     "start:checkin-service": "node microservices/checkin-service/server.js",
     "start:notification-service": "node microservices/notification-service/server.js",
+    "start:waiting-room-service": "node microservices/waiting-room-service/server.js",
     "loadtest:hot-sale": "k6 run load-tests/hot-sale-inventory.js",
     "loadtest:prepare": "node scripts/prepareHotSaleLoadTest.js",
     "dev": "nodemon scripts/startMicroservices.js",
@@ -34,6 +36,7 @@
     "dev:booking-service": "nodemon microservices/booking-service/server.js",
     "dev:checkin-service": "nodemon microservices/checkin-service/server.js",
     "dev:notification-service": "nodemon microservices/notification-service/server.js",
+    "dev:waiting-room-service": "nodemon microservices/waiting-room-service/server.js",
     "test": "jest --detectOpenHandles --passWithNoTests"
   },
   "keywords": [

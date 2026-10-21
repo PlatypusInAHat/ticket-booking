@@ -26,7 +26,8 @@ Khán giả web/mobile
 
 | Lớp | Thành phần | Bắt buộc cho đồ án | Ghi chú chi phí/thiết kế |
 | --- | --- | --- | --- |
-| Edge | Cloudflare DNS, WAF rules, Turnstile | Có | Dùng Free plan khi đủ tính năng; Bot Management/Waiting Room phụ thuộc entitlement trả phí. |
+| Edge | Cloudflare DNS, WAF rules, Turnstile | Có | Dùng Free plan; waiting room chính do ứng dụng tự quản lý nên không phụ thuộc gói Cloudflare Waiting Room trả phí. |
+| Admission control | `waiting-room-service` + Redis/ElastiCache | Theo nhu cầu | Dev dùng Redis Docker; AWS bật `cache.t4g.micro` khi cần demo hot sale. |
 | Web | S3 + CloudFront | Có | Static frontend rẻ, cache tốt; không chạy frontend bằng pod. |
 | API | ALB do AWS Load Balancer Controller tạo | Có khi public API | ALB có phí giờ và LCU; chỉ giữ một ALB dùng chung ingress. |
 | Compute | EKS + Managed Node Groups arm64 | Có nếu cần thể hiện Kubernetes | Dùng Graviton `t4g`/`m7g`; system on-demand, app Spot. |
@@ -92,9 +93,10 @@ Con số là suy luận từ cấu hình hiện tại và bảng giá công khai
 
 - `catalog-service` dùng atomic update inventory; reserved seat dùng seat lock TTL. Booking phải có `inventoryReservationId` để release idempotent.
 - HPA scale pod theo CPU/memory; KEDA scale worker theo queue depth RabbitMQ.
+- `waiting-room-service` scale ngang an toàn vì thứ tự FIFO, active lease và admission rate được cập nhật atomically trong Redis.
 - `booking-service` có PDB, topology spread/anti-affinity và critical path nên luôn có capacity on-demand tối thiểu trong môi trường production thật.
 - Với đồ án/credit nhỏ: không tuyên bố HA production. Một node, một NAT, Atlas M0 và MQ single instance đều có single point of failure.
-- Trước đợt mở bán mô phỏng: chạy k6 hot-sale test, kiểm tra p95/p99 reserve inventory, HPA scale, queue depth, outbox pending và booking failure rate.
+- Trước đợt mở bán mô phỏng: chạy k6 hot-sale test, kiểm tra p95/p99 reserve inventory, waiting-room admission rate/capacity, HPA scale, outbox pending và booking failure rate.
 
 ## Hot-sale inventory và rate limit
 
@@ -111,10 +113,12 @@ Secret Manager/External Secrets. Nếu chưa có Redis managed, giữ `mongo` đ
 không tạo thêm chi phí ngoài dự toán, nhưng không coi đây là cấu hình cho
 peak traffic hàng nghìn request/giây.
 
+Waiting room khác rate limiter: khi `WAITING_ROOM_ENABLED=true`, Redis là dependency bắt buộc và service fail-closed nếu Redis lỗi. API Gateway không cho tạo booking nếu thiếu hoặc sai signed waiting-room token. Để tiết kiệm AWS credit, chỉ bật ElastiCache trong khoảng thời gian demo/load test; nhớ destroy layer dữ liệu khi không sử dụng và không bật Multi-AZ cho dev.
+
 ## Secrets và cấu hình runtime
 
 - GitHub Secrets chỉ dùng cho quyền CI/CD và input Terraform.
-- Secret runtime (`JWT_SECRET`, Mongo URIs, RabbitMQ, SMTP, VNPay/MoMo, Turnstile) đặt tại AWS Secrets Manager.
+- Secret runtime (`JWT_SECRET`, `WAITING_ROOM_TOKEN_SECRET`, `REDIS_URL`, Mongo URIs, RabbitMQ, SMTP, VNPay/MoMo, Turnstile) đặt tại AWS Secrets Manager.
 - External Secrets Operator đồng bộ sang `ticketstage-secrets`; pod chỉ đọc đúng key cần thiết qua `secretKeyRef`.
 - ConfigMap chỉ chứa cấu hình không nhạy cảm như URL service, timeout, rate limit, queue setting và OpenTelemetry.
 - Danh sách tên biến chi tiết: `DEPLOYMENT_VARIABLES.local.md` trong cùng thư mục, file cục bộ bị Git ignore.

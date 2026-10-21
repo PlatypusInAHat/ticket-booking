@@ -332,6 +332,11 @@ const bookingSchema = new mongoose.Schema({
     default: ''
   },
   security: {
+    waitingRoomEntryId: {
+      type: String,
+      default: '',
+      select: false
+    },
     deviceFingerprintHash: {
       type: String,
       default: '',
@@ -387,6 +392,13 @@ bookingSchema.index({ source: 1, createdAt: -1 });
 bookingSchema.index({ 'refund.status': 1, 'refund.requestedAt': 1 });
 bookingSchema.index({ user: 1, 'tickets.event': 1, createdAt: -1 });
 bookingSchema.index({ 'security.deviceFingerprintHash': 1, createdAt: -1 });
+bookingSchema.index(
+  { 'security.waitingRoomEntryId': 1 },
+  {
+    unique: true,
+    partialFilterExpression: { 'security.waitingRoomEntryId': { $type: 'string', $gt: '' } }
+  }
+);
 bookingSchema.index({ 'passes.passCode': 1 }, { unique: true, sparse: true });
 bookingSchema.index({ 'passes.scanToken': 1 }, { unique: true, sparse: true });
 bookingSchema.index({ 'passes.scanTokenHash': 1 }, { unique: true, sparse: true });

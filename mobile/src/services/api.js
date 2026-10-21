@@ -113,7 +113,11 @@ export const ticketApi = {
 };
 
 export const bookingApi = {
-  create: (data) => request('/bookings', { method: 'POST', body: data }),
+  create: (data, waitingRoomToken = '') => request('/bookings', {
+    method: 'POST',
+    body: data,
+    headers: waitingRoomToken ? { 'x-waiting-room-token': waitingRoomToken } : {}
+  }),
   list: () => request('/bookings'),
   detail: (id) => request(`/bookings/${id}`),
   cancel: (id) => request(`/bookings/${id}/cancel`, { method: 'PUT' }),
@@ -122,6 +126,11 @@ export const bookingApi = {
   passes: (bookingId) => request(`/bookings/${bookingId}/passes`),
   passDetail: (bookingId, passId) => request(`/bookings/${bookingId}/passes/${passId}`),
   nfcPayload: (bookingId, passId) => request(`/bookings/${bookingId}/passes/${passId}/nfc-payload`)
+};
+
+export const waitingRoomApi = {
+  join: (data) => request('/waiting-room/join', { method: 'POST', body: data }),
+  status: (entryToken) => request(`/waiting-room/${encodeURIComponent(entryToken)}/status`)
 };
 
 export const paymentApi = {

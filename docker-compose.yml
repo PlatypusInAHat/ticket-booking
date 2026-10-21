@@ -204,6 +204,7 @@ services:
       BOOKING_QUEUE_WAIT_TIMEOUT_MS: ${BOOKING_QUEUE_WAIT_TIMEOUT_MS:-30000}
       BOOKING_QUEUE_LEASE_MS: ${BOOKING_QUEUE_LEASE_MS:-300000}
       BOOKING_QUEUE_STORE: ${BOOKING_QUEUE_STORE:-mongo}
+      WAITING_ROOM_ENABLED: ${WAITING_ROOM_ENABLED:-true}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       RATE_LIMIT_STORE: ${RATE_LIMIT_STORE:-redis}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
@@ -315,6 +316,8 @@ services:
       BOOKING_SERVICE_URL: http://booking-service:5103
       CHECKIN_SERVICE_URL: http://checkin-service:5104
       NOTIFICATION_SERVICE_URL: http://notification-service:5105
+      WAITING_ROOM_SERVICE_URL: http://waiting-room-service:5106
+      WAITING_ROOM_ENABLED: ${WAITING_ROOM_ENABLED:-true}
       INTERNAL_HTTP_TIMEOUT_MS: ${INTERNAL_HTTP_TIMEOUT_MS:-5000}
       INTERNAL_HTTP_RETRIES: ${INTERNAL_HTTP_RETRIES:-1}
       INTERNAL_HTTP_RETRY_DELAY_MS: ${INTERNAL_HTTP_RETRY_DELAY_MS:-150}
@@ -329,8 +332,32 @@ services:
       - booking-service
       - checkin-service
       - notification-service
+      - waiting-room-service
     ports:
       - "5000:5000"
+
+  waiting-room-service:
+    build:
+      context: ./backend
+      dockerfile: services/waiting-room/Dockerfile
+    environment:
+      NODE_ENV: development
+      SERVICE_MODE: microservice
+      SERVICE_NAME: waiting-room-service
+      WAITING_ROOM_SERVICE_PORT: 5106
+      WAITING_ROOM_ENABLED: ${WAITING_ROOM_ENABLED:-true}
+      WAITING_ROOM_ACTIVE_CAPACITY: ${WAITING_ROOM_ACTIVE_CAPACITY:-200}
+      WAITING_ROOM_ADMISSION_RATE_PER_MINUTE: ${WAITING_ROOM_ADMISSION_RATE_PER_MINUTE:-120}
+      WAITING_ROOM_ACCESS_TTL_SECONDS: ${WAITING_ROOM_ACCESS_TTL_SECONDS:-600}
+      WAITING_ROOM_ENTRY_TTL_SECONDS: ${WAITING_ROOM_ENTRY_TTL_SECONDS:-3600}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      WAITING_ROOM_TOKEN_SECRET: ${WAITING_ROOM_TOKEN_SECRET:-dev_waiting_room_secret_change_me}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+    depends_on:
+      - redis
+    ports:
+      - "5106:5106"
 
   seed-microservices:
     build:

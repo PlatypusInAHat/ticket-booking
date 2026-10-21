@@ -55,13 +55,25 @@ const serviceDefinitions = [
     }
   },
   {
+    name: 'waiting-room-service',
+    script: 'microservices/waiting-room-service/server.js',
+    env: {
+      SERVICE_MODE: 'microservice',
+      SERVICE_NAME: 'waiting-room-service',
+      WAITING_ROOM_SERVICE_PORT: process.env.WAITING_ROOM_SERVICE_PORT || '5106',
+      REDIS_URL: process.env.REDIS_URL,
+      JWT_SECRET: process.env.JWT_SECRET
+    }
+  },
+  {
     name: 'api-gateway',
     script: 'microservices/api-gateway/server.js',
     env: {
       SERVICE_MODE: 'microservice',
       SERVICE_NAME: 'api-gateway',
       GATEWAY_PORT: process.env.GATEWAY_PORT || process.env.PORT || '5000',
-      NOTIFICATION_SERVICE_URL: process.env.NOTIFICATION_SERVICE_URL || 'http://127.0.0.1:5105'
+      NOTIFICATION_SERVICE_URL: process.env.NOTIFICATION_SERVICE_URL || 'http://127.0.0.1:5105',
+      WAITING_ROOM_SERVICE_URL: process.env.WAITING_ROOM_SERVICE_URL || 'http://127.0.0.1:5106'
     }
   },
   {

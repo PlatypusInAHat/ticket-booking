@@ -8,6 +8,7 @@ This folder now contains deployment-facing service packages separated from the s
 - `booking/`
 - `checkin/`
 - `notification/`
+- `waiting-room/`
 
 Each package contains:
 
@@ -22,6 +23,9 @@ Each package contains:
 - `booking/openapi.internal.yaml`
 - `checkin/openapi.internal.yaml`
 - `notification/openapi.internal.yaml`
+- `waiting-room/openapi.yaml` (public contract qua API Gateway)
+
+`waiting-room-service` dùng Redis để giữ thứ tự FIFO, active admission lease và tốc độ cấp quyền checkout. Service này không sở hữu tồn vé; atomic inventory tại catalog vẫn là lớp chống oversell cuối cùng.
 
 ## Production hardening note
 

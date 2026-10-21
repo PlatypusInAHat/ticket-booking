@@ -13,6 +13,7 @@ const { correlationIdMiddleware } = require('../../middleware/correlationId');
 const errorHandler = require('../../middleware/error');
 const { cryptoUtils, corsOptions, serviceUrl } = require('@ticket-booking/platform');
 const { requestInternalService } = require('../../shared/internalHttpClient');
+const { verifyAccessToken } = require('../../shared/waitingRoomToken');
 const {
   buildHealthPayload,
   checkHttpDependency,
@@ -32,6 +33,11 @@ const UPSTREAM_TIMEOUT_MS = Number(process.env.GATEWAY_UPSTREAM_TIMEOUT_MS || 10
 const UPSTREAM_HEALTH_TIMEOUT_MS = Number(process.env.GATEWAY_UPSTREAM_HEALTH_TIMEOUT_MS || 3000);
 
 const SERVICE_ROUTES = [
+  {
+    name: 'waiting-room-service',
+    prefixes: ['/api/waiting-room'],
+    target: normalizeServiceUrl(process.env.WAITING_ROOM_SERVICE_URL, 'http://localhost:5106')
+  },
   {
     name: 'auth-service',
     prefixes: ['/api/auth', '/api/users', '/api/admin'],
@@ -144,6 +150,41 @@ const forwardRequest = (service) => async (req, res) => {
       upstream: service.name,
       message: 'Upstream service unavailable',
       detail: error.message
+    });
+  }
+};
+
+const requireWaitingRoomAccess = (req, res, next) => {
+  if (
+    process.env.WAITING_ROOM_ENABLED !== 'true' ||
+    req.method !== 'POST' ||
+    req.path !== '/'
+  ) return next();
+
+  const accessToken = req.get('x-waiting-room-token');
+  const authToken = req.get('authorization')?.replace(/^Bearer\s+/i, '');
+  if (!accessToken || !authToken) {
+    return res.status(428).json({
+      success: false,
+      code: 'WAITING_ROOM_REQUIRED',
+      message: 'Join the waiting room before creating a booking.'
+    });
+  }
+
+  try {
+    const access = verifyAccessToken(accessToken);
+    const user = jwt.verify(authToken, process.env.JWT_SECRET);
+    const userId = String(user.id || user._id || user.sub || '');
+    if (!userId || userId !== String(access.userId)) throw new Error('Token owner mismatch');
+
+    req.headers['x-waiting-room-entry-id'] = access.entryId;
+    req.headers['x-waiting-room-event-ids'] = access.eventIds.join(',');
+    return next();
+  } catch {
+    return res.status(403).json({
+      success: false,
+      code: 'WAITING_ROOM_TOKEN_INVALID',
+      message: 'Waiting-room access expired or is invalid. Please rejoin the queue.'
     });
   }
 };
@@ -296,7 +337,8 @@ app.get('/api/admin/gateway/status', requireGatewayAdmin, async (req, res) => {
 SERVICE_ROUTES.forEach((service) => {
   service.prefixes.forEach((prefix) => {
     const proxy = forwardRequest(service);
-    app.use(prefix, (req, res) => {
+    const middleware = prefix === '/api/bookings' ? requireWaitingRoomAccess : (req, res, next) => next();
+    app.use(prefix, middleware, (req, res) => {
       req.metricsRoute = `${prefix}/*`;
       return proxy(req, res);
     });

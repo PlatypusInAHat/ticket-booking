@@ -142,12 +142,19 @@ export const ticketsAPI = {
 
 // Bookings API
 export const bookingsAPI = {
-  create: (data) => API.post('/bookings', data),
+  create: (data, waitingRoomToken = '') => API.post('/bookings', data, {
+    headers: waitingRoomToken ? { 'x-waiting-room-token': waitingRoomToken } : {}
+  }),
   getAll: () => API.get('/bookings'),
   getById: (id) => API.get(`/bookings/${id}`),
   cancel: (id) => API.put(`/bookings/${id}/cancel`),
   requestRefund: (id, reason) => API.post(`/bookings/${id}/refund-request`, { reason }),
   previewPromotion: (data) => API.post('/bookings/promotions/preview', data)
+};
+
+export const waitingRoomAPI = {
+  join: (data) => API.post('/waiting-room/join', data),
+  getStatus: (entryToken) => API.get(`/waiting-room/${encodeURIComponent(entryToken)}/status`)
 };
 
 export const notificationsAPI = {

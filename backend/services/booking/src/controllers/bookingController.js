@@ -3,7 +3,9 @@ const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
 
 const createBooking = asyncHandler(async (req, res) => {
   const booking = await bookingService.createBooking(req.body, req.user, {
-    botProtection: req.botProtection
+    botProtection: req.botProtection,
+    waitingRoomEventIds: String(req.get('x-waiting-room-event-ids') || '').split(',').filter(Boolean),
+    waitingRoomEntryId: req.get('x-waiting-room-entry-id') || ''
   });
   res.status(201).json(new ApiResponse(201, booking, 'Booking created successfully'));
 });

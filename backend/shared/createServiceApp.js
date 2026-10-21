@@ -61,6 +61,9 @@ const createServiceApp = ({
         includeBroker,
         httpDependencies: health.httpDependencies || []
       });
+      if (health.checkDependencies) {
+        Object.assign(dependencies, await health.checkDependencies());
+      }
       const status = resolveOverallStatus(dependencies, requiredDependencies);
 
       res.status(status === 'UP' ? 200 : 503).json(buildHealthPayload({
@@ -83,6 +86,9 @@ const createServiceApp = ({
         includeBroker,
         httpDependencies: health.httpDependencies || []
       });
+      if (health.checkDependencies) {
+        Object.assign(dependencies, await health.checkDependencies());
+      }
       const hasDownDependency = Object.values(dependencies).some((dependency) => dependency.status === 'DOWN');
 
       res.status(hasDownDependency ? 207 : 200).json(buildHealthPayload({

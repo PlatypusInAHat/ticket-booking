@@ -66,6 +66,7 @@ ticket-booking-app/
       booking-service/
       checkin-service/
       notification-service/
+      waiting-room-service/
     packages/
       platform/
       shared/
@@ -75,6 +76,7 @@ ticket-booking-app/
       catalog/
       checkin/
       notification/
+      waiting-room/
     shared/
     middleware/
     scripts/
@@ -87,6 +89,8 @@ ticket-booking-app/
 
 ## 4. Kiến trúc backend
 
+Xem [sơ đồ kiến trúc tổng thể](docs/technical/ARCHITECTURE_DIAGRAM.md) để tải PNG độ phân giải cao và SVG chỉnh sửa được, bao gồm waiting room, EKS, dữ liệu, thanh toán, monitoring và CI/CD.
+
 ### 4.1 Danh sách service
 
 | Service | Port | DB | Vai trò |
@@ -94,9 +98,10 @@ ticket-booking-app/
 | `api-gateway` | `5000` | không có | public entrypoint cho web/mobile |
 | `auth-service` | `5101` | `ticket-auth` | auth, user, admin |
 | `catalog-service` | `5102` | `ticket-catalog` | company, event, ticket, inventory |
-| `booking-service` | `5103` | `ticket-booking` | booking, pass, payment, queue, outbox |
+| `booking-service` | `5103` | `ticket-booking` | booking, pass, payment, inventory orchestration, outbox |
 | `checkin-service` | `5104` | `ticket-checkin` | validate/check-in, device, log, projection |
 | `notification-service` | `5105` | notification domain | email queue, reminder, campaign |
+| `waiting-room-service` | `5106` | Redis | FIFO waiting room, admission lease, signed checkout token |
 
 ### 4.2 Nguyên tắc tách service
 
@@ -293,14 +298,14 @@ Mục tiêu:
 
 ### 8.1 Luồng mua vé
 
-1. User chọn ticket.
-2. `booking-service` gọi `catalog-service` reserve inventory.
-3. Booking được tạo ở trạng thái `pending`.
-4. Pass được generate trong booking domain.
-5. User tạo payment session.
-6. Webhook / payment callback xác nhận thanh toán.
-7. Booking được chuyển sang `confirmed`.
-8. Event `payment.completed` được phát.
+1. User chọn ticket và join `/api/waiting-room/join` theo event.
+2. Web/mobile poll trạng thái; Redis giữ thứ tự FIFO, capacity và admission rate.
+3. Khi được admission, client nhận signed access token có TTL ngắn.
+4. API Gateway xác minh token theo user/event trước khi chuyển `POST /api/bookings`.
+5. `booking-service` gọi `catalog-service` reserve inventory atomically và đối chiếu event thật với token.
+6. Booking được tạo ở trạng thái `pending`; mỗi admission chỉ tạo được một booking.
+7. User tạo payment session; webhook idempotent chuyển booking sang `confirmed`.
+8. Event `payment.completed` được phát qua outbox/RabbitMQ.
 
 ### 8.2 Chống oversell
 
@@ -312,18 +317,21 @@ Có các lớp:
 - release inventory khi booking hết hạn / hủy
 - payment completion atomic
 
-### 8.3 Queue và spam control
+### 8.3 Waiting room và spam control
 
 Backend đã có:
 
 - rate limit
-- purchase queue
+- virtual waiting room dùng Redis shared store
+- signed access token do gateway kiểm tra
+- active capacity + admission rate theo phút
 - purchase limit grouping theo event
 
 Lưu ý:
 
-- Nếu rate limit / queue đang chạy theo in-memory thì khi scale nhiều pod cần đổi sang shared store để thành quota toàn hệ thống.
-- Nếu đã bật Mongo store cho limiter thì sẽ ổn hơn cho multi-replica.
+- Waiting room phải dùng shared Redis; không dùng in-memory vì HPA chạy nhiều pod.
+- Redis chỉ điều tiết admission, không phải nguồn dữ liệu tồn vé. Atomic catalog inventory vẫn quyết định vé còn hay hết.
+- Legacy `BOOKING_QUEUE_*` giữ `false`; không bật song song nếu chưa có thiết kế tải rõ ràng.
 
 ## 9. Payment flow
 
@@ -464,6 +472,13 @@ BOOKING_QUEUE_ENABLED=false
 BOOKING_QUEUE_CONCURRENCY=5
 BOOKING_QUEUE_MAX_SIZE=500
 BOOKING_QUEUE_WAIT_TIMEOUT_MS=30000
+WAITING_ROOM_ENABLED=true
+WAITING_ROOM_SERVICE_URL=http://localhost:5106
+WAITING_ROOM_ACTIVE_CAPACITY=200
+WAITING_ROOM_ADMISSION_RATE_PER_MINUTE=120
+WAITING_ROOM_ACCESS_TTL_SECONDS=600
+WAITING_ROOM_ENTRY_TTL_SECONDS=3600
+WAITING_ROOM_TOKEN_SECRET=change_me
 RATE_LIMIT_ENABLED=true
 BOOKING_CREATE_RATE_LIMIT_WINDOW_MS=60000
 BOOKING_CREATE_RATE_LIMIT_MAX=8

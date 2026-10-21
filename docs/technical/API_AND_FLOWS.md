@@ -19,6 +19,7 @@
 | `/api/bookings`, `/api/payment` | booking-service | Booking, pass, QR/barcode/NFC, thanh toán, refund. |
 | `/api/checkin` | checkin-service | Quét/check-in và offline sync. |
 | `/api/notifications` | notification-service | Đăng ký nhận tin và preference. |
+| `/api/waiting-room` | waiting-room-service | Join hàng chờ, xem vị trí/ETA và nhận access token checkout. |
 
 Gateway health:
 
@@ -73,7 +74,9 @@ Các query list điển hình: `page`, `limit`, `search`, `sort`, `eventType`, `
 | `GET` | `/api/bookings/:id/passes/:passId/nfc-payload` | Có | NFC payload đã kiểm soát quyền. |
 | `POST`/`PUT` | `/api/bookings/:id/cancel` | Có | Hủy booking khi trạng thái cho phép. |
 | `POST` | `/api/bookings/:id/refund-request` | Có | Yêu cầu hoàn tiền, có lý do 10-500 ký tự. |
-| `GET` | `/api/bookings/queue/status` | Admin | Chỉ số booking queue. |
+| `GET` | `/api/bookings/queue/status` | Admin | Trạng thái legacy booking execution queue; không phản ánh virtual waiting room. |
+| `POST` | `/api/waiting-room/join` | User | Join/resume FIFO queue theo user, device và event. |
+| `GET` | `/api/waiting-room/:entryToken/status` | User | Vị trí, ETA hoặc signed checkout access token. |
 | `GET`, `POST` | `/api/bookings/promotions` | Admin | Danh sách/tạo promotion. |
 | `POST` | `/api/bookings/promotions/preview` | Có | Preview áp dụng promotion. |
 
@@ -232,6 +235,8 @@ Mỗi HTTP request và event mang correlation/trace context. Theo dõi qua `/met
 | `401/403` | Thiếu token hoặc không đủ quyền. |
 | `409` | Ghế/vé vừa bị người khác giữ, booking không còn payable hoặc webhook duplicate conflict. Refresh inventory, không tự tạo booking lặp vô hạn. |
 | `429` | Rate limit, purchase limit hoặc queue bận. Tôn trọng `Retry-After`. |
+| `428` | Chưa có waiting-room token khi tạo booking; client phải join/poll trước. |
+| `403` | Waiting-room token hết hạn, sai owner hoặc không phủ event được reserve. |
 | `502/503` | Upstream, store rate-limit/queue hoặc service dependency không sẵn sàng. Retry có backoff và kiểm tra booking/payment status trước khi tạo lại. |
 
 ## 12. Nguồn code đối chiếu
@@ -242,3 +247,41 @@ Mỗi HTTP request và event mang correlation/trace context. Theo dõi qua `/met
 - Booking/payment: `backend/services/booking/src/services/bookingService.js`, `paymentService.js`.
 - Event bus/outbox: `backend/shared/eventBus.js`, `backend/shared/domainEventPublisher.js`.
 - Check-in: `backend/services/checkin/src/services/checkinService.js`.
+# Hàng chờ ảo cho hot sale
+
+Luồng hot sale dùng waiting room do ứng dụng tự quản lý trên Redis. Đây là lớp điều tiết admission trước booking, tách biệt với legacy booking execution queue đang tắt.
+
+```mermaid
+sequenceDiagram
+  participant Web as Web/Mobile
+  participant Edge as CDN/WAF
+  participant Gateway as API Gateway (bouncer)
+  participant Queue as Waiting Room Service
+  participant Redis as Redis
+  participant Booking as Booking Service
+  participant Catalog as Catalog Inventory
+
+  Web->>Edge: Open checkout
+  Web->>Gateway: POST /api/waiting-room/join
+  Gateway->>Queue: Forward authenticated request
+  Queue->>Redis: ZADD FIFO entry (idempotent by user/device/events)
+  loop Every retryAfterSeconds
+    Web->>Gateway: GET /api/waiting-room/{entryToken}/status
+    Queue->>Redis: Atomic capacity and admission-rate check
+  end
+  Queue-->>Web: Signed short-lived access token
+  Web->>Gateway: POST /api/bookings + x-waiting-room-token
+  Gateway->>Gateway: Verify signature, expiry and owner
+  Gateway->>Booking: Forward admitted event IDs
+  Booking->>Catalog: Atomically reserve inventory
+  Booking->>Booking: Verify reserved events match admission token
+  Booking-->>Web: Pending booking
+```
+
+API public:
+
+- `POST /api/waiting-room/join`: body `{ eventIds, deviceFingerprint }`; trả về `entryToken` opaque và idempotent theo user/device/event.
+- `GET /api/waiting-room/:entryToken/status`: trả vị trí/ETA hoặc access token đã ký.
+- `POST /api/bookings`: khi `WAITING_ROOM_ENABLED=true`, bắt buộc có header `x-waiting-room-token`.
+
+Redis là state store của hàng chờ, không phải nguồn dữ liệu tồn vé. Atomic reservation tại catalog vẫn là lớp chống oversell cuối cùng. `WAITING_ROOM_ACTIVE_CAPACITY` giới hạn số người checkout đồng thời, `WAITING_ROOM_ADMISSION_RATE_PER_MINUTE` làm phẳng lưu lượng mới và access TTL thu hồi capacity bị bỏ dở.

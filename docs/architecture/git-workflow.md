@@ -86,6 +86,7 @@ Moi service co image rieng:
 - `booking-service:<deploy_env>-<short_sha>`
 - `checkin-service:<deploy_env>-<short_sha>`
 - `notification-service:<deploy_env>-<short_sha>`
+- `waiting-room-service:<deploy_env>-<short_sha>`
 - `frontend:<deploy_env>-<short_sha>`
 
 ## Mapping Git Tag Va Image Tag
@@ -104,6 +105,7 @@ Images:
 - booking-service: prod-a1b2c3d4e5f6
 - checkin-service: prod-a1b2c3d4e5f6
 - notification-service: prod-a1b2c3d4e5f6
+- waiting-room-service: prod-a1b2c3d4e5f6
 - frontend: prod-a1b2c3d4e5f6
 ```
 

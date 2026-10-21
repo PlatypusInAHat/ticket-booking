@@ -9,7 +9,8 @@ import {
   bookingApi,
   paymentApi,
   setAuthToken,
-  ticketApi
+  ticketApi,
+  waitingRoomApi
 } from './services/api';
 import { getDeviceFingerprint } from './services/deviceFingerprint';
 import { clearAuth, loadAuth } from './services/storage';
@@ -214,6 +215,26 @@ export default function App() {
     try {
       const paymentProvider = PAYMENT_PROVIDER;
       const bookingPaymentMethod = paymentProvider === 'mock' ? 'credit_card' : paymentProvider;
+      const deviceFingerprint = await getDeviceFingerprint();
+      const eventIds = [...new Set(cart.map(item => item.eventId).filter(Boolean))];
+      if (eventIds.length === 0) throw new Error('Event information is missing from the cart.');
+
+      setMessage('Joining the ticket waiting room...');
+      const entry = await waitingRoomApi.join({ eventIds, deviceFingerprint });
+      const deadline = Date.now() + (30 * 60 * 1000);
+      let waitingRoomToken = '';
+      while (Date.now() < deadline) {
+        const queue = await waitingRoomApi.status(entry.entryToken);
+        if (queue.state === 'admitted') {
+          waitingRoomToken = queue.accessToken;
+          break;
+        }
+        setMessage(`Queue position ${queue.position}. Estimated wait ${Math.ceil(queue.estimatedWaitSeconds / 60)} min.`);
+        await new Promise(resolve => setTimeout(resolve, (queue.retryAfterSeconds || 5) * 1000));
+      }
+      if (!waitingRoomToken) throw new Error('Your waiting-room session timed out. Please try again.');
+
+      setMessage('Holding your tickets...');
       const booking = await bookingApi.create({
         tickets: cart.map(item => ({
           ticketId: item._id,
@@ -225,9 +246,9 @@ export default function App() {
         customerEmail: auth.user.email,
         customerPhone: auth.user.phone || '',
         source: 'mobile',
-        deviceFingerprint: await getDeviceFingerprint(),
+        deviceFingerprint,
         promoCode: promoPreview?.code || undefined
-      });
+      }, waitingRoomToken);
 
       if (paymentProvider === 'mock') {
         await paymentApi.process({
@@ -264,6 +285,7 @@ export default function App() {
     } catch (error) {
       Alert.alert('Could not book tickets', error.message);
     } finally {
+      setMessage('');
       setCheckingOut(false);
     }
   };

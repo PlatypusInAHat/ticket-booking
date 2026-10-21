@@ -1,0 +1,319 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2800" height="2040" viewBox="0 0 2800 2040" role="img" aria-labelledby="title desc">
+<title id="title">TicketStage — Kiến trúc tổng thể và Virtual Waiting Room</title>
+<desc id="desc">Web và mobile qua Cloudflare, ALB, API Gateway trên EKS. Hàng chờ tự quản lý bằng Redis cấp token checkout. Năm domain service sở hữu database MongoDB riêng, đồng bộ bằng RabbitMQ và outbox. Bao gồm thanh toán, email, GitOps, autoscaling và quan sát hệ thống. Sơ đồ phản ánh cấu hình repository, không chứng nhận deployment đang hoạt động.</desc>
+<defs><marker id="arrow-ink" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#172b45"/></marker><marker id="arrow-muted" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#53677e"/></marker><marker id="arrow-line" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#bccbdb"/></marker><marker id="arrow-blue" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#28649d"/></marker><marker id="arrow-orange" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#df790c"/></marker><marker id="arrow-purple" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#7850ad"/></marker><marker id="arrow-green" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#248268"/></marker><marker id="arrow-pink" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#bc4381"/></marker><marker id="arrow-teal" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#287c8c"/></marker></defs>
+<g font-family="'Segoe UI', 'DejaVu Sans', sans-serif"><rect width="2800" height="2040" fill="#fff"/>
+<text x="55" y="64" font-size="24" fill="#df790c" font-weight="800" text-anchor="start">TICKETSTAGE</text>
+<text x="55" y="115" font-size="43" fill="#172b45" font-weight="750" text-anchor="start">Kiến trúc tổng thể hệ thống bán vé</text>
+<text x="55" y="153" font-size="23" fill="#53677e" font-weight="400" text-anchor="start">Hàng chờ tự quản lý • Microservices trên Amazon EKS • Web &amp; Mobile • GitOps</text>
+<text x="2745" y="65" font-size="19" fill="#53677e" font-weight="650" text-anchor="end">ARCHITECTURE / 01</text>
+<text x="2745" y="99" font-size="18" fill="#53677e" font-weight="400" text-anchor="end">Đối chiếu repository · 20.10.2026</text>
+<rect x="245" y="195" width="700" height="163" rx="10" fill="#f6fbf8" stroke="#248268" stroke-width="1.6"/>
+<text x="265" y="225" font-size="21" fill="#248268" font-weight="700" text-anchor="start">GIAO DIỆN WEB / TRANG CHỜ</text>
+<rect x="267" y="239" width="295" height="97" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(283 257) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#7850ad"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 43h37a10 10 0 0 0 0-20 16 16 0 0 0-30-2 11 11 0 0 0-7 22Z"/></g></g>
+<text x="351" y="274" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">CloudFront</text>
+<text x="351" y="301" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Phân phối static web</text>
+<rect x="626" y="239" width="295" height="97" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(642 257) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#248268"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="14" rx="23" ry="8"/><path d="m9 14 5 37c0 9 36 9 36 0l5-37M22 29h20v17H22Z"/></g></g>
+<text x="710" y="274" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Amazon S3</text>
+<text x="710" y="301" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">React build / assets</text>
+<polyline points="562,287 626,287" fill="none" stroke="#248268" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+<text x="990" y="225" font-size="24" fill="#28649d" font-weight="700" text-anchor="start">AWS / VPC</text>
+<text x="990" y="258" font-size="20" fill="#53677e" font-weight="400" text-anchor="start">ALB public → ứng dụng trong private subnets</text>
+<text x="990" y="288" font-size="19" fill="#53677e" font-weight="400" text-anchor="start">DNS • Security Groups • NAT/egress theo môi trường</text>
+<text x="2065" y="225" font-size="24" fill="#248268" font-weight="700" text-anchor="start">DỮ LIỆU &amp; TÍCH HỢP</text>
+<text x="2065" y="258" font-size="19" fill="#53677e" font-weight="400" text-anchor="start">Atlas nằm ngoài VPC ứng dụng;</text>
+<text x="2065" y="285" font-size="19" fill="#53677e" font-weight="400" text-anchor="start">kết nối mạng theo cấu hình môi trường.</text>
+<rect x="665" y="345" width="1330" height="1050" rx="10" fill="#f8fbff" stroke="#28649d" stroke-width="1.6" stroke-dasharray="12 7"/>
+<text x="685" y="375" font-size="21" fill="#28649d" font-weight="700" text-anchor="start">AWS VPC</text>
+<text x="685" y="402" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Public ingress + private application / data subnets</text>
+<rect x="951" y="425" width="1015" height="783" rx="10" fill="#fff" stroke="#28649d" stroke-width="1.6"/>
+<text x="971" y="455" font-size="21" fill="#28649d" font-weight="700" text-anchor="start">AMAZON EKS 1.35</text>
+<text x="971" y="482" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Namespace ticketstage • Kubernetes Service DNS • HTTP nội bộ</text>
+<rect x="2040" y="345" width="342" height="915" rx="10" fill="#f7fbf9" stroke="#248268" stroke-width="1.6"/>
+<text x="2060" y="375" font-size="21" fill="#248268" font-weight="700" text-anchor="start">MONGODB ATLAS</text>
+<text x="2060" y="402" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Database riêng theo domain</text>
+<text x="2425" y="377" font-size="20" fill="#53677e" font-weight="700" text-anchor="start">DỊCH VỤ NGOÀI</text>
+<rect x="55" y="510" width="190" height="132" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(71 528) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#287c8c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="19" y="7" width="27" height="50" rx="4"/><path d="M26 13h13M29 50h7"/><rect x="25" y="24" width="15" height="15"/></g></g>
+<text x="139" y="545" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Client</text>
+<text x="139" y="572" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Web / Expo</text>
+<text x="139" y="596" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">QR · NFC*</text>
+<rect x="295" y="510" width="320" height="132" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(311 528) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m32 8 20 8v16c0 12-20 23-20 23S12 44 12 32V16Z"/><path d="m23 31 6 6 13-14"/></g></g>
+<text x="379" y="545" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Cloudflare</text>
+<text x="379" y="572" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">DNS · CDN · WAF</text>
+<text x="379" y="596" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">DDoS · rate limit · Turnstile</text>
+<rect x="700" y="510" width="220" height="132" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(716 528) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#7850ad"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="24" y="23" width="16" height="17"/><path d="M32 8v15M9 55V44h46v11M32 40v15M16 12h32"/></g></g>
+<text x="784" y="545" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">AWS ALB</text>
+<text x="784" y="572" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Ingress HTTPS</text>
+<text x="784" y="596" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Gateway :5000</text>
+<rect x="990" y="498" width="348" height="224" rx="10" fill="#fffbf4" stroke="#df790c" stroke-width="1.6" stroke-dasharray="10 6"/>
+<text x="1010" y="528" font-size="21" fill="#df790c" font-weight="700" text-anchor="start">API GATEWAY / BOUNCER</text>
+<rect x="1007" y="542" width="314" height="110" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1023 560) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#7850ad"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15h13v34H12m40-34H39v34h13M7 32h50M19 26l6 6-6 6m26-12 6 6-6 6"/></g></g>
+<text x="1091" y="577" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">API Gateway</text>
+<text x="1091" y="604" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">JWT + token admission</text>
+<text x="1091" y="628" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Kiểm tra owner / TTL</text>
+<text x="1008" y="683" font-size="16" fill="#df790c" font-weight="600" text-anchor="start">Chặn POST /api/bookings thiếu token</text>
+<text x="1008" y="707" font-size="16" fill="#53677e" font-weight="400" text-anchor="start">Auth / đọc vé / webhook vẫn định tuyến</text>
+<polyline points="245,576 295,576" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="615,576 700,576" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="920,576 990,576" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<rect x="623" y="542" width="43.44" height="25" rx="4" fill="#fff" opacity=".97"/>
+<text x="632" y="557" font-size="16" fill="#28649d" font-weight="600" text-anchor="start">TLS</text>
+<polyline points="455,510 455,394 414,394 414,336" fill="none" stroke="#248268" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+<rect x="456" y="386" width="216.22" height="26" rx="4" fill="#fff" opacity=".97"/>
+<text x="465" y="402" font-size="17" fill="#248268" font-weight="600" text-anchor="start">Tải giao diện / assets</text>
+<polyline points="1338,588 1415,588" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round"/>
+<polyline points="1415,525 1415,1125" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round"/>
+<rect x="1480" y="477" width="370" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1496 495) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="23" cy="24" r="13"/><path d="m33 34 22 22m-12-12 7-7m-2 12 7-7"/></g></g>
+<text x="1564" y="512" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Auth Service</text>
+<text x="1564" y="539" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Đăng nhập · refresh · phân quyền</text>
+<text x="1564" y="563" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">HTTP :5101</text>
+<rect x="2060" y="477" width="302" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2076 495) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#248268"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="14" rx="22" ry="8"/><path d="M10 14v36c0 10 44 10 44 0V14M10 31c0 10 44 10 44 0M10 45c0 10 44 10 44 0"/></g></g>
+<text x="2144" y="512" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">ticket-auth</text>
+<text x="2144" y="539" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Users · sessions</text>
+<polyline points="1415,525 1480,525" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="1850,525 2060,525" fill="none" stroke="#248268" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+<rect x="1480" y="627" width="370" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1496 645) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="12" width="44" height="35" rx="2"/><path d="M10 21h44M16 17h2m4 0h2M25 47v7m-9 0h34M20 29h24m-24 8h17"/></g></g>
+<text x="1564" y="662" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Catalog Service</text>
+<text x="1564" y="689" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Event · loại vé · tồn kho atomic</text>
+<text x="1564" y="713" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">HTTP :5102</text>
+<rect x="2060" y="627" width="302" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2076 645) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#248268"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="14" rx="22" ry="8"/><path d="M10 14v36c0 10 44 10 44 0V14M10 31c0 10 44 10 44 0M10 45c0 10 44 10 44 0"/></g></g>
+<text x="2144" y="662" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">ticket-catalog</text>
+<text x="2144" y="689" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Events · tickets · seat locks</text>
+<polyline points="1415,675 1480,675" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="1850,675 2060,675" fill="none" stroke="#248268" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+<rect x="1480" y="777" width="370" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1496 795) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="13" width="50" height="38" rx="4"/><path d="M7 24h50M16 40h13m7 0h10"/></g></g>
+<text x="1564" y="812" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Booking Service</text>
+<text x="1564" y="839" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Giữ vé · payment · webhook</text>
+<text x="1564" y="863" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">HTTP :5103</text>
+<rect x="2060" y="777" width="302" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2076 795) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#248268"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="14" rx="22" ry="8"/><path d="M10 14v36c0 10 44 10 44 0V14M10 31c0 10 44 10 44 0M10 45c0 10 44 10 44 0"/></g></g>
+<text x="2144" y="812" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">ticket-booking</text>
+<text x="2144" y="839" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Bookings · payments · outbox</text>
+<polyline points="1415,825 1480,825" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="1850,825 2060,825" fill="none" stroke="#248268" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+<rect x="1480" y="927" width="370" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1496 945) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9H9v12m34-12h12v12M9 43v12h12m22 0h12V43"/><path d="m20 32 8 8 17-18"/></g></g>
+<text x="1564" y="962" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Check-in Service</text>
+<text x="1564" y="989" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">QR / NFC* · chống check-in lặp</text>
+<text x="1564" y="1013" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">HTTP :5104</text>
+<rect x="2060" y="927" width="302" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2076 945) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#248268"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="14" rx="22" ry="8"/><path d="M10 14v36c0 10 44 10 44 0V14M10 31c0 10 44 10 44 0M10 45c0 10 44 10 44 0"/></g></g>
+<text x="2144" y="962" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">ticket-checkin</text>
+<text x="2144" y="989" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Projection · devices · logs</text>
+<polyline points="1415,975 1480,975" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="1850,975 2060,975" fill="none" stroke="#248268" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+<rect x="1480" y="1077" width="370" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1496 1095) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="15" width="48" height="34" rx="3"/><path d="m8 17 24 19 24-19M8 49l18-18m30 18L38 31"/></g></g>
+<text x="1564" y="1112" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Notification Service</text>
+<text x="1564" y="1139" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Email giao dịch · nhắc lịch</text>
+<text x="1564" y="1163" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">HTTP :5105</text>
+<rect x="2060" y="1077" width="302" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2076 1095) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#248268"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="14" rx="22" ry="8"/><path d="M10 14v36c0 10 44 10 44 0V14M10 31c0 10 44 10 44 0M10 45c0 10 44 10 44 0"/></g></g>
+<text x="2144" y="1112" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">ticket-notification</text>
+<text x="2144" y="1139" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Jobs · templates · preferences</text>
+<polyline points="1415,1125 1480,1125" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="1850,1125 2060,1125" fill="none" stroke="#248268" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+<rect x="1341" y="737" width="225.23000000000002" height="26" rx="4" fill="#fff" opacity=".97"/>
+<text x="1350" y="753" font-size="17" fill="#df790c" font-weight="600" text-anchor="start">Token hợp lệ → checkout</text>
+<rect x="1866" y="445" width="179.12" height="25" rx="4" fill="#fff" opacity=".97"/>
+<text x="1875" y="460" font-size="16" fill="#248268" font-weight="600" text-anchor="start">Đọc / ghi DB sở hữu</text>
+<polyline points="1665,777 1665,732" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<rect x="1673" y="742" width="162.16" height="25" rx="4" fill="#fff" opacity=".97"/>
+<text x="1682" y="757" font-size="16" fill="#28649d" font-weight="600" text-anchor="start">reserve / release</text>
+<text x="2059" y="1211" font-size="16" fill="#248268" font-weight="600" text-anchor="start">Không truy vấn chéo DB giữa service</text>
+<text x="2059" y="1237" font-size="16" fill="#53677e" font-weight="400" text-anchor="start">Mongo transactions cần replica set</text>
+<rect x="990" y="851" width="365" height="333" rx="10" fill="#fffbf4" stroke="#df790c" stroke-width="1.6" stroke-dasharray="10 6"/>
+<text x="1010" y="881" font-size="21" fill="#df790c" font-weight="700" text-anchor="start">VIRTUAL WAITING ROOM</text>
+<text x="1010" y="908" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Join → poll → token checkout</text>
+<rect x="1007" y="938" width="331" height="110" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1023 956) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h50M7 46h50"/><rect x="11" y="24" width="9" height="16"/><rect x="27" y="24" width="9" height="16"/><rect x="43" y="24" width="9" height="16"/></g></g>
+<text x="1091" y="973" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Waiting Room Service</text>
+<text x="1091" y="1000" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Join / status · :5106</text>
+<text x="1091" y="1024" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">FIFO · lease · admission rate</text>
+<g transform="translate(1010 1080) scale(0.6875)"><rect width="64" height="64" rx="3" fill="#248268"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="23" cy="24" r="13"/><path d="m33 34 22 22m-12-12 7-7m-2 12 7-7"/></g></g>
+<text x="1070" y="1099" font-size="16" fill="#172b45" font-weight="400" text-anchor="start">Cấp token checkout có thời hạn</text>
+<text x="1070" y="1124" font-size="16" fill="#172b45" font-weight="400" text-anchor="start">Client gửi lại token qua gateway</text>
+<polyline points="1060,722 1060,851" fill="none" stroke="#df790c" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-orange)"/>
+<rect x="1067" y="768" width="213.04000000000002" height="25" rx="4" fill="#fff" opacity=".97"/>
+<text x="1076" y="783" font-size="16" fill="#df790c" font-weight="600" text-anchor="start">428 / 403 → join + poll</text>
+<polyline points="1285,851 1285,722" fill="none" stroke="#df790c" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-orange)"/>
+<rect x="1290" y="804" width="60.400000000000006" height="25" rx="4" fill="#fff" opacity=".97"/>
+<text x="1299" y="819" font-size="16" fill="#df790c" font-weight="600" text-anchor="start">Token</text>
+<rect x="1007" y="1251" width="350" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1023 1269) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#bc4381"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="14" rx="22" ry="8"/><path d="M10 14v36c0 10 44 10 44 0V14M10 31c0 10 44 10 44 0M10 45c0 10 44 10 44 0"/></g></g>
+<text x="1091" y="1286" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Redis / ElastiCache</text>
+<text x="1091" y="1313" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Sorted set FIFO · active leases</text>
+<text x="1091" y="1337" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Rate window · TTL</text>
+<polyline points="1172,1184 1172,1251" fill="none" stroke="#df790c" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+<rect x="1179" y="1217" width="60.400000000000006" height="25" rx="4" fill="#fff" opacity=".97"/>
+<text x="1188" y="1232" font-size="16" fill="#df790c" font-weight="600" text-anchor="start">State</text>
+<polyline points="1898,600 1898,1227 1670,1227 1670,1251" fill="none" stroke="#7850ad" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-purple)"/>
+<polyline points="1798,732 1798,755 1898,755" fill="none" stroke="#7850ad" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6"/>
+<polyline points="1798,882 1798,905 1898,905" fill="none" stroke="#7850ad" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6"/>
+<polyline points="1898,1055 1798,1055 1798,1032" fill="none" stroke="#7850ad" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-purple)"/>
+<polyline points="1898,1197 1798,1197 1798,1182" fill="none" stroke="#7850ad" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-purple)"/>
+<rect x="1480" y="1251" width="455" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1496 1269) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#7850ad"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h50M7 46h50"/><rect x="11" y="24" width="9" height="16"/><rect x="27" y="24" width="9" height="16"/><rect x="43" y="24" width="9" height="16"/></g></g>
+<text x="1564" y="1286" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Amazon MQ / RabbitMQ</text>
+<text x="1564" y="1313" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Outbox → broker → consumer idempotent</text>
+<text x="1564" y="1337" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Retry có giới hạn · dead-letter queue</text>
+<rect x="1481" y="1217" width="374.16" height="25" rx="4" fill="#fff" opacity=".97"/>
+<text x="1490" y="1232" font-size="16" fill="#7850ad" font-weight="600" text-anchor="start">Domain events · đồng bộ projection / email</text>
+<rect x="2425" y="627" width="320" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2441 645) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#248268"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="14" rx="23" ry="8"/><path d="m9 14 5 37c0 9 36 9 36 0l5-37M22 29h20v17H22Z"/></g></g>
+<text x="2509" y="662" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Media storage</text>
+<text x="2509" y="689" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Cloudinary / S3 fallback</text>
+<text x="2509" y="713" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Theo cấu hình provider</text>
+<rect x="2425" y="777" width="320" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2441 795) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#7850ad"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="13" width="50" height="38" rx="4"/><path d="M7 24h50M16 40h13m7 0h10"/></g></g>
+<text x="2509" y="812" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">VNPay / MoMo</text>
+<text x="2509" y="839" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Redirect + webhook</text>
+<text x="2509" y="863" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Idempotent payment update</text>
+<rect x="2425" y="1077" width="320" height="105" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2441 1095) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#bc4381"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="15" width="48" height="34" rx="3"/><path d="m8 17 24 19 24-19M8 49l18-18m30 18L38 31"/></g></g>
+<text x="2509" y="1112" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">SMTP / Amazon SES</text>
+<text x="2509" y="1139" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Giao dịch · nhắc sự kiện</text>
+<text x="2509" y="1163" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Chiến dịch · preferences</text>
+<polyline points="1850,711 2017,711 2017,752 2403,752 2403,680 2425,680" fill="none" stroke="#248268" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-green)"/>
+<polyline points="1850,859 2005,859 2005,902 2403,902 2403,830 2425,830" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<rect x="2111" y="908" width="323.28000000000003" height="25" rx="4" fill="#fff" opacity=".97"/>
+<text x="2120" y="923" font-size="16" fill="#28649d" font-weight="600" text-anchor="start">Webhook quay về public API → booking</text>
+<polyline points="1850,1160 2005,1160 2005,1290 2403,1290 2403,1130 2425,1130" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<text x="2425" y="978" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">* NFC phụ thuộc thiết bị,</text>
+<text x="2425" y="1004" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">hệ điều hành và build native.</text>
+<text x="695" y="748" font-size="21" fill="#28649d" font-weight="750" text-anchor="start">HA &amp; SCALING</text>
+<text x="695" y="782" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">HPA theo CPU/RAM</text>
+<text x="695" y="811" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">metrics-server</text>
+<text x="695" y="840" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Cluster Autoscaler</text>
+<text x="695" y="869" font-size="18" fill="#53677e" font-weight="400" text-anchor="start"></text>
+<text x="695" y="898" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">System: On-Demand</text>
+<text x="695" y="927" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">General: Spot pool</text>
+<text x="695" y="956" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Booking / check-in:</text>
+<text x="695" y="985" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">On-Demand critical</text>
+<text x="695" y="1014" font-size="18" fill="#53677e" font-weight="400" text-anchor="start"></text>
+<text x="695" y="1043" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">PDB + topology spread</text>
+<text x="695" y="1072" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">NetworkPolicy</text>
+<text x="695" y="1101" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">ServiceAccount riêng</text>
+<text x="695" y="1195" font-size="21" fill="#28649d" font-weight="750" text-anchor="start">SECRETS</text>
+<text x="695" y="1230" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">AWS Secrets Manager</text>
+<text x="695" y="1257" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">K8s runtime Secret</text>
+<text x="695" y="1284" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Cần nạp/sync khi deploy</text>
+<text x="695" y="1311" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Không vẽ sync tự động</text>
+<rect x="55" y="738" width="560" height="657" rx="10" fill="#fafcfe" stroke="#28649d" stroke-width="1.6"/>
+<text x="75" y="768" font-size="21" fill="#28649d" font-weight="700" text-anchor="start">LUỒNG MUA VÉ KHI HOT SALE</text>
+<circle cx="89" cy="802" r="18" fill="#df790c"/>
+<text x="89" y="808" font-size="20" fill="#fff" font-weight="700" text-anchor="middle">1</text>
+<text x="119" y="806" font-size="20" fill="#172b45" font-weight="700" text-anchor="start">Đăng nhập, chọn vé</text>
+<text x="119" y="834" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Web/mobile gọi API qua Cloudflare</text>
+<text x="119" y="861" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">và gateway để duyệt sự kiện.</text>
+<circle cx="89" cy="920" r="18" fill="#df790c"/>
+<text x="89" y="926" font-size="20" fill="#fff" font-weight="700" text-anchor="middle">2</text>
+<text x="119" y="924" font-size="20" fill="#172b45" font-weight="700" text-anchor="start">Vào hàng chờ</text>
+<text x="119" y="952" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Client join rồi poll trạng thái;</text>
+<text x="119" y="979" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Redis giữ vị trí và quyền checkout.</text>
+<circle cx="89" cy="1038" r="18" fill="#df790c"/>
+<text x="89" y="1044" font-size="20" fill="#fff" font-weight="700" text-anchor="middle">3</text>
+<text x="119" y="1042" font-size="20" fill="#172b45" font-weight="700" text-anchor="start">Nhận admission token</text>
+<text x="119" y="1070" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Gateway kiểm tra token; booking</text>
+<text x="119" y="1097" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">đối chiếu event và chống dùng lại.</text>
+<circle cx="89" cy="1156" r="18" fill="#df790c"/>
+<text x="89" y="1162" font-size="20" fill="#fff" font-weight="700" text-anchor="middle">4</text>
+<text x="119" y="1160" font-size="20" fill="#172b45" font-weight="700" text-anchor="start">Giữ vé, thanh toán, phát hành</text>
+<text x="119" y="1188" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Catalog reserve atomic; webhook</text>
+<text x="119" y="1215" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">xác nhận kết quả và phát domain event.</text>
+<rect x="79" y="1258" width="512" height="109" rx="10" fill="#fff6e8" stroke="#edc281" stroke-width="1.6"/>
+<text x="99" y="1287" font-size="19" fill="#855211" font-weight="400" text-anchor="start">Admission không bảo đảm còn vé.</text>
+<text x="99" y="1316" font-size="19" fill="#855211" font-weight="400" text-anchor="start">Tồn kho atomic tại catalog quyết định cấp vé.</text>
+<text x="99" y="1345" font-size="19" fill="#855211" font-weight="400" text-anchor="start">Queue nội bộ booking cũ vẫn tắt.</text>
+<rect x="55" y="1440" width="2690" height="236" rx="10" fill="#fcf8fb" stroke="#bc4381" stroke-width="1.6"/>
+<text x="75" y="1470" font-size="21" fill="#bc4381" font-weight="700" text-anchor="start">OBSERVABILITY / QUAN SÁT HỆ THỐNG</text>
+<text x="75" y="1497" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Các kết nối telemetry dưới đây là luồng logic, không đi qua public gateway.</text>
+<rect x="78" y="1523" width="375" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(94 1541) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#bc4381"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 9v45h46M17 41l10-13 10 5 16-20"/><path d="M43 13h10v10"/></g></g>
+<text x="162" y="1558" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Metrics</text>
+<text x="162" y="1585" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">ServiceMonitor → Prometheus</text>
+<text x="162" y="1609" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Latency · errors · DB · queue</text>
+<rect x="525" y="1523" width="470" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(541 1541) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#bc4381"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="17" r="6"/><circle cx="49" cy="17" r="6"/><circle cx="31" cy="48" r="6"/><path d="M19 17h24M16 23l12 19m17-19L34 42"/></g></g>
+<text x="609" y="1558" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Distributed tracing</text>
+<text x="609" y="1585" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">OTel SDK → Collector → Tempo</text>
+<text x="609" y="1609" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Correlation theo request / service</text>
+<rect x="1067" y="1523" width="375" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1083 1541) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 9v45h46M17 41l10-13 10 5 16-20"/><path d="M43 13h10v10"/></g></g>
+<text x="1151" y="1558" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Grafana</text>
+<text x="1151" y="1585" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Dashboard theo service</text>
+<text x="1151" y="1609" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Traffic · HPA · outbox</text>
+<rect x="1514" y="1523" width="450" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1530 1541) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#bc4381"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 43h34l-5-8V24a12 12 0 0 0-24 0v11Zm12 8a5 5 0 0 0 10 0M30 8h4"/></g></g>
+<text x="1598" y="1558" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Alertmanager</text>
+<text x="1598" y="1585" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Payment errors · backlog</text>
+<text x="1598" y="1609" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Pod restart · HPA max replicas</text>
+<rect x="2036" y="1523" width="685" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2052 1541) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#bc4381"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 43h37a10 10 0 0 0 0-20 16 16 0 0 0-30-2 11 11 0 0 0-7 22Z"/></g></g>
+<text x="2120" y="1558" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">AWS CloudWatch / SNS</text>
+<text x="2120" y="1585" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Metrics và alarms hạ tầng; log groups theo cấu hình</text>
+<text x="2120" y="1609" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Routing cảnh báo / log ingestion cần cấu hình runtime</text>
+<polyline points="453,1577 490,1577 490,1653 1255,1653 1255,1631" fill="none" stroke="#bc4381" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-pink)"/>
+<polyline points="995,1577 1067,1577" fill="none" stroke="#bc4381" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-pink)"/>
+<polyline points="490,1653 1739,1653 1739,1631" fill="none" stroke="#bc4381" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-pink)"/>
+<rect x="55" y="1710" width="2690" height="220" rx="10" fill="#f7faff" stroke="#28649d" stroke-width="1.6"/>
+<text x="75" y="1740" font-size="21" fill="#28649d" font-weight="700" text-anchor="start">DELIVERY / INFRASTRUCTURE AS CODE</text>
+<text x="75" y="1767" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Infra apply theo layer; app build từng service và cập nhật image vào GitOps.</text>
+<rect x="78" y="1789" width="355" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(94 1807) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#172b45"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="17" cy="12" r="5"/><circle cx="17" cy="51" r="5"/><circle cx="47" cy="19" r="5"/><path d="M17 17v29m30-22v4c0 11-30 4-30 16"/></g></g>
+<text x="162" y="1824" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">GitHub Actions</text>
+<text x="162" y="1851" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Test · audit · build · scan</text>
+<text x="162" y="1875" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Image tag: env-short_sha</text>
+<rect x="490" y="1789" width="315" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(506 1807) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m32 8 23 13v26L32 59 9 47V21Zm0 26 23-13M32 34 9 21m23 13v25M20 15l24 14v12"/></g></g>
+<text x="574" y="1824" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Amazon ECR</text>
+<text x="574" y="1851" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Image riêng / service</text>
+<text x="574" y="1875" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">linux/arm64</text>
+<rect x="862" y="1789" width="395" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(878 1807) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#172b45"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="17" cy="12" r="5"/><circle cx="17" cy="51" r="5"/><circle cx="47" cy="19" r="5"/><path d="M17 17v29m30-22v4c0 11-30 4-30 16"/></g></g>
+<text x="946" y="1824" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Infra Git repository</text>
+<text x="946" y="1851" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Kustomize dev / staging / prod</text>
+<text x="946" y="1875" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Image URI + immutable tag</text>
+<rect x="1314" y="1789" width="330" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1330 1807) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#df790c"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m32 8 23 13v26L32 59 9 47V21Zm0 26 23-13M32 34 9 21m23 13v25M20 15l24 14v12"/></g></g>
+<text x="1398" y="1824" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Argo CD</text>
+<text x="1398" y="1851" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Sync manifest → EKS</text>
+<text x="1398" y="1875" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Rollback qua Git revert</text>
+<rect x="1725" y="1789" width="510" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(1741 1807) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#7850ad"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m32 8 23 13v26L32 59 9 47V21Zm0 26 23-13M32 34 9 21m23 13v25M20 15l24 14v12"/></g></g>
+<text x="1809" y="1824" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Terraform + Helm</text>
+<text x="1809" y="1851" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">00 Network → 01 EKS → 02 Data</text>
+<text x="1809" y="1875" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">03 Storage/Secrets → 04 Observability</text>
+<rect x="2292" y="1789" width="429" height="108" rx="10" fill="#fff" stroke="#bccbdb" stroke-width="1.6"/>
+<g transform="translate(2308 1807) scale(0.84375)"><rect width="64" height="64" rx="3" fill="#248268"/><g fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="14" rx="23" ry="8"/><path d="m9 14 5 37c0 9 36 9 36 0l5-37M22 29h20v17H22Z"/></g></g>
+<text x="2376" y="1824" font-size="21" fill="#172b45" font-weight="700" text-anchor="start">Remote state S3</text>
+<text x="2376" y="1851" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">State theo layer / environment</text>
+<text x="2376" y="1875" font-size="17" fill="#53677e" font-weight="400" text-anchor="start">Destroy theo thứ tự ngược</text>
+<polyline points="433,1843 490,1843" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="805,1843 862,1843" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="1257,1843 1314,1843" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="2235,1843 2292,1843" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<polyline points="65,1970 120,1970" fill="none" stroke="#28649d" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<text x="132" y="1976" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">HTTP / API</text>
+<polyline points="318,1970 373,1970" fill="none" stroke="#248268" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+<text x="385" y="1976" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">DB / static assets</text>
+<polyline points="625,1970 680,1970" fill="none" stroke="#df790c" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-orange)"/>
+<text x="692" y="1976" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Admission / polling</text>
+<polyline points="945,1970 1000,1970" fill="none" stroke="#7850ad" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-purple)"/>
+<text x="1012" y="1976" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Domain events</text>
+<polyline points="1240,1970 1295,1970" fill="none" stroke="#bc4381" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#arrow-pink)"/>
+<text x="1307" y="1976" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Telemetry</text>
+<text x="2745" y="1976" font-size="17" fill="#53677e" font-weight="400" text-anchor="end">Icon vector minh họa theo phong cách cloud architecture</text>
+<text x="55" y="2015" font-size="18" fill="#53677e" font-weight="400" text-anchor="start">Phạm vi: kiến trúc cấu hình trong repository. Redis managed là opt-in; image, domain, secrets và kết nối cloud cần được triển khai/kiểm chứng.</text>
+</g></svg>

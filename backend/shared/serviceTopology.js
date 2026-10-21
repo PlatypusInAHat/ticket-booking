@@ -40,5 +40,12 @@ module.exports = {
     image: 'ticket-booking-notification-service',
     port: 5105,
     startScript: 'node microservices/notification-service/server.js'
+  },
+  'waiting-room-service': {
+    packageDir: 'services/waiting-room',
+    dockerfile: 'services/waiting-room/Dockerfile',
+    image: 'ticket-booking-waiting-room-service',
+    port: 5106,
+    startScript: 'node microservices/waiting-room-service/server.js'
   }
 };
