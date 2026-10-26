@@ -4,7 +4,7 @@ Bản vẽ đầy đủ theo phong cách cloud architecture nằm tại [tài li
 
 ```mermaid
 flowchart LR
-  U[Web / Mobile] --> CF[Cloudflare CDN, WAF, Turnstile]
+  U[Website] --> CF[Cloudflare CDN, WAF, Turnstile]
   CF --> GW[API Gateway / Bouncer]
   GW --> WR[Waiting Room Service]
   WR --> R[(Redis / ElastiCache)]

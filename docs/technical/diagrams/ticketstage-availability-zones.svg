@@ -4,7 +4,7 @@
 <text x="50" y="147" font-size="22" fill="#53677e" font-weight="400">Mặc định module networking: 3 AZ • VPC 10.0.0.0/16 • vị trí pod minh họa, không phải kết quả scheduler</text>
 <rect x="50" y="190" width="460" height="110" rx="10" fill="#f8fbfd" stroke="#d3750e" stroke-width="1.6"/>
 <rect x="64" y="210" width="46" height="46" rx="5" fill="#d3750e"/><path d="M74 222h26v22h-26zM80 218v30m14-30v30" fill="none" stroke="white" stroke-width="2"/>
-<text x="125" y="227" font-size="22" fill="#172b45" font-weight="700">Web / Mobile → Cloudflare</text>
+<text x="125" y="227" font-size="22" fill="#172b45" font-weight="700">Website → Cloudflare</text>
 <text x="125" y="257" font-size="19" fill="#53677e" font-weight="400">WAF / rate limit / Turnstile</text>
 <text x="125" y="283" font-size="19" fill="#53677e" font-weight="400">HTTPS đến API public</text>
 <rect x="610" y="190" width="740" height="110" rx="10" fill="#f8fbfd" stroke="#7850ad" stroke-width="1.6"/>

@@ -1,17 +1,19 @@
 # Nền Tảng Đặt Vé
 
-Hệ thống đặt vé theo mô hình microservices, hỗ trợ web, mobile, check-in bằng QR/barcode/NFC, thanh toán qua gateway và backend hướng sự kiện.
+Hệ thống đặt vé theo mô hình microservices, hỗ trợ web, check-in bằng QR/barcode, thanh toán qua gateway và backend hướng sự kiện.
 
 Tài liệu này là file mô tả chính của dự án. Nội dung phản ánh trạng thái hiện tại của codebase sau các đợt refactor backend, tách package dùng chung và bổ sung projection riêng cho check-in service.
+
+> **Phạm vi đồ án hiện tại:** tập trung vào website và check-in QR/barcode. Ứng dụng mobile và NFC được giữ trong source ở trạng thái legacy để tham khảo, nhưng không thuộc luồng demo, tiêu chí nghiệm thu hoặc kế hoạch triển khai hiện tại.
 
 ## 1. Tổng quan
 
 Hệ thống hỗ trợ 4 nhóm chức năng chính:
 
 - Khách hàng xem sự kiện, chọn vé, tạo booking, thanh toán, nhận vé điện tử.
-- Nhân viên check-in quét QR, barcode, NFC hoặc nhập tay mã vé.
+- Nhân viên check-in quét QR, barcode hoặc nhập tay mã vé.
 - Admin và organizer quản lý công ty, sự kiện, loại vé, booking, thanh toán, dashboard.
-- Mobile app dùng chung backend với web, bao gồm cả luồng mua vé và luồng check-in.
+- Ứng dụng mobile và NFC đang tạm thời nằm ngoài phạm vi bản đồ án; khách nhận vé qua website, email và mã QR/barcode.
 
 Backend đã được chuyển sang kiến trúc microservices với:
 
@@ -95,7 +97,7 @@ Xem [sơ đồ kiến trúc tổng thể](docs/technical/ARCHITECTURE_DIAGRAM.md
 
 | Service | Port | DB | Vai trò |
 | --- | ---: | --- | --- |
-| `api-gateway` | `5000` | không có | public entrypoint cho web/mobile |
+| `api-gateway` | `5000` | không có | public entrypoint cho website |
 | `auth-service` | `5101` | `ticket-auth` | auth, user, admin |
 | `catalog-service` | `5102` | `ticket-catalog` | company, event, ticket, inventory |
 | `booking-service` | `5103` | `ticket-booking` | booking, pass, payment, inventory orchestration, outbox |
@@ -299,7 +301,7 @@ Mục tiêu:
 ### 8.1 Luồng mua vé
 
 1. User chọn ticket và join `/api/waiting-room/join` theo event.
-2. Web/mobile poll trạng thái; Redis giữ thứ tự FIFO, capacity và admission rate.
+2. Website poll trạng thái; Redis giữ thứ tự FIFO, capacity và admission rate.
 3. Khi được admission, client nhận signed access token có TTL ngắn.
 4. API Gateway xác minh token theo user/event trước khi chuyển `POST /api/bookings`.
 5. `booking-service` gọi `catalog-service` reserve inventory atomically và đối chiếu event thật với token.
@@ -359,7 +361,7 @@ Khuyến nghị:
 - Mobile và web nên dùng `createSession` + redirect / deeplink payment thật
 - Không gọi thẳng mock `/payment/process` trong luồng payment thật
 
-## 10. Vé điện tử: QR, barcode, NFC
+## 10. Vé điện tử: QR và barcode
 
 Mỗi pass có:
 
@@ -379,7 +381,7 @@ Bảo mật:
 - Dùng hash/HMAC cho payload nhạy cảm
 - Check-in log lưu hash của input scan, không lưu plain token
 
-## 11. Mobile app
+## 11. Mobile app (legacy, ngoài phạm vi đồ án)
 
 Thư mục:
 

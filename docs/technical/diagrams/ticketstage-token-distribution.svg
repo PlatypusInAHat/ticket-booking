@@ -18,7 +18,7 @@
 <text x="1805" y="257" font-size="19" fill="#53677e" font-weight="400">Waiting room cấp; x-waiting-room-token</text>
 <text x="1805" y="283" font-size="19" fill="#53677e" font-weight="400">Gateway xác minh; entryId chỉ tạo được một booking</text>
 <rect x="60" y="355" width="270" height="75" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
-<text x="80" y="387" font-size="23" fill="#28649d" font-weight="700">Web / Mobile</text>
+<text x="80" y="387" font-size="23" fill="#28649d" font-weight="700">Website</text>
 <polyline points="195,430 195,1660" fill="none" stroke="#28649d" stroke-width="2.2" stroke-dasharray="8 6"/>
 <rect x="485" y="355" width="270" height="75" rx="10" fill="#f8fbfd" stroke="#28649d" stroke-width="1.6"/>
 <text x="505" y="387" font-size="23" fill="#28649d" font-weight="700">API Gateway</text>
@@ -113,4 +113,4 @@
 <text x="75" y="2209" font-size="22" fill="#53677e" font-weight="400">Capacity: booking thành công không xóa active lease; slot thu hồi theo expiry khi có poll. Mongo unique index không ghi Redis state=used.</text>
 <text x="75" y="2242" font-size="22" fill="#53677e" font-weight="400">Fairness: FIFO theo timestamp + random tie-break; stale queue member chưa được dọn và campaign theo tập event có thể chia nhỏ quota.</text>
 <text x="75" y="2275" font-size="22" fill="#53677e" font-weight="400">Phân phối: token chỉ trả về khi client poll; chưa có SSE/WebSocket, key rotation theo kid, revoke list hoặc handshake lease tại booking.</text>
-<text x="55" y="2393" font-size="20" fill="#53677e" font-weight="400">Nguồn: waitingRoomService.js, waitingRoomToken.js, api-gateway/server.js, bookingService.js và Checkout.tsx / mobile App.js.</text></g></svg>
+<text x="55" y="2393" font-size="20" fill="#53677e" font-weight="400">Nguồn: waitingRoomService.js, waitingRoomToken.js, api-gateway/server.js, bookingService.js và frontend Checkout.tsx.</text></g></svg>

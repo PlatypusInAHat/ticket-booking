@@ -110,7 +110,7 @@ rank < max(1, ceil(120 / 60)) = 2
 
 Nếu thỏa điều kiện: entry rời queue, được thêm vào active với expiry `now + 600s`, được thêm vào recent và đổi state sang admitted. Đây là rate cap theo cửa sổ trượt 60 giây, **không phải phát đều chính xác 2 token mỗi giây**. Thứ tự ai poll trước trong nhóm đủ điều kiện ảnh hưởng thứ tự admission.
 
-Chưa đủ điều kiện thì trả position, ETA và `retryAfterSeconds=5`. Cả web/mobile hiện dừng chờ sau tối đa 30 phút, ngắn hơn entry TTL 60 phút. ETA là ước lượng từ vị trí và admission rate; chưa mô hình hóa đầy đủ capacity/lease nên không phải cam kết thời gian.
+Chưa đủ điều kiện thì trả position, ETA và `retryAfterSeconds=5`. Website hiện dừng chờ sau tối đa 30 phút, ngắn hơn entry TTL 60 phút. ETA là ước lượng từ vị trí và admission rate; chưa mô hình hóa đầy đủ capacity/lease nên không phải cam kết thời gian.
 
 Giới hạn tính theo `campaignId` của **tập event**, không phải một quota global hoặc một counter duy nhất cho từng event bất kể giỏ hàng. Các tập `[A]`, `[A,B]`, `[A,C]` sinh các campaign khác nhau. Đây là điểm cần nâng cấp nếu muốn quota chống quá tải mạnh cho concert A.
 

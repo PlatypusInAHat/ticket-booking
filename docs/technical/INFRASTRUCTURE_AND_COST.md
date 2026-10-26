@@ -9,7 +9,7 @@ Giá dưới đây là ước tính cho `us-east-1`, khoảng 730 giờ/tháng, 
 ## Kiến trúc tổng quan
 
 ```text
-Khán giả web/mobile
+Khán giả website
   -> Cloudflare DNS, DDoS, WAF, Turnstile, rate limit
   -> CloudFront + S3 (frontend) / ALB Ingress (API)
   -> EKS
@@ -83,7 +83,7 @@ Nguồn chính thức: [AWS EKS pricing](https://aws.amazon.com/eks/pricing/), [
 
 | Mô hình | Chi phí định hướng | Khi dùng |
 | --- | --- | --- |
-| Local-first | gần `$0` AWS | Code, test, demo nội bộ bằng Docker Compose/Expo. |
+| Local-first | gần `$0` AWS | Code, test và demo website bằng Docker Compose. |
 | EKS demo tối giản | thường khoảng `$120-170/tháng` trước traffic | Một EKS, một NAT, một ALB, node nhỏ, Atlas M0; chỉ chạy trong thời gian demo. |
 | Cấu hình Terraform hiện tại dev/prod | trên `$150/tháng` cho mỗi environment trước node/ALB/data | Không phù hợp chạy lâu với credit `$200`, đặc biệt nếu bật cả dev và prod. |
 

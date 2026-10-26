@@ -6,7 +6,6 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'mobile/**'
       - 'docker-compose.yml'
       - 'sonar-project.properties'
       - 'dependency-check-suppressions.xml'
@@ -16,7 +15,6 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'mobile/**'
       - 'docker-compose.yml'
       - 'sonar-project.properties'
       - 'dependency-check-suppressions.xml'
@@ -79,10 +77,8 @@ jobs:
             --skip-dirs .git \
             --skip-dirs backend/node_modules \
             --skip-dirs frontend/node_modules \
-            --skip-dirs mobile/node_modules \
             --skip-dirs backend/coverage \
             --skip-dirs frontend/coverage \
-            --skip-dirs mobile/coverage \
             .
       - name: Upload Trivy SARIF
         if: always()

@@ -49,7 +49,7 @@ class Diagram {
 
 const az = new Diagram('Triển khai theo Availability Zone & đường mạng',
   'Mặc định module networking: 3 AZ • VPC 10.0.0.0/16 • vị trí pod minh họa, không phải kết quả scheduler', 2060);
-az.chip(50, 190, 460, 'Web / Mobile → Cloudflare', ['WAF / rate limit / Turnstile', 'HTTPS đến API public'], 'orange');
+az.chip(50, 190, 460, 'Website → Cloudflare', ['WAF / rate limit / Turnstile', 'HTTPS đến API public'], 'orange');
 az.chip(610, 190, 740, 'Internet-facing ALB · một load balancer', ['Hiện diện ở public subnets được chọn', 'Listener 443 → target IP pod gateway :5000'], 'purple');
 az.chip(1450, 190, 1100, 'EKS control plane / AWS managed', ['Worker node groups dùng private_subnets; control plane không nằm trong worker node', 'API endpoint private/public và CIDR truy cập do cấu hình EKS quyết định'], 'blue');
 az.arrow([[510, 245], [610, 245]]);
@@ -94,7 +94,7 @@ t.chip(905, 190, 760, 'Entry token · opaque ID', ['24 byte ngẫu nhiên, base6
 t.chip(1730, 190, 820, 'Admission JWT · 600 giây mỗi lần ký', ['Waiting room cấp; x-waiting-room-token', 'Gateway xác minh; entryId chỉ tạo được một booking'], 'green');
 
 const centers = [195, 620, 1045, 1470, 1895, 2320];
-const names = ['Web / Mobile', 'API Gateway', 'Waiting Room', 'Redis chung', 'Booking', 'Catalog / Mongo'];
+const names = ['Website', 'API Gateway', 'Waiting Room', 'Redis chung', 'Booking', 'Catalog / Mongo'];
 centers.forEach((x, i) => {
   t.box(x - 135, 355, 270, 75, names[i], '', i === 3 ? 'purple' : 'blue');
   t.arrow([[x, 430], [x, 1660]], i === 3 ? 'purple' : 'blue', true, false);
@@ -139,5 +139,5 @@ t.lines(75, 2143, [
   'Fairness: FIFO theo timestamp + random tie-break; stale queue member chưa được dọn và campaign theo tập event có thể chia nhỏ quota.',
   'Phân phối: token chỉ trả về khi client poll; chưa có SSE/WebSocket, key rotation theo kid, revoke list hoặc handshake lease tại booking.'
 ], 22, 33);
-t.text(55, 2393, 'Nguồn: waitingRoomService.js, waitingRoomToken.js, api-gateway/server.js, bookingService.js và Checkout.tsx / mobile App.js.', 20);
+t.text(55, 2393, 'Nguồn: waitingRoomService.js, waitingRoomToken.js, api-gateway/server.js, bookingService.js và frontend Checkout.tsx.', 20);
 t.finish('ticketstage-token-distribution');

@@ -1,17 +1,8 @@
 name: Mobile CI/CD
 
+# Mobile is retained as legacy source and is outside the current web-only scope.
+# This workflow is intentionally manual until the mobile scope is reopened.
 on:
-  push:
-    branches: [main, dev, staging, prod, 'release/**']
-    tags: ['mobile-v*']
-    paths:
-      - 'mobile/**'
-      - '.github/workflows/mobile-cd.yml'
-  pull_request:
-    branches: [main, dev, staging, prod, 'release/**']
-    paths:
-      - 'mobile/**'
-      - '.github/workflows/mobile-cd.yml'
   workflow_dispatch:
 
 permissions:

@@ -3,7 +3,7 @@
 ## 1. Quy ước chung
 
 - Base URL public: `https://<api-domain>/api`.
-- API Gateway là entrypoint duy nhất cho web/mobile. Gateway route theo prefix đến microservice, thêm correlation ID, timeout/retry upstream và không để client gọi trực tiếp service nội bộ.
+- API Gateway là entrypoint duy nhất cho website. Gateway route theo prefix đến microservice, thêm correlation ID, timeout/retry upstream và không để client gọi trực tiếp service nội bộ.
 - Phản hồi thành công dùng cấu trúc `success`, `statusCode`, `data`, `message`; client cần lấy payload từ `data`.
 - API cần đăng nhập dùng `Authorization: Bearer <accessToken>`.
 - Access token và refresh token do auth-service phát hành; thời gian sống runtime theo `JWT_ACCESS_EXPIRE` và `JWT_REFRESH_EXPIRE`.
@@ -16,7 +16,7 @@
 | --- | --- | --- |
 | `/api/auth`, `/api/users`, `/api/admin` | auth-service | Đăng nhập, profile, quản trị. |
 | `/api/companies`, `/api/events`, `/api/tickets`, `/api/upload` | catalog-service | Company, sự kiện, loại vé, upload ảnh. |
-| `/api/bookings`, `/api/payment` | booking-service | Booking, pass, QR/barcode/NFC, thanh toán, refund. |
+| `/api/bookings`, `/api/payment` | booking-service | Booking, pass, QR/barcode, thanh toán, refund. |
 | `/api/checkin` | checkin-service | Quét/check-in và offline sync. |
 | `/api/notifications` | notification-service | Đăng ký nhận tin và preference. |
 | `/api/waiting-room` | waiting-room-service | Join hàng chờ, xem vị trí/ETA và nhận access token checkout. |
@@ -71,7 +71,7 @@ Các query list điển hình: `page`, `limit`, `search`, `sort`, `eventType`, `
 | `GET` | `/api/bookings/:id/passes/:passId` | Có | Chi tiết pass. |
 | `GET` | `/api/bookings/:id/passes/:passId/qr.png` | Có | Ảnh QR. |
 | `GET` | `/api/bookings/:id/passes/:passId/barcode.png` | Có | Ảnh barcode. |
-| `GET` | `/api/bookings/:id/passes/:passId/nfc-payload` | Có | NFC payload đã kiểm soát quyền. |
+| `GET` | `/api/bookings/:id/passes/:passId/nfc-payload` | Legacy | Endpoint giữ tương thích, ngoài phạm vi đồ án hiện tại. |
 | `POST`/`PUT` | `/api/bookings/:id/cancel` | Có | Hủy booking khi trạng thái cho phép. |
 | `POST` | `/api/bookings/:id/refund-request` | Có | Yêu cầu hoàn tiền, có lý do 10-500 ký tự. |
 | `GET` | `/api/bookings/queue/status` | Admin | Trạng thái legacy booking execution queue; không phản ánh virtual waiting room. |
@@ -108,14 +108,14 @@ Payload tạo booking tối thiểu:
 
 | Method | Endpoint | Role | Mô tả |
 | --- | --- | --- | --- |
-| `POST` | `/api/checkin/validate` | `admin`, `staff` | Validate QR/barcode/NFC, chưa check-in. |
+| `POST` | `/api/checkin/validate` | `admin`, `staff` | Validate QR/barcode, chưa check-in. |
 | `POST` | `/api/checkin` | `admin`, `staff` | Xác nhận check-in. |
 | `GET` | `/api/checkin/events` | `admin`, `staff` | Danh sách event có thể check-in. |
 | `GET` | `/api/checkin/stats` | `admin`, `staff` | Thống kê check-in. |
 | `POST` | `/api/checkin/offline/manifest` | `admin`, `staff` | Tạo manifest offline theo event/device. |
 | `POST` | `/api/checkin/offline/sync` | `admin`, `staff` | Đồng bộ tối đa 100 lần scan offline/batch. |
 
-Scan body chấp nhận một trong `code`, `scanToken`, `nfcPayload`; `method` là `qr`, `barcode`, `nfc` hoặc `manual`.
+Trong phạm vi đồ án, scan body dùng `code` hoặc `scanToken`; `method` là `qr`, `barcode` hoặc `manual`. Trường NFC vẫn được giữ trong code legacy nhưng không dùng trong demo.
 
 ### Notification và admin
 
@@ -130,7 +130,7 @@ Scan body chấp nhận một trong `code`, `scanToken`, `nfcPayload`; `method` 
 
 ## 4. Internal API contract
 
-Internal API không được gọi từ frontend/mobile. Booking-service gọi catalog qua HTTP nội bộ:
+Internal API không được gọi từ frontend. Booking-service gọi catalog qua HTTP nội bộ:
 
 ```text
 POST /internal/catalog/tickets/reserve
@@ -151,7 +151,7 @@ access token hết hạn -> POST /api/auth/refresh-token -> rotate token
 logout -> revoke/clear session theo auth service
 ```
 
-Mật khẩu dùng bcrypt cùng pepper server-side. Không trả password hash, secret pass/QR/NFC hoặc internal key qua API public.
+Mật khẩu dùng bcrypt cùng pepper server-side. Không trả password hash, secret pass/QR hoặc internal key qua API public.
 
 ## 6. Luồng đặt vé chống oversell
 
@@ -200,12 +200,12 @@ User/admin cancel hoặc booking hết hạn
 
 Với booking đã thanh toán, release chỉ diễn ra theo luồng refund/cancel cho phép `restoreRevenue`; catalog cho phép `converted -> released` đúng một lần trong trường hợp này.
 
-## 9. Luồng check-in QR, barcode, NFC và offline
+## 9. Luồng check-in QR, barcode và offline
 
 ```text
-Staff mobile/web -> POST /api/checkin/validate
+Staff web -> POST /api/checkin/validate
 -> checkin-service đọc booking projection cục bộ
--> kiểm tra pass status, chữ ký/hash QR/barcode/NFC, event và thời hạn
+-> kiểm tra pass status, chữ ký/hash QR/barcode, event và thời hạn
 -> trả hợp lệ hoặc lý do từ chối
 
 Staff -> POST /api/checkin
@@ -253,7 +253,7 @@ Luồng hot sale dùng waiting room do ứng dụng tự quản lý trên Redis.
 
 ```mermaid
 sequenceDiagram
-  participant Web as Web/Mobile
+  participant Web as Website
   participant Edge as CDN/WAF
   participant Gateway as API Gateway (bouncer)
   participant Queue as Waiting Room Service

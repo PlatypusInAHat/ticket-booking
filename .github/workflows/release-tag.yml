@@ -14,7 +14,6 @@ on:
         type: choice
         options:
           - app
-          - mobile
 
 permissions:
   contents: write
@@ -46,7 +45,6 @@ jobs:
 
           case "$TAG_TYPE" in
             app) tag="v${RELEASE_VERSION}" ;;
-            mobile) tag="mobile-v${RELEASE_VERSION}" ;;
             *) echo "Unsupported tag type: $TAG_TYPE"; exit 1 ;;
           esac
 

@@ -70,12 +70,12 @@ function badge(x, y, number, title, detail) {
 
 add(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="title desc">
 <title id="title">TicketStage — Kiến trúc tổng thể và Virtual Waiting Room</title>
-<desc id="desc">Web và mobile qua Cloudflare, ALB, API Gateway trên EKS. Hàng chờ tự quản lý bằng Redis cấp token checkout. Năm domain service sở hữu database MongoDB riêng, đồng bộ bằng RabbitMQ và outbox. Bao gồm thanh toán, email, GitOps, autoscaling và quan sát hệ thống. Sơ đồ phản ánh cấu hình repository, không chứng nhận deployment đang hoạt động.</desc>
+<desc id="desc">Website qua Cloudflare, ALB, API Gateway trên EKS. Hàng chờ tự quản lý bằng Redis cấp token checkout. Năm domain service sở hữu database MongoDB riêng, đồng bộ bằng RabbitMQ và outbox. Bao gồm thanh toán, email, GitOps, autoscaling và quan sát hệ thống. Sơ đồ phản ánh cấu hình repository, không chứng nhận deployment đang hoạt động.</desc>
 <defs>${Object.entries(c).map(([key, color]) => `<marker id="arrow-${key}" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="${color}"/></marker>`).join('')}</defs>
 <g font-family="'Segoe UI', 'DejaVu Sans', sans-serif"><rect width="${W}" height="${H}" fill="#fff"/>`);
 text(55, 64, 'TICKETSTAGE', 24, c.orange, 800);
 text(55, 115, 'Kiến trúc tổng thể hệ thống bán vé', 43, c.ink, 750);
-text(55, 153, 'Hàng chờ tự quản lý • Microservices trên Amazon EKS • Web & Mobile • GitOps', 23, c.muted);
+text(55, 153, 'Hàng chờ tự quản lý • Microservices trên Amazon EKS • Website • GitOps', 23, c.muted);
 text(2745, 65, 'ARCHITECTURE / 01', 19, c.muted, 650, 'end');
 text(2745, 99, 'Đối chiếu repository · 20.10.2026', 18, c.muted, 400, 'end');
 
@@ -96,7 +96,7 @@ region(2040, 345, 342, 915, 'MONGODB ATLAS', 'Database riêng theo domain', c.gr
 text(2425, 377, 'DỊCH VỤ NGOÀI', 20, c.muted, 700);
 
 // All entry traffic follows the same public boundary.
-card(55, 510, 190, 'Client', ['Web / Expo', 'QR · NFC*'], 'mobile', c.teal, 132);
+card(55, 510, 190, 'Client', ['Website', 'QR · barcode'], 'browser', c.teal, 132);
 card(295, 510, 320, 'Cloudflare', ['DNS · CDN · WAF', 'DDoS · rate limit · Turnstile'], 'shield', c.orange, 132);
 card(700, 510, 220, 'AWS ALB', ['Ingress HTTPS', 'Gateway :5000'], 'lb', c.purple, 132);
 region(990, 498, 348, 224, 'API GATEWAY / BOUNCER', '', c.orange, '#fffbf4', '10 6');
@@ -117,7 +117,7 @@ const domains = [
   { y: 477, name: 'Auth Service', port: 5101, info: ['Đăng nhập · refresh · phân quyền'], db: 'ticket-auth', data: ['Users · sessions'], icon: 'key' },
   { y: 627, name: 'Catalog Service', port: 5102, info: ['Event · loại vé · tồn kho atomic'], db: 'ticket-catalog', data: ['Events · tickets · seat locks'], icon: 'browser' },
   { y: 777, name: 'Booking Service', port: 5103, info: ['Giữ vé · payment · webhook'], db: 'ticket-booking', data: ['Bookings · payments · outbox'], icon: 'card' },
-  { y: 927, name: 'Check-in Service', port: 5104, info: ['QR / NFC* · chống check-in lặp'], db: 'ticket-checkin', data: ['Projection · devices · logs'], icon: 'scan' },
+  { y: 927, name: 'Check-in Service', port: 5104, info: ['QR / barcode · chống check-in lặp'], db: 'ticket-checkin', data: ['Projection · devices · logs'], icon: 'scan' },
   { y: 1077, name: 'Notification Service', port: 5105, info: ['Email giao dịch · nhắc lịch'], db: 'ticket-notification', data: ['Jobs · templates · preferences'], icon: 'email' },
 ];
 for (const d of domains) {
@@ -162,8 +162,8 @@ path([[1850, 711], [2017, 711], [2017, 752], [2403, 752], [2403, 680], [2425, 68
 path([[1850, 859], [2005, 859], [2005, 902], [2403, 902], [2403, 830], [2425, 830]], c.blue);
 label(2120, 923, 'Webhook quay về public API → booking', c.blue, 16);
 path([[1850, 1160], [2005, 1160], [2005, 1290], [2403, 1290], [2403, 1130], [2425, 1130]], c.blue);
-text(2425, 978, '* NFC phụ thuộc thiết bị,', 18, c.muted);
-text(2425, 1004, 'hệ điều hành và build native.', 18, c.muted);
+text(2425, 978, '* Mobile và NFC nằm ngoài phạm vi', 18, c.muted);
+text(2425, 1004, 'phạm vi đồ án hiện tại.', 18, c.muted);
 
 // Operational policy is positioned inside the VPC without pretending it is a service hop.
 text(695, 748, 'HA & SCALING', 21, c.blue, 750);
@@ -173,7 +173,7 @@ lines(695, 1230, ['AWS Secrets Manager', 'K8s runtime Secret', 'Cần nạp/sync
 
 // A brief narrative makes the large topology readable for non-operators.
 region(55, 738, 560, 657, 'LUỒNG MUA VÉ KHI HOT SALE', '', c.blue, '#fafcfe');
-badge(89, 802, '1', 'Đăng nhập, chọn vé', ['Web/mobile gọi API qua Cloudflare', 'và gateway để duyệt sự kiện.']);
+badge(89, 802, '1', 'Đăng nhập, chọn vé', ['Website gọi API qua Cloudflare', 'và gateway để duyệt sự kiện.']);
 badge(89, 920, '2', 'Vào hàng chờ', ['Client join rồi poll trạng thái;', 'Redis giữ vị trí và quyền checkout.']);
 badge(89, 1038, '3', 'Nhận admission token', ['Gateway kiểm tra token; booking', 'đối chiếu event và chống dùng lại.']);
 badge(89, 1156, '4', 'Giữ vé, thanh toán, phát hành', ['Catalog reserve atomic; webhook', 'xác nhận kết quả và phát domain event.']);
