@@ -611,7 +611,7 @@ Sau khi seed:
 
 - Kiểm tra env của VNPay / MoMo
 - Kiểm tra `PUBLIC_API_URL`
-- Kiểm tra frontend/mobile đang dùng `createSession`
+- Kiểm tra frontend website đang dùng `createSession`
 
 ## 18. Trạng thái hiện tại của codebase
 

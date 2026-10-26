@@ -133,7 +133,7 @@ label(1682, 757, 'reserve / release', c.blue, 16);
 text(2059, 1211, 'Không truy vấn chéo DB giữa service', 16, c.green, 600);
 text(2059, 1237, 'Mongo transactions cần replica set', 16, c.muted);
 
-// Waiting room is an application workflow; the browser/mobile polls via gateway.
+// Waiting room is an application workflow; the website polls via the gateway.
 region(990, 851, 365, 333, 'VIRTUAL WAITING ROOM', 'Join → poll → token checkout', c.orange, '#fffbf4', '10 6');
 card(1007, 938, 331, 'Waiting Room Service', ['Join / status · :5106', 'FIFO · lease · admission rate'], 'queue', c.orange, 110);
 icon(1010, 1080, 'key', c.green, 44);

@@ -190,6 +190,6 @@ Với capacity 200 và lease 600 giây, nếu slot luôn giữ đủ TTL thì gi
 
 - [Waiting room service](../../backend/services/waiting-room/src/waitingRoomService.js), [routes](../../backend/services/waiting-room/src/routes.js), [JWT helper](../../backend/shared/waitingRoomToken.js).
 - [Gateway](../../backend/microservices/api-gateway/server.js), [booking service](../../backend/services/booking/src/services/bookingService.js), [Booking schema](../../backend/services/booking/src/models/Booking.js).
-- [Web checkout](../../frontend/src/pages/Checkout.tsx), [mobile](../../mobile/src/App.js).
+- [Web checkout](../../frontend/src/pages/Checkout.tsx). Mobile source remains legacy and is outside the current demo scope.
 - Repo infra: `aws/terraform/layers/00-networking`, `aws/terraform/modules/vpc`, `aws/terraform/modules/eks`, `aws/terraform/modules/elasticache-redis`, `k8s/base`.
 - [Tổng thể và hướng dẫn xuất ảnh](ARCHITECTURE_DIAGRAM.md).
