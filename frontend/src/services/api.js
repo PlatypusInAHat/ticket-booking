@@ -125,6 +125,12 @@ export const eventsAPI = {
   delete: (id) => API.delete(`/events/${id}`)
 };
 
+export const companiesAPI = {
+  getAll: (params = {}) => API.get('/companies', { params }),
+  create: (data) => API.post('/companies', data),
+  update: (id, data) => API.put(`/companies/${id}`, data)
+};
+
 // Tickets API
 export const ticketsAPI = {
   getAll: (params, config = {}) => API.get('/tickets', { params, ...config }),
@@ -136,13 +142,36 @@ export const ticketsAPI = {
 
 // Bookings API
 export const bookingsAPI = {
-  create: (data) => API.post('/bookings', data),
+  create: (data, waitingRoomToken = '') => API.post('/bookings', data, {
+    headers: waitingRoomToken ? { 'x-waiting-room-token': waitingRoomToken } : {}
+  }),
   getAll: () => API.get('/bookings'),
   getById: (id) => API.get(`/bookings/${id}`),
-  cancel: (id) => API.post(`/bookings/${id}/cancel`),
+  cancel: (id) => API.put(`/bookings/${id}/cancel`),
   getPasses: (id) => API.get(`/bookings/${id}/passes`),
   // Pass images sit behind auth, so they are fetched as blobs instead of plain <img src>.
-  getPassQr: (id, passId) => API.get(`/bookings/${id}/passes/${passId}/qr.png`, { responseType: 'blob' })
+  getPassQr: (id, passId) => API.get(`/bookings/${id}/passes/${passId}/qr.png`, { responseType: 'blob' }),
+  requestRefund: (id, reason) => API.post(`/bookings/${id}/refund-request`, { reason }),
+  previewPromotion: (data) => API.post('/bookings/promotions/preview', data)
+};
+
+export const waitingRoomAPI = {
+  join: (data) => API.post('/waiting-room/join', data),
+  getStatus: (entryToken) => API.get(`/waiting-room/${encodeURIComponent(entryToken)}/status`)
+};
+
+export const notificationsAPI = {
+  subscribe: (email, locale = 'en') => API.post('/notifications/subscribe', {
+    email,
+    locale,
+    source: 'website-home'
+  }),
+  updatePreferences: (data) => API.put('/notifications/preferences', data)
+};
+
+export const promotionsAPI = {
+  list: () => API.get('/bookings/promotions'),
+  create: (data) => API.post('/bookings/promotions', data)
 };
 
 // Users API
@@ -164,6 +193,8 @@ export const adminAPI = {
   getBookings: () => API.get('/admin/bookings'),
   updatePaymentStatus: (bookingId, status) =>
     API.put(`/admin/bookings/${bookingId}/payment`, { paymentStatus: status }),
+  updateRefundRequest: (bookingId, status, reason = '') =>
+    API.put(`/admin/bookings/${bookingId}/refund-request`, { status, reason }),
   getGatewayStatus: () => API.get('/admin/gateway/status'),
   getUsers: () => API.get('/admin/users'),
   updateUserRole: (userId, role) => API.put(`/admin/users/${userId}/role`, { role })

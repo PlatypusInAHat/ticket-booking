@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  title: Check-in Service Internal API
+  version: 1.0.0
+  description: Internal contract for check-in operational statistics.
+servers:
+  - url: http://checkin-service:5104
+security:
+  - InternalApiKey: []
+paths:
+  /internal/checkin/stats:
+    get:
+      summary: Get check-in device and completed check-in statistics
+      responses:
+        '200':
+          description: Check-in stats payload
+components:
+  securitySchemes:
+    InternalApiKey:
+      type: apiKey
+      in: header
+      name: x-internal-api-key

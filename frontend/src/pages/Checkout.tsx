@@ -1,20 +1,29 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { ArrowLeft, Check, Info, Loader2, Lock, Receipt, ShieldCheck } from "lucide-react"
+import { TurnstileWidget } from "@/components/TurnstileWidget"
 import { Button } from "@/components/ui/Button"
+import { Perforation } from "@/components/ui/Perforation"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { clearCart } from "@/store/cartSlice"
-import { bookingsAPI, paymentAPI } from "@/services/api"
+import { bookingsAPI, paymentAPI, waitingRoomAPI } from "@/services/api"
+import { getDeviceFingerprint } from "@/utils/deviceFingerprint"
 import { cn, formatCurrency } from "@/lib/utils"
 
 const gatewayMethods = new Set(["vnpay", "momo"])
+const turnstileSiteKey = String((import.meta as any).env?.VITE_TURNSTILE_SITE_KEY || "").trim()
+const allowMockPayment =
+  String((import.meta as any).env?.VITE_ALLOW_MOCK_PAYMENT || "").toLowerCase() === "true" ||
+  Boolean((import.meta as any).env?.DEV)
 
-const paymentOptions = [
+const allPaymentOptions = [
   { value: "vnpay", label: "VNPay", hint: "ATM card, QR or banking app" },
   { value: "momo", label: "MoMo", hint: "MoMo e-wallet" },
   { value: "credit_card", label: "Card", hint: "Demo payment, no charge" },
   { value: "bank_transfer", label: "Bank transfer", hint: "Demo payment, no charge" },
 ]
+// Demo methods only exist where mock payments are allowed; production shows the real gateways.
+const paymentOptions = allowMockPayment ? allPaymentOptions : allPaymentOptions.filter((option) => gatewayMethods.has(option.value))
 
 const getPaymentActionText = (paymentMethod: string) => {
   if (paymentMethod === "vnpay") return "Continue to VNPay"
@@ -28,28 +37,83 @@ export function Checkout() {
   const { user } = useAppSelector((state: any) => state.auth || {})
   const items = useAppSelector((state: any) => state.cart.items || [])
   const totalPrice = useAppSelector((state: any) =>
-    (state.cart.items || []).reduce((acc: number, item: any) => acc + item.price * item.quantity, 0)
+    (state.cart.items || []).reduce((acc: number, item: any) => acc + item.price * item.quantity, 0),
   )
 
   const [customerName, setCustomerName] = useState(user?.name || "")
   const [customerEmail, setCustomerEmail] = useState(user?.email || "")
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "")
-  const [paymentMethod, setPaymentMethod] = useState("credit_card")
+  const [paymentMethod, setPaymentMethod] = useState(allowMockPayment ? "credit_card" : "vnpay")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [statusText, setStatusText] = useState("")
+  const [turnstileToken, setTurnstileToken] = useState("")
+  const [promoCode, setPromoCode] = useState("")
+  const [promoPreview, setPromoPreview] = useState<any>(null)
+  const [promoMessage, setPromoMessage] = useState("")
 
-  const createBookingPayload = () => ({
+  const grandTotal = promoPreview?.grandTotal ?? totalPrice
+
+  const waitForAdmission = async (deviceFingerprint: string) => {
+    const eventIds = Array.from(
+      new Set(items.map((item: any) => item.eventId || item.event?._id || item.event).filter(Boolean)),
+    )
+    if (eventIds.length === 0) throw new Error("Event information is missing from the cart.")
+
+    const joinResponse = await waitingRoomAPI.join({ eventIds, deviceFingerprint })
+    const entryToken = joinResponse.data.data.entryToken
+    const deadline = Date.now() + 30 * 60 * 1000
+
+    while (Date.now() < deadline) {
+      const statusResponse = await waitingRoomAPI.getStatus(entryToken)
+      const queue = statusResponse.data.data
+      if (queue.state === "admitted") {
+        return queue.accessToken
+      }
+      setStatusText(
+        `You're number ${queue.position} in line. Estimated wait: ${Math.ceil(queue.estimatedWaitSeconds / 60)} min.`,
+      )
+      await new Promise((resolve) => window.setTimeout(resolve, (queue.retryAfterSeconds || 5) * 1000))
+    }
+
+    throw new Error("Your place in the waiting room expired. Please try again.")
+  }
+
+  const resetTurnstile = useCallback(() => {
+    setTurnstileToken("")
+  }, [])
+
+  const createBookingPayload = (security: { deviceFingerprint: string; turnstileToken?: string }) => ({
     tickets: items.map((item: any) => ({
       ticketId: item._id || item.id,
       quantity: item.quantity,
+      seatCodes: item.seatCodes?.length ? item.seatCodes : undefined,
     })),
     paymentMethod,
     customerName,
     customerEmail,
     customerPhone,
     source: "web",
+    deviceFingerprint: security.deviceFingerprint,
+    turnstileToken: security.turnstileToken || undefined,
+    promoCode: promoPreview?.code || undefined,
   })
+
+  const applyPromotion = async () => {
+    setPromoMessage("")
+    setPromoPreview(null)
+    try {
+      const response = await bookingsAPI.previewPromotion({
+        code: promoCode,
+        subtotal: totalPrice,
+        eventIds: Array.from(new Set(items.map((item: any) => item.eventId).filter(Boolean))),
+      })
+      setPromoPreview(response.data.data)
+      setPromoMessage(`Code ${response.data.data.code} applied.`)
+    } catch (err: any) {
+      setPromoMessage(err.response?.data?.message || "This promotion code isn't valid.")
+    }
+  }
 
   const redirectToGateway = (session: any) => {
     const redirectUrl = session.redirectUrl || session.paymentUrl || session.deeplink
@@ -80,7 +144,18 @@ export function Checkout() {
     setStatusText("Holding your tickets…")
 
     try {
-      const bookingResponse = await bookingsAPI.create(createBookingPayload())
+      if (turnstileSiteKey && !turnstileToken) {
+        throw new Error("Please complete the verification check before paying.")
+      }
+
+      const deviceFingerprint = await getDeviceFingerprint()
+      setStatusText("Joining the ticket waiting room…")
+      const waitingRoomToken = await waitForAdmission(deviceFingerprint)
+      setStatusText("Holding your tickets…")
+      const bookingResponse = await bookingsAPI.create(
+        createBookingPayload({ deviceFingerprint, turnstileToken }),
+        waitingRoomToken,
+      )
       const booking = bookingResponse.data.data
 
       window.localStorage.setItem("lastPendingBookingId", booking._id)
@@ -135,7 +210,7 @@ export function Checkout() {
         <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to cart
       </Link>
 
-      <h1 className="mt-6 type-print text-5xl sm:text-6xl">Checkout</h1>
+      <h1 className="type-print mt-6 text-5xl sm:text-6xl">Checkout</h1>
       <p className="mt-2 max-w-2xl text-muted">
         Your tickets are held while you pay. They're confirmed as soon as the payment clears.
       </p>
@@ -204,8 +279,8 @@ export function Checkout() {
                   <label
                     key={option.value}
                     className={cn(
-                      "relative flex cursor-pointer items-start gap-3 rounded-xl border bg-background p-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent/70",
-                      selected ? "border-accent bg-accent-soft" : "border-border hover:border-border-strong",
+                      "relative flex cursor-pointer items-start gap-3 rounded-md border bg-background p-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
+                      selected ? "border-accent" : "border-border hover:border-border-strong",
                     )}
                   >
                     <input
@@ -218,7 +293,7 @@ export function Checkout() {
                     />
                     <span
                       className={cn(
-                        "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+                        "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border transition-colors",
                         selected ? "border-accent bg-accent" : "border-border-strong",
                       )}
                       aria-hidden="true"
@@ -234,14 +309,51 @@ export function Checkout() {
               })}
             </div>
 
-            {import.meta.env.DEV && (
+            {allowMockPayment && (
               <p className="mt-4 flex items-start gap-2 text-xs text-muted-2">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                Developer note: VNPay and MoMo need merchant credentials in the backend <code>.env</code>. Use a demo method
-                when they are not configured.
+                VNPay and MoMo need merchant credentials in the backend <code>.env</code>. Card and bank transfer are
+                local demo methods only.
               </p>
             )}
           </fieldset>
+
+          <fieldset>
+            <legend className="type-print text-2xl">Promotion code</legend>
+            <div className="mt-4 flex gap-2">
+              <label htmlFor="promo-code" className="sr-only">
+                Promotion code
+              </label>
+              <input
+                id="promo-code"
+                value={promoCode}
+                onChange={(event) => {
+                  setPromoCode(event.target.value.toUpperCase())
+                  setPromoPreview(null)
+                }}
+                className="form-input uppercase"
+                maxLength={32}
+                placeholder="EARLYBIRD"
+              />
+              <Button type="button" variant="secondary" onClick={applyPromotion} disabled={promoCode.length < 3}>
+                Apply
+              </Button>
+            </div>
+            {promoMessage && (
+              <p className={cn("mt-2 text-sm", promoPreview ? "text-success" : "text-muted")} role="status">
+                {promoMessage}
+              </p>
+            )}
+          </fieldset>
+
+          {turnstileSiteKey && (
+            <fieldset>
+              <legend className="type-print text-2xl">Verification</legend>
+              <div className="mt-4">
+                <TurnstileWidget siteKey={turnstileSiteKey} onVerify={setTurnstileToken} onReset={resetTurnstile} />
+              </div>
+            </fieldset>
+          )}
 
           <div className="flex flex-col gap-4 border-t border-border pt-6">
             {error && (
@@ -255,43 +367,66 @@ export function Checkout() {
                 {statusText}
               </p>
             )}
-            <Button type="submit" size="lg" disabled={loading} className="w-full sm:w-auto sm:self-start">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={loading || Boolean(turnstileSiteKey && !turnstileToken)}
+              className="w-full sm:w-auto sm:self-start"
+            >
               <Lock className="h-4 w-4" aria-hidden="true" />
-              {loading ? "Processing…" : `${getPaymentActionText(paymentMethod)} · ${formatCurrency(totalPrice)}`}
+              {loading ? "Processing…" : `${getPaymentActionText(paymentMethod)} · ${formatCurrency(grandTotal)}`}
             </Button>
           </div>
         </form>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
-            <h2 className="type-print text-2xl">Order summary</h2>
-            <ul className="mt-5 flex flex-col divide-y divide-border">
-              {items.map((item: any) => (
-                <li key={item._id || item.id} className="flex items-start justify-between gap-4 py-3 first:pt-0">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{item.eventName || item.title}</p>
-                    <p className="text-sm text-muted">
-                      {item.tierName || item.category} · {item.quantity} ticket{item.quantity === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-medium tabular-nums">
-                    {formatCurrency(item.price * item.quantity)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-              <span className="font-semibold">Total</span>
-              <span className="font-display text-xl font-bold tabular-nums text-accent">
-                {formatCurrency(totalPrice)}
-              </span>
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+            <div className="p-6">
+              <h2 className="type-print text-2xl">Order summary</h2>
+              <ul className="mt-5 flex flex-col divide-y divide-border">
+                {items.map((item: any) => (
+                  <li key={item._id || item.id} className="flex items-start justify-between gap-4 py-3 first:pt-0">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{item.eventName || item.title}</p>
+                      <p className="text-sm text-muted">
+                        {item.tierName || item.category} · {item.quantity} ticket{item.quantity === 1 ? "" : "s"}
+                      </p>
+                      {item.seatCodes?.length > 0 && (
+                        <p className="mt-1 text-xs text-muted-2">Seats {item.seatCodes.join(", ")}</p>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-sm font-medium tabular-nums">
+                      {formatCurrency(item.price * item.quantity)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-muted">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
-              Tickets are issued only after the order status changes to paid.
-            </p>
+            <Perforation />
+
+            <div className="paper flex flex-col gap-2 px-6 pb-6 pt-5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-paper-muted">Subtotal</span>
+                <span className="font-semibold tabular-nums">{formatCurrency(totalPrice)}</span>
+              </div>
+              {promoPreview?.discount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-paper-muted">Promotion {promoPreview.code}</span>
+                  <span className="font-semibold tabular-nums">-{formatCurrency(promoPreview.discount)}</span>
+                </div>
+              )}
+              <div className="mt-2 flex items-center justify-between border-t-2 border-dashed border-paper-line pt-3">
+                <span className="text-base font-semibold">Total</span>
+                <span className="font-display text-3xl font-extrabold leading-none tabular-nums text-foil">
+                  {formatCurrency(grandTotal)}
+                </span>
+              </div>
+              <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-paper-muted">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                Tickets are issued only after the order status changes to paid.
+              </p>
+            </div>
           </div>
         </aside>
       </div>

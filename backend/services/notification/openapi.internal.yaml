@@ -1,0 +1,146 @@
+openapi: 3.0.3
+info:
+  title: Notification Service Internal API
+  version: 1.0.0
+  description: Internal contract for notification operations, email queueing, and campaign management.
+servers:
+  - url: http://notification-service:5105
+security:
+  - InternalApiKey: []
+paths:
+  /internal/notifications/stats:
+    get:
+      summary: Get email queue aggregate statistics
+      responses:
+        '200':
+          description: Notification stats payload
+  /internal/notifications/jobs:
+    get:
+      summary: List email jobs
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: status
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email jobs collection
+  /internal/notifications/logs:
+    get:
+      summary: List email delivery logs
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Email log collection
+  /internal/notifications/emails:
+    post:
+      summary: Enqueue a direct email request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - to
+                - category
+                - subject
+                - template
+              properties:
+                to:
+                  type: string
+                type:
+                  type: string
+                category:
+                  type: string
+                subject:
+                  type: string
+                template:
+                  type: string
+                context:
+                  type: object
+                  additionalProperties: true
+                scheduledAt:
+                  type: string
+                  format: date-time
+                priority:
+                  type: string
+                idempotencyKey:
+                  type: string
+      responses:
+        '201':
+          description: Email job created
+  /internal/notifications/preferences:
+    put:
+      summary: Update notification preferences for a recipient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Preference updated
+  /internal/notifications/suppressions:
+    post:
+      summary: Suppress an email recipient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+      responses:
+        '201':
+          description: Suppression created
+  /internal/notifications/marketing-campaigns:
+    post:
+      summary: Create a marketing campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - subject
+                - recipients
+              properties:
+                name:
+                  type: string
+                subject:
+                  type: string
+                recipients:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+      responses:
+        '201':
+          description: Marketing campaign created
+components:
+  securitySchemes:
+    InternalApiKey:
+      type: apiKey
+      in: header
+      name: x-internal-api-key

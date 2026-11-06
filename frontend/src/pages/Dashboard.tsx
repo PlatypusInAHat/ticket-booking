@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { CalendarCheck, ChevronDown, CreditCard, Loader2, QrCode, Save, Ticket, UserCircle, XCircle } from "lucide-react"
+import { CalendarCheck, ChevronDown, CreditCard, Loader2, QrCode, RefreshCw, Save, Ticket, UserCircle, XCircle } from "lucide-react"
 import { bookingsAPI, usersAPI } from "@/services/api"
 import { updateProfileSuccess } from "@/store/authSlice"
 import { useAppDispatch, useAppSelector } from "@/store"
@@ -139,6 +139,8 @@ export function Dashboard() {
   const [openBooking, setOpenBooking] = useState("")
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [message, setMessage] = useState<{ tone: "success" | "danger"; text: string } | null>(null)
+  const [refundBookingId, setRefundBookingId] = useState("")
+  const [refundReason, setRefundReason] = useState("")
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -184,6 +186,23 @@ export function Dashboard() {
       fetchBookings()
     } catch (error: any) {
       setMessage({ tone: "danger", text: error.response?.data?.message || "This booking can't be cancelled." })
+    }
+  }
+
+  const handleRefundRequest = async (bookingId: string) => {
+    if (refundReason.trim().length < 10) {
+      setMessage({ tone: "danger", text: "Please explain the refund request in at least 10 characters." })
+      return
+    }
+
+    try {
+      await bookingsAPI.requestRefund(bookingId, refundReason.trim())
+      setMessage({ tone: "success", text: "Refund request submitted for review." })
+      setRefundBookingId("")
+      setRefundReason("")
+      fetchBookings()
+    } catch (error: any) {
+      setMessage({ tone: "danger", text: error.response?.data?.message || "We couldn't submit the refund request." })
     }
   }
 
@@ -340,13 +359,56 @@ export function Dashboard() {
                             <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} aria-hidden="true" />
                           </Button>
                         )}
-                        {booking.bookingStatus !== "cancelled" && (
+                        {booking.paymentStatus === "pending" && booking.bookingStatus !== "cancelled" && (
                           <Button size="sm" variant="ghost" onClick={() => handleCancelBooking(booking._id)} className="hover:text-danger">
                             <XCircle className="h-4 w-4" aria-hidden="true" /> Cancel booking
                           </Button>
                         )}
+                        {booking.paymentStatus === "completed" &&
+                          booking.bookingStatus === "confirmed" &&
+                          !["requested", "processing", "processed"].includes(booking.refund?.status) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-expanded={refundBookingId === booking._id}
+                              onClick={() => setRefundBookingId(refundBookingId === booking._id ? "" : booking._id)}
+                            >
+                              <RefreshCw className="h-4 w-4" aria-hidden="true" /> Request refund
+                            </Button>
+                          )}
                       </div>
                     </div>
+
+                    {booking.refund?.status && booking.refund.status !== "none" && (
+                      <p className="border-t border-border px-5 py-3 text-sm text-muted md:px-6">
+                        Refund status: <span className="font-semibold uppercase text-foreground">{booking.refund.status}</span>
+                      </p>
+                    )}
+
+                    {refundBookingId === booking._id && (
+                      <div className="border-t border-border p-5 md:p-6">
+                        <label htmlFor={`refund-${booking._id}`} className="form-label">
+                          Why are you requesting a refund?
+                        </label>
+                        <textarea
+                          id={`refund-${booking._id}`}
+                          value={refundReason}
+                          onChange={(event) => setRefundReason(event.target.value)}
+                          className="form-textarea"
+                          rows={3}
+                          maxLength={500}
+                        />
+                        <p className="mt-1 text-xs text-muted-2">At least 10 characters. The organizer reviews every request.</p>
+                        <div className="mt-3 flex gap-2">
+                          <Button size="sm" onClick={() => handleRefundRequest(booking._id)}>
+                            Submit request
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setRefundBookingId("")}>
+                            Close
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                     {isOpen && (
                       <div className="border-t border-border p-5 md:p-6">

@@ -5,16 +5,15 @@ process.env.SERVICE_MODE = process.env.SERVICE_MODE || 'microservice';
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'api-gateway';
 require('../../shared/tracing').startTracing({ serviceName: process.env.SERVICE_NAME });
 
-const axios = require('axios');
 const compression = require('compression');
 const cors = require('cors');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { correlationIdMiddleware } = require('../../middleware/correlationId');
 const errorHandler = require('../../middleware/error');
-const { constantTimeEqual } = require('../../utils/cryptoUtils');
-const { createCorsOptions } = require('../../utils/corsOptions');
-const { normalizeServiceUrl } = require('../../utils/serviceUrl');
+const { cryptoUtils, corsOptions, serviceUrl } = require('@ticket-booking/platform');
+const { requestInternalService } = require('../../shared/internalHttpClient');
+const { verifyAccessToken } = require('../../shared/waitingRoomToken');
 const {
   buildHealthPayload,
   checkHttpDependency,
@@ -24,6 +23,9 @@ const { createMetricsMiddleware, getServiceMetrics } = require('../../shared/met
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
+const { constantTimeEqual } = cryptoUtils;
+const { createCorsOptions } = corsOptions;
+const { normalizeServiceUrl } = serviceUrl;
 
 const SERVICE_NAME = process.env.SERVICE_NAME || 'api-gateway';
 const PORT = process.env.GATEWAY_PORT || process.env.PORT || 5000;
@@ -31,6 +33,11 @@ const UPSTREAM_TIMEOUT_MS = Number(process.env.GATEWAY_UPSTREAM_TIMEOUT_MS || 10
 const UPSTREAM_HEALTH_TIMEOUT_MS = Number(process.env.GATEWAY_UPSTREAM_HEALTH_TIMEOUT_MS || 3000);
 
 const SERVICE_ROUTES = [
+  {
+    name: 'waiting-room-service',
+    prefixes: ['/api/waiting-room'],
+    target: normalizeServiceUrl(process.env.WAITING_ROOM_SERVICE_URL, 'http://localhost:5106')
+  },
   {
     name: 'auth-service',
     prefixes: ['/api/auth', '/api/users', '/api/admin'],
@@ -113,8 +120,10 @@ const forwardRequest = (service) => async (req, res) => {
   const targetUrl = `${service.target}${req.originalUrl}`;
 
   try {
-    const response = await axios({
-      url: targetUrl,
+    const response = await requestInternalService({
+      serviceName: service.name,
+      baseUrl: service.target,
+      path: req.originalUrl,
       method: req.method,
       headers: {
         ...stripHopByHopHeaders(req.headers),
@@ -122,8 +131,11 @@ const forwardRequest = (service) => async (req, res) => {
       },
       data: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
       responseType: 'arraybuffer',
-      timeout: UPSTREAM_TIMEOUT_MS,
-      validateStatus: () => true
+      timeoutMs: UPSTREAM_TIMEOUT_MS,
+      validateStatus: () => true,
+      rawResponse: true,
+      retries: 1,
+      retryDelayMs: 150
     });
 
     Object.entries(stripHopByHopHeaders(response.headers)).forEach(([key, value]) => {
@@ -138,6 +150,41 @@ const forwardRequest = (service) => async (req, res) => {
       upstream: service.name,
       message: 'Upstream service unavailable',
       detail: error.message
+    });
+  }
+};
+
+const requireWaitingRoomAccess = (req, res, next) => {
+  if (
+    process.env.WAITING_ROOM_ENABLED !== 'true' ||
+    req.method !== 'POST' ||
+    req.path !== '/'
+  ) return next();
+
+  const accessToken = req.get('x-waiting-room-token');
+  const authToken = req.get('authorization')?.replace(/^Bearer\s+/i, '');
+  if (!accessToken || !authToken) {
+    return res.status(428).json({
+      success: false,
+      code: 'WAITING_ROOM_REQUIRED',
+      message: 'Join the waiting room before creating a booking.'
+    });
+  }
+
+  try {
+    const access = verifyAccessToken(accessToken);
+    const user = jwt.verify(authToken, process.env.JWT_SECRET);
+    const userId = String(user.id || user._id || user.sub || '');
+    if (!userId || userId !== String(access.userId)) throw new Error('Token owner mismatch');
+
+    req.headers['x-waiting-room-entry-id'] = access.entryId;
+    req.headers['x-waiting-room-event-ids'] = access.eventIds.join(',');
+    return next();
+  } catch {
+    return res.status(403).json({
+      success: false,
+      code: 'WAITING_ROOM_TOKEN_INVALID',
+      message: 'Waiting-room access expired or is invalid. Please rejoin the queue.'
     });
   }
 };
@@ -181,7 +228,7 @@ app.get('/health/ready', async (req, res, next) => {
   }
 });
 
-app.get('/health/dependencies', async (req, res, next) => {
+app.get('/health/dependencies', requireGatewayAdmin, async (req, res, next) => {
   try {
     const dependencies = await checkGatewayDependencies();
     const hasDownDependency = Object.values(dependencies).some((dependency) => dependency.status === 'DOWN');
@@ -205,7 +252,7 @@ app.get('/metrics', async (req, res, next) => {
   }
 });
 
-const requireGatewayAdmin = (req, res, next) => {
+function requireGatewayAdmin(req, res, next) {
   const internalKey = process.env.INTERNAL_API_KEY;
   const providedInternalKey = req.get('x-internal-api-key');
 
@@ -245,7 +292,7 @@ const requireGatewayAdmin = (req, res, next) => {
     req.user = payload;
     return next();
   });
-};
+}
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -259,7 +306,15 @@ app.get('/api/health', (req, res) => {
 app.get('/api/admin/gateway/status', requireGatewayAdmin, async (req, res) => {
   const statusPromises = SERVICE_ROUTES.map(async (service) => {
     try {
-      const response = await axios.get(`${service.target}/health/ready`, { timeout: 3000 });
+      const response = await requestInternalService({
+        serviceName: service.name,
+        baseUrl: service.target,
+        path: '/health/ready',
+        timeoutMs: 3000,
+        retries: 1,
+        retryDelayMs: 150,
+        rawResponse: true
+      });
       return { name: service.name, status: 'UP', detail: response.data };
     } catch (err) {
       return { name: service.name, status: 'DOWN', error: err.message };
@@ -282,7 +337,8 @@ app.get('/api/admin/gateway/status', requireGatewayAdmin, async (req, res) => {
 SERVICE_ROUTES.forEach((service) => {
   service.prefixes.forEach((prefix) => {
     const proxy = forwardRequest(service);
-    app.use(prefix, (req, res) => {
+    const middleware = prefix === '/api/bookings' ? requireWaitingRoomAccess : (req, res, next) => next();
+    app.use(prefix, middleware, (req, res) => {
       req.metricsRoute = `${prefix}/*`;
       return proxy(req, res);
     });

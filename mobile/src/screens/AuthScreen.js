@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ticket, User, LogIn, UserPlus } from 'lucide-react-native';
+import { Ticket, User, LogIn, UserPlus, Mail } from 'lucide-react-native';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Field from '../components/Field';
@@ -28,6 +28,12 @@ export default function AuthScreen({ onAuthenticated }) {
     setMessage('');
 
     try {
+      if (mode === 'forgot') {
+        await authApi.forgotPassword(form.email);
+        setMessage('If this email exists, a password reset link has been sent.');
+        return;
+      }
+
       const auth = mode === 'login'
         ? await authApi.login(form.email, form.password)
         : await authApi.register(form);
@@ -62,7 +68,8 @@ export default function AuthScreen({ onAuthenticated }) {
         <Tabs
           tabs={[
             { key: 'login', label: 'Log in', icon: LogIn },
-            { key: 'register', label: 'Register', icon: UserPlus }
+            { key: 'register', label: 'Register', icon: UserPlus },
+            { key: 'forgot', label: 'Forgot password', icon: Mail }
           ]}
           activeTab={mode}
           onChange={setMode}
@@ -77,14 +84,14 @@ export default function AuthScreen({ onAuthenticated }) {
           />
         )}
 
-        <Field
+        {mode !== 'forgot' && <Field
           label="Email"
           value={form.email}
           onChangeText={(value) => setForm(current => ({ ...current, email: value }))}
           autoCapitalize="none"
           keyboardType="email-address"
           placeholder="you@example.com"
-        />
+        />}
 
         <Field
           label="Password"
@@ -107,17 +114,17 @@ export default function AuthScreen({ onAuthenticated }) {
         {message ? <Text style={styles.errorText}>{message}</Text> : null}
 
         <Button
-          title={mode === 'login' ? 'Log in' : 'Create account'}
-          icon={mode === 'login' ? LogIn : UserPlus}
+          title={mode === 'login' ? 'Log in' : mode === 'register' ? 'Create account' : 'Send reset email'}
+          icon={mode === 'login' ? LogIn : mode === 'register' ? UserPlus : Mail}
           onPress={submit}
           loading={loading}
           style={styles.mainButton}
         />
 
-        <View style={styles.demoRow}>
+        {mode === 'login' && <View style={styles.demoRow}>
           <Button title="Customer" variant="secondary" icon={User} onPress={() => useDemoAccount('user')} style={styles.demoButton} />
           <Button title="Staff" variant="secondary" icon={User} onPress={() => useDemoAccount('staff')} style={styles.demoButton} />
-        </View>
+        </View>}
       </Card>
     </Screen>
   );

@@ -1,6 +1,8 @@
-const Booking = require('../models/Booking');
-const EVENTS = require('../shared/domainEvents');
+const bookingServicePackage = require('../services/booking/src');
+const { domainEvents } = require('@ticket-booking/platform');
 const { subscribeEvents } = require('../shared/eventBus');
+const { Booking } = bookingServicePackage.models;
+const EVENTS = domainEvents;
 
 const handlePassCheckedIn = async ({ payload }) => {
   if (!payload.bookingId || !payload.passId) {

@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { AlertCircle, ArrowUpRight, CalendarX } from "lucide-react"
 import { Hero } from "@/components/home/Hero"
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button"
 import { Perforation } from "@/components/ui/Perforation"
 import { useCatalogEvents } from "@/hooks/useCatalogEvents"
 import type { EventItem } from "@/data/types"
+import { notificationsAPI } from "@/services/api"
 
 const categories = ["Concert", "Festival", "Sports", "Theater", "Conference", "Workshop"]
 
@@ -65,6 +66,25 @@ export function Home() {
   // The featured event already owns the hero ticket, so the grid leaves it out.
   const trendingGrid = trending.slice(1).concat(upcoming.filter((event) => !trending.includes(event))).slice(0, 4)
   const later = upcoming.filter((event) => event !== featured && !trendingGrid.includes(event)).slice(0, 8)
+  const [newsletterEmail, setNewsletterEmail] = useState("")
+  const [newsletterStatus, setNewsletterStatus] = useState<{ tone: "success" | "danger"; text: string } | null>(null)
+  const [newsletterLoading, setNewsletterLoading] = useState(false)
+
+  const subscribeNewsletter = async (event: FormEvent) => {
+    event.preventDefault()
+    setNewsletterLoading(true)
+    setNewsletterStatus(null)
+
+    try {
+      await notificationsAPI.subscribe(newsletterEmail)
+      setNewsletterStatus({ tone: "success", text: "You're on the list. New events land in your inbox first." })
+      setNewsletterEmail("")
+    } catch (error: any) {
+      setNewsletterStatus({ tone: "danger", text: error.response?.data?.message || "We couldn't save your email. Please try again." })
+    } finally {
+      setNewsletterLoading(false)
+    }
+  }
 
   return (
     <>
@@ -164,6 +184,47 @@ export function Home() {
           </div>
         </section>
       )}
+
+      <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+        <div className="flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface md:flex-row">
+          <div className="flex-1 p-6 md:p-8">
+            <h2 className="type-print text-4xl sm:text-5xl">First in line for new events</h2>
+            <p className="mt-3 max-w-md text-pretty text-muted">
+              Early-bird tickets, presales and new shows from organizers across Vietnam, straight to your inbox.
+            </p>
+          </div>
+          <Perforation className="md:hidden" />
+          <Perforation orientation="vertical" className="hidden md:block" />
+          <form onSubmit={subscribeNewsletter} className="paper flex flex-col justify-center gap-3 p-6 md:w-[26rem] md:p-8">
+            <label htmlFor="newsletter-email" className="text-sm font-semibold">
+              Email address
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="newsletter-email"
+                type="email"
+                required
+                autoComplete="email"
+                value={newsletterEmail}
+                onChange={(event) => setNewsletterEmail(event.target.value)}
+                placeholder="you@example.com"
+                className="h-12 w-full min-w-0 rounded-md border border-paper-line bg-paper-2 px-4 text-sm text-paper-ink outline-none placeholder:text-paper-muted focus:border-foil"
+              />
+              <Button type="submit" size="lg" disabled={newsletterLoading}>
+                {newsletterLoading ? "Saving…" : "Subscribe"}
+              </Button>
+            </div>
+            {newsletterStatus && (
+              <p
+                className={newsletterStatus.tone === "success" ? "text-sm text-paper-ink" : "text-sm text-stamp"}
+                role="status"
+              >
+                {newsletterStatus.text}
+              </p>
+            )}
+          </form>
+        </div>
+      </section>
     </>
   )
 }

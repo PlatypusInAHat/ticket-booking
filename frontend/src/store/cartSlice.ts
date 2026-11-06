@@ -49,16 +49,27 @@ const cartSlice = createSlice({
     addToCart: (state, action: PayloadAction<any>) => {
       const existingItem = state.items.find((item) => item._id === action.payload._id)
       const quantityToAdd = Math.max(1, Number(action.payload.quantity) || 1)
+      const selectedSeatCodes = Array.isArray(action.payload.seatCodes)
+        ? Array.from(new Set(action.payload.seatCodes.map((code: unknown) => String(code).toUpperCase())))
+        : []
 
       if (existingItem) {
-        existingItem.quantity = Math.min(
-          existingItem.quantity + quantityToAdd,
-          existingItem.availableSeats
-        )
+        if (selectedSeatCodes.length > 0) {
+          existingItem.seatCodes = selectedSeatCodes
+          existingItem.quantity = selectedSeatCodes.length
+        } else {
+          existingItem.quantity = Math.min(
+            existingItem.quantity + quantityToAdd,
+            existingItem.availableSeats
+          )
+        }
       } else {
         state.items.push({
           ...action.payload,
-          quantity: Math.min(quantityToAdd, action.payload.availableSeats),
+          seatCodes: selectedSeatCodes,
+          quantity: selectedSeatCodes.length > 0
+            ? selectedSeatCodes.length
+            : Math.min(quantityToAdd, action.payload.availableSeats),
         })
       }
 
@@ -71,6 +82,9 @@ const cartSlice = createSlice({
     updateQuantity: (state, action: PayloadAction<{ id: string; quantity: number }>) => {
       const item = state.items.find((item) => item._id === action.payload.id)
       if (item) {
+        if (Array.isArray(item.seatCodes) && item.seatCodes.length > 0) {
+          return
+        }
         item.quantity = Math.min(Math.max(1, action.payload.quantity), item.availableSeats)
         if (item.quantity <= 0) {
           state.items = state.items.filter((i) => i._id !== action.payload.id)

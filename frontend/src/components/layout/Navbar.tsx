@@ -43,12 +43,10 @@ export function Navbar() {
   const links = [
     ...navItems,
     ...(user ? [{ label: "My tickets", to: "/dashboard" }] : []),
-    ...(user?.role === "admin"
-      ? [
-          { label: "Admin", to: "/admin" },
-          { label: "API", to: "/api-management" },
-        ]
+    ...(["admin", "organizer"].includes(user?.role)
+      ? [{ label: user?.role === "admin" ? "Admin" : "Organizer", to: "/admin" }]
       : []),
+    ...(user?.role === "admin" ? [{ label: "API", to: "/api-management" }] : []),
   ]
 
   const handleLogout = async () => {

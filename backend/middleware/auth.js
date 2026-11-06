@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const ApiError = require('../utils/ApiError');
+const { ApiError } = require('@ticket-booking/shared');
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];

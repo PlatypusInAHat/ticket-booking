@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { once } = require('events');
 const {
   SpanKind,
   SpanStatusCode,
@@ -6,6 +7,11 @@ const {
   propagation,
   trace
 } = require('@opentelemetry/api');
+const {
+  claimEvent,
+  markEventCompleted,
+  markEventFailed
+} = require('./eventConsumerIdempotency');
 
 const EXCHANGE_NAME = process.env.EVENT_EXCHANGE || 'ticket-booking.events';
 const DEFAULT_PREFETCH = 10;
@@ -68,7 +74,8 @@ const connectEventBus = async () => {
     }
   }
 
-  channel = await connection.createChannel();
+  // Confirm channels make retry/DLQ and outbox publishing durable before the source message is acknowledged.
+  channel = await connection.createConfirmChannel();
   await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
 
   connection.on('close', () => {
@@ -117,7 +124,7 @@ const publishEnvelope = async (envelope) => {
         const headers = {};
         propagation.inject(context.active(), headers);
 
-        activeChannel.publish(
+        const accepted = activeChannel.publish(
           EXCHANGE_NAME,
           envelope.type,
           Buffer.from(JSON.stringify(envelope)),
@@ -129,6 +136,11 @@ const publishEnvelope = async (envelope) => {
             headers
           }
         );
+
+        if (!accepted) {
+          await once(activeChannel, 'drain');
+        }
+        await activeChannel.waitForConfirms();
 
         span.setStatus({ code: SpanStatusCode.OK });
         return true;
@@ -159,8 +171,8 @@ const getRetryCount = (message) => {
   return Number.isFinite(retryCount) ? retryCount : 0;
 };
 
-const publishToQueue = (activeChannel, queueName, message, headers = {}) => {
-  activeChannel.sendToQueue(
+const publishToQueue = async (activeChannel, queueName, message, headers = {}) => {
+  const accepted = activeChannel.sendToQueue(
     queueName,
     message.content,
     {
@@ -172,6 +184,11 @@ const publishToQueue = (activeChannel, queueName, message, headers = {}) => {
       }
     }
   );
+
+  if (!accepted) {
+    await once(activeChannel, 'drain');
+  }
+  await activeChannel.waitForConfirms();
 };
 
 const subscribeEvents = async ({ serviceName, routingKeys, handler }) => {
@@ -223,10 +240,31 @@ const subscribeEvents = async ({ serviceName, routingKeys, handler }) => {
         }
       },
       async (span) => {
+        let envelope;
+        let eventId = '';
         try {
-          const envelope = JSON.parse(message.content.toString());
+          envelope = JSON.parse(message.content.toString());
+          eventId = envelope.id || message.properties.messageId || '';
           span.setAttribute('messaging.message.type', envelope.type);
+          const claim = await claimEvent({
+            consumerGroup: serviceName,
+            eventId,
+            eventType: envelope.type,
+            metadata: {
+              routingKey: message.fields.routingKey
+            }
+          });
+
+          if (claim.skipped) {
+            span.setAttribute('messaging.message.deduplicated', true);
+            span.setAttribute('messaging.message.deduplicated_reason', claim.reason || 'skipped');
+            span.setStatus({ code: SpanStatusCode.OK });
+            activeChannel.ack(message);
+            return;
+          }
+
           await handler(envelope);
+          await markEventCompleted({ consumerGroup: serviceName, eventId });
           span.setStatus({ code: SpanStatusCode.OK });
           activeChannel.ack(message);
         } catch (error) {
@@ -235,14 +273,15 @@ const subscribeEvents = async ({ serviceName, routingKeys, handler }) => {
           span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
           span.setAttribute('messaging.message.retry_count', retryCount);
           console.error(`[event-bus] ${serviceName} handler failed:`, error.message);
+          await markEventFailed({ consumerGroup: serviceName, eventId, error });
 
           if (retryCount < maxRetries) {
-            publishToQueue(activeChannel, retryQueueName, message, {
+            await publishToQueue(activeChannel, retryQueueName, message, {
               'x-retry-count': retryCount + 1,
               'x-last-error': error.message
             });
           } else {
-            publishToQueue(activeChannel, deadQueueName, message, {
+            await publishToQueue(activeChannel, deadQueueName, message, {
               'x-retry-count': retryCount,
               'x-dead-lettered-at': new Date().toISOString(),
               'x-last-error': error.message

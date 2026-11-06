@@ -19,7 +19,9 @@
     "expo": "^51.0.0",
     "expo-camera": "~15.0.16",
     "expo-clipboard": "~6.0.3",
+    "expo-secure-store": "~13.0.2",
     "expo-status-bar": "~1.12.1",
+    "js-sha256": "^1.0.0",
     "lucide-react-native": "^1.21.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -30,5 +32,8 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0"
+  },
+  "overrides": {
+    "tar": "^7.5.21"
   }
 }

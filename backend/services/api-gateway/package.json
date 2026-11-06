@@ -1,0 +1,10 @@
+{
+  "name": "@ticket-booking/api-gateway",
+  "private": true,
+  "version": "1.0.0",
+  "description": "API gateway package for the ticket booking backend",
+  "scripts": {
+    "start": "node ../../microservices/api-gateway/server.js",
+    "dev": "nodemon ../../microservices/api-gateway/server.js"
+  }
+}

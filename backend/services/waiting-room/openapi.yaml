@@ -1,0 +1,45 @@
+openapi: 3.0.3
+info:
+  title: TicketStage Waiting Room API
+  version: 1.0.0
+paths:
+  /api/waiting-room/join:
+    post:
+      summary: Join or resume an event waiting room
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventIds, deviceFingerprint]
+              properties:
+                eventIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items: { type: string }
+                deviceFingerprint: { type: string }
+      responses:
+        '202': { description: Waiting-room entry created or resumed }
+  /api/waiting-room/{entryToken}/status:
+    get:
+      summary: Poll queue position or receive a checkout access token
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: entryToken
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Waiting or admitted state }
+        '404': { description: Entry expired }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

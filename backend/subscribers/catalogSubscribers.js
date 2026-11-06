@@ -1,6 +1,8 @@
-const catalogInventoryService = require('../services/catalogInventoryService');
-const EVENTS = require('../shared/domainEvents');
+const catalogServicePackage = require('../services/catalog/src');
+const { domainEvents } = require('@ticket-booking/platform');
 const { subscribeEvents } = require('../shared/eventBus');
+const catalogInventoryService = catalogServicePackage.services.inventory;
+const EVENTS = domainEvents;
 
 const startCatalogSubscribers = async () => {
   await subscribeEvents({
@@ -12,13 +14,16 @@ const startCatalogSubscribers = async () => {
     ],
     handler: async (event) => {
       if (event.type === EVENTS.PAYMENT_COMPLETED) {
-        await catalogInventoryService.applyRevenue(event.payload.booking?.tickets || []);
+        await catalogInventoryService.applyRevenue(event.payload.booking?.tickets || [], {
+          reservationId: event.payload.booking?.inventoryReservationId
+        });
         return;
       }
 
       if ([EVENTS.BOOKING_CANCELLED, EVENTS.BOOKING_EXPIRED].includes(event.type)) {
         await catalogInventoryService.releaseTickets(event.payload.booking?.tickets || [], {
-          restoreRevenue: Boolean(event.payload.restoreRevenue)
+          restoreRevenue: Boolean(event.payload.restoreRevenue),
+          reservationId: event.payload.booking?.inventoryReservationId
         });
       }
     }

@@ -19,6 +19,7 @@ export interface TicketTier {
   perks: string[]
   remaining: number
   badge?: string
+  seatMap?: SeatMap
 }
 
 export interface Seat {

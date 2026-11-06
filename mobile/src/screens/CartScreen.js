@@ -4,10 +4,11 @@ import { Trash2, MapPin, Calendar, CreditCard } from 'lucide-react-native';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Screen from '../components/Screen';
+import Field from '../components/Field';
 import { colors, radius } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 
-export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckout, loading }) {
+export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckout, loading, promoCode, onPromoCodeChange, promoPreview, onApplyPromotion, promoMessage }) {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -34,9 +35,10 @@ export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckou
               </View>
 
               <Text style={styles.price}>{formatCurrency(item.price)} / ticket</Text>
+              {item.seatCodes?.length ? <Text style={styles.muted}>Seats: {item.seatCodes.join(', ')}</Text> : null}
 
               <View style={styles.cartActions}>
-                <View style={styles.stepper}>
+                {!item.seatCodes?.length ? <View style={styles.stepper}>
                   <Pressable style={styles.stepButton} onPress={() => onChangeQuantity(item._id, item.quantity - 1)}>
                     <Text style={styles.stepText}>-</Text>
                   </Pressable>
@@ -44,7 +46,7 @@ export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckou
                   <Pressable style={styles.stepButton} onPress={() => onChangeQuantity(item._id, item.quantity + 1)}>
                     <Text style={styles.stepText}>+</Text>
                   </Pressable>
-                </View>
+                </View> : <Text style={styles.muted}>{item.quantity} selected seat(s)</Text>}
                 <Button title="Remove" icon={Trash2} variant="danger" onPress={() => onRemove(item._id)} style={styles.removeButton} />
               </View>
             </Card>
@@ -55,6 +57,21 @@ export default function CartScreen({ cart, onChangeQuantity, onRemove, onCheckou
               <Text style={styles.muted}>Total tickets</Text>
               <Text style={styles.summaryValue}>{totalQuantity}</Text>
             </View>
+            <Field label="Promotion code" value={promoCode} onChangeText={onPromoCodeChange} autoCapitalize="characters" placeholder="EARLYBIRD" />
+            <Button title="Apply promotion" variant="secondary" onPress={onApplyPromotion} />
+            {promoMessage ? <Text style={styles.promoMessage}>{promoMessage}</Text> : null}
+            {promoPreview?.discount > 0 ? (
+              <View style={styles.rowBetween}>
+                <Text style={styles.muted}>Discount</Text>
+                <Text style={styles.discount}>-{formatCurrency(promoPreview.discount)}</Text>
+              </View>
+            ) : null}
+            {promoPreview ? (
+              <View style={styles.rowBetween}>
+                <Text style={styles.muted}>Total after discount</Text>
+                <Text style={styles.total}>{formatCurrency(promoPreview.grandTotal)}</Text>
+              </View>
+            ) : null}
             <View style={styles.rowBetween}>
               <Text style={styles.muted}>Subtotal</Text>
               <Text style={styles.total}>{formatCurrency(total)}</Text>
@@ -94,6 +111,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginTop: 6
+  },
+  discount: {
+    color: colors.accent,
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  promoMessage: {
+    color: colors.muted,
+    fontSize: 13,
+    marginBottom: 14
   },
   muted: {
     color: colors.muted,

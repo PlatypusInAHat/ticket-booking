@@ -1,9 +1,10 @@
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
-const Company = require('../models/Company');
-const Event = require('../models/Event');
-const Ticket = require('../models/Ticket');
-const User = require('../models/User');
+const authServicePackage = require('../services/auth/src');
+const catalogServicePackage = require('../services/catalog/src');
+
+const { User } = authServicePackage.models;
+const { Company, Event, Ticket } = catalogServicePackage.models;
 
 dotenv.config();
 

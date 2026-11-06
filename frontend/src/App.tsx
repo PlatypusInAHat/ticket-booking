@@ -102,9 +102,13 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>
 
+          {["admin", "organizer"].includes(user?.role) && (
+            <Route element={<PrivateRoute requiredRoles={["admin", "organizer"]} />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Route>
+          )}
           {user?.role === "admin" && (
             <Route element={<PrivateRoute requiredRole="admin" />}>
-              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/api-management" element={<ApiManagement />} />
             </Route>
           )}
