@@ -1,67 +1,68 @@
 import { memo } from "react"
 import { Link } from "react-router-dom"
-import { Calendar, MapPin, Star } from "lucide-react"
 import type { EventItem } from "@/data/types"
-import { StatusBadge, Badge } from "@/components/ui/Badge"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { Badge } from "@/components/ui/Badge"
+import { Perforation, StubDate } from "@/components/ui/Perforation"
+import { formatCurrency } from "@/lib/utils"
 
+// An event printed as a ticket: photo and title on the body, date and price on the cream stub.
 export const EventCard = memo(function EventCard({ event }: { event: EventItem }) {
+  const hasTickets = event.tiers.length > 0 && event.priceFrom > 0
+  const place = [event.venue, event.city].filter(Boolean).join(", ")
+  const soldOut = event.status === "soldout"
+
   return (
     <Link
       to={`/events/${event.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-border-strong hover:shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)]"
+      className="group relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface transition-colors duration-200 hover:border-border-strong"
     >
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
         <img
           src={event.image || "/placeholder.svg"}
-          alt={event.title}
+          alt=""
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className={
+            "h-full w-full object-cover transition-[filter,transform] duration-500 group-hover:scale-[1.03] " +
+            (soldOut ? "grayscale" : "")
+          }
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-        <div className="absolute left-3 top-3 flex items-center gap-2">
-          <Badge tone="neutral" className="bg-background/70">
+        {event.category && event.category !== "Other" && (
+          <Badge tone="neutral" className="absolute left-3 top-3 border-transparent bg-background/85 text-foreground">
             {event.category}
           </Badge>
-          {event.popular && <Badge tone="accent">Featured</Badge>}
-        </div>
-        <div className="absolute bottom-3 right-3">
-          <StatusBadge status={event.status} />
-        </div>
+        )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-lg font-semibold leading-tight tracking-tight text-balance">
-            {event.title}
-          </h3>
-          <span className="flex shrink-0 items-center gap-1 text-sm text-muted">
-            <Star className="h-3.5 w-3.5 fill-accent text-accent" />
-            {event.rating}
-          </span>
-        </div>
+      <div className="flex flex-1 flex-col gap-1.5 px-5 pb-5 pt-4">
+        <h3 className="type-print text-[1.65rem] group-hover:text-accent">{event.title}</h3>
+        <p className="truncate text-sm text-muted">{place || "Venue to be announced"}</p>
+      </div>
 
-        <div className="flex flex-col gap-1.5 text-sm text-muted">
-          <span className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-2" />
-            {formatDate(event.date)}
-          </span>
-          <span className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-2" />
-            {event.venue}, {event.city}
-          </span>
-        </div>
+      <Perforation />
 
-        <div className="mt-auto flex items-end justify-between border-t border-border pt-4">
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-2">From</span>
-            <span className="font-display text-xl font-semibold text-foreground">
-              {formatCurrency(event.priceFrom)}
+      <div className="paper flex items-end justify-between gap-3 px-5 pb-4 pt-4">
+        <StubDate date={event.date} />
+        <div className="flex flex-col items-end text-right">
+          {soldOut ? (
+            <span className="rounded-sm border-2 border-current px-1.5 pt-0.5 font-display text-base font-extrabold uppercase leading-none text-stamp -rotate-3">
+              Sold out
             </span>
-          </div>
-          <span className="text-sm font-medium text-accent transition-transform duration-200 group-hover:translate-x-0.5">
-            View details &rarr;
-          </span>
+          ) : hasTickets ? (
+            <>
+              {event.status === "limited" ? (
+                <span className="mb-1 rounded-sm border-2 border-current px-1 pt-0.5 font-display text-xs font-extrabold uppercase leading-none text-foil">
+                  Almost gone
+                </span>
+              ) : (
+                <span className="text-xs font-medium text-paper-muted">From</span>
+              )}
+              <span className="font-display text-2xl font-extrabold leading-none tabular-nums text-foil">
+                {formatCurrency(event.priceFrom)}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm font-medium text-paper-muted">Tickets soon</span>
+          )}
         </div>
       </div>
     </Link>

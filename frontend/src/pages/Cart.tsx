@@ -13,11 +13,11 @@ export function Cart() {
   if (items.length === 0) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-4 py-32 text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-2 text-muted-2">
+        <span className="flex h-16 w-16 items-center justify-center rounded-md bg-surface-2 text-muted-2">
           <ShoppingBag className="h-7 w-7" />
         </span>
         <div>
-          <h1 className="font-display text-2xl font-bold">Your cart is empty</h1>
+          <h1 className="type-print text-4xl">Your cart is empty</h1>
           <p className="mt-2 text-muted">Pick an event you love and your tickets will appear here.</p>
         </div>
         <Button to="/events" size="lg">
@@ -29,7 +29,7 @@ export function Cart() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="font-display text-4xl font-bold tracking-tight">Your ticket cart</h1>
+      <h1 className="type-print text-5xl sm:text-6xl">Your ticket cart</h1>
       <p className="mt-2 text-muted">
         {items.length} ticket type{items.length === 1 ? "" : "s"} ready for checkout.
       </p>
@@ -43,8 +43,8 @@ export function Cart() {
             >
               <img
                 src={line.image || line.eventImage || "/placeholder.svg"}
-                alt={line.eventName || line.eventTitle}
-                className="h-24 w-24 shrink-0 rounded-xl object-cover"
+                alt=""
+                className="h-24 w-24 shrink-0 rounded-xl bg-surface-2 object-cover"
               />
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-start justify-between gap-2">
@@ -54,7 +54,7 @@ export function Cart() {
                   </div>
                   <button
                     onClick={() => dispatch(removeFromCart(line._id || line.id))}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-2 transition-colors hover:bg-surface-2 hover:text-danger"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-muted-2 transition-colors hover:bg-surface-2 hover:text-danger"
                     aria-label="Remove item"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -66,7 +66,7 @@ export function Cart() {
                 </p>
 
                 <div className="mt-auto flex items-center justify-between pt-3">
-                  <div className="flex items-center gap-1 rounded-full border border-border bg-background p-1">
+                  <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1">
                     <button
                       onClick={() =>
                         dispatch(
@@ -77,7 +77,7 @@ export function Cart() {
                         )
                       }
                       disabled={line.quantity <= 1}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-40"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-40"
                       aria-label="Decrease quantity"
                     >
                       <Minus className="h-3.5 w-3.5" />
@@ -92,13 +92,14 @@ export function Cart() {
                           }),
                         )
                       }
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+                      disabled={line.quantity >= (line.availableSeats || Infinity)}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-40"
                       aria-label="Increase quantity"
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <span className="font-display font-semibold">
+                  <span className="font-display font-semibold tabular-nums">
                     {formatCurrency(line.price * line.quantity)}
                   </span>
                 </div>
@@ -109,7 +110,7 @@ export function Cart() {
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
-            <h2 className="font-display text-lg font-semibold">Order summary</h2>
+            <h2 className="type-print text-2xl">Order summary</h2>
             <div className="mt-5 flex flex-col gap-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted">Subtotal</span>
@@ -117,7 +118,7 @@ export function Cart() {
               </div>
               <div className="flex items-center justify-between border-t border-border pt-3 text-base">
                 <span className="font-semibold">Total</span>
-                <span className="font-display text-xl font-bold text-accent">
+                <span className="font-display text-xl font-bold tabular-nums text-accent">
                   {formatCurrency(subtotal)}
                 </span>
               </div>

@@ -21,12 +21,12 @@ const PaymentResult = lazy(() => import("@/pages/PaymentResult").then((module) =
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then((module) => ({ default: module.AdminDashboard })))
 const ApiManagement = lazy(() => import("@/pages/ApiManagement").then((module) => ({ default: module.ApiManagement })))
 
-function PageLoader({ title = "Loading interface..." }) {
+function PageLoader({ title = "Loading…" }) {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center">
-      <div className="glass px-8 py-6 text-center">
-        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-accent/20 border-t-accent" />
-        <p className="text-sm font-bold text-foreground">{title}</p>
+    <div className="flex min-h-[50vh] items-center justify-center" role="status">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent/20 border-t-accent" aria-hidden="true" />
+        <p className="text-sm text-muted">{title}</p>
       </div>
     </div>
   )
@@ -78,7 +78,7 @@ export default function App() {
   if (isBootstrapping) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
-        <PageLoader title="Checking your session..." />
+        <PageLoader title="Checking your session…" />
       </div>
     )
   }

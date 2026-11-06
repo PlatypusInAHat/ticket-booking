@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { Search, SlidersHorizontal, X } from "lucide-react"
+import { AlertCircle, Search, SlidersHorizontal, X } from "lucide-react"
 import { EventCard } from "@/components/EventCard"
 import { Button } from "@/components/ui/Button"
-import type { EventCategory, EventItem } from "@/data/types"
+import type { EventCategory } from "@/data/types"
 import { cn } from "@/lib/utils"
-import { eventsAPI, ticketsAPI } from "@/services/api"
-import { mapApiEventToEventItem } from "@/utils/eventMapper"
+import { useCatalogEvents } from "@/hooks/useCatalogEvents"
 
 type SortKey = "popular" | "price-asc" | "price-desc" | "date"
 
@@ -32,43 +31,15 @@ const baseCategories: Array<EventCategory | "All"> = [
 export function Events() {
   const [params, setParams] = useSearchParams()
   const activeCategory = params.get("category") ?? "All"
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(() => params.get("q") ?? "")
   const [sort, setSort] = useState<SortKey>("popular")
-  const [events, setEvents] = useState<EventItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const { events, loading, error } = useCatalogEvents()
 
   useEffect(() => {
-    setQuery("")
+    setQuery(params.get("q") ?? "")
+    // Only a category switch resets the search; typing must not be overwritten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory])
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    const loadEvents = async () => {
-      setLoading(true)
-      setError("")
-
-      try {
-        const [eventsResponse, ticketsResponse] = await Promise.all([
-          eventsAPI.getEvents({ limit: 100 }, { signal: controller.signal }),
-          ticketsAPI.getAll({ limit: 500 }, { signal: controller.signal }),
-        ])
-
-        const apiEvents = eventsResponse.data.data?.events || []
-        const apiTickets = ticketsResponse.data.data?.tickets || []
-        setEvents(apiEvents.map((event: any) => mapApiEventToEventItem(event, apiTickets)))
-      } catch (err: any) {
-        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return
-        setError(err.response?.data?.message || "Could not load events.")
-      } finally {
-        if (!controller.signal.aborted) setLoading(false)
-      }
-    }
-
-    loadEvents()
-    return () => controller.abort()
-  }, [])
 
   const categories = useMemo(() => {
     const fromEvents = events.map((event) => event.category)
@@ -79,6 +50,7 @@ export function Events() {
     const next = new URLSearchParams(params)
     if (cat === "All") next.delete("category")
     else next.set("category", cat)
+    next.delete("q")
     setParams(next, { replace: true })
   }
 
@@ -106,7 +78,7 @@ export function Events() {
         list.sort((a, b) => +new Date(a.date) - +new Date(b.date))
         break
       default:
-        list.sort((a, b) => Number(b.popular) - Number(a.popular) || b.rating - a.rating)
+        list.sort((a, b) => Number(b.popular) - Number(a.popular) || +new Date(a.date) - +new Date(b.date))
     }
     return list
   }, [activeCategory, events, query, sort])
@@ -114,26 +86,33 @@ export function Events() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-3">
-        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          {filtered.length} event{filtered.length === 1 ? "" : "s"}
-        </span>
-        <h1 className="font-display text-4xl font-bold tracking-tight">
+        <h1 className="type-print text-5xl sm:text-6xl">
           {activeCategory === "All" ? "All events" : activeCategory}
         </h1>
         <p className="max-w-xl leading-relaxed text-muted">
           Discover events now on sale, filter by category, and book digital tickets in just a few steps.
         </p>
+        {!loading && !error && (
+          <p className="text-sm text-muted-2" aria-live="polite">
+            {filtered.length} event{filtered.length === 1 ? "" : "s"}
+          </p>
+        )}
       </div>
 
-      <div className="sticky top-16 z-30 -mx-4 mt-8 border-y border-border bg-background/80 px-4 py-4 backdrop-blur-md sm:mx-0 sm:rounded-2xl sm:border sm:px-5">
+      <div className="sticky top-16 z-30 -mx-4 mt-8 border-y border-border bg-background px-4 py-4 sm:mx-0 sm:rounded-2xl sm:border sm:px-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-sm">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-2" />
+            <label htmlFor="event-search" className="sr-only">
+              Search events
+            </label>
             <input
+              id="event-search"
+              type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by event, organizer, city..."
-              className="h-11 w-full rounded-full border border-border bg-surface pl-11 pr-10 text-sm text-foreground placeholder:text-muted-2 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              className="h-11 w-full rounded-md border border-border bg-surface pl-11 pr-10 text-sm text-foreground placeholder:text-muted-2 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
             {query && (
               <button
@@ -155,7 +134,7 @@ export function Events() {
               id="sort"
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
-              className="h-11 rounded-full border border-border bg-surface px-4 text-sm text-foreground transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              className="h-11 rounded-md border border-border bg-surface px-4 text-sm text-foreground transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
             >
               {sortOptions.map((option) => (
                 <option key={option.key} value={option.key}>
@@ -170,9 +149,11 @@ export function Events() {
           {categories.map((cat) => (
             <button
               key={cat}
+              type="button"
+              aria-pressed={activeCategory === cat}
               onClick={() => setCategory(cat)}
               className={cn(
-                "shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-all",
+                "shrink-0 rounded-md border px-4 py-1.5 text-sm font-medium transition-all",
                 activeCategory === cat
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border text-muted hover:border-border-strong hover:text-foreground",
@@ -191,8 +172,15 @@ export function Events() {
           ))}
         </div>
       ) : error ? (
-        <div className="mt-16 rounded-2xl border border-red-500/30 bg-red-500/10 p-8 text-center text-red-400">
-          {error}
+        <div className="mt-16 flex flex-col items-center gap-4 rounded-2xl border border-border bg-surface px-6 py-16 text-center">
+          <AlertCircle className="h-8 w-8 text-danger" aria-hidden="true" />
+          <div>
+            <p className="type-print text-2xl">Events are unavailable right now</p>
+            <p className="mt-1 text-sm text-muted">{error}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
         </div>
       ) : filtered.length > 0 ? (
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -202,11 +190,11 @@ export function Events() {
         </div>
       ) : (
         <div className="mt-16 flex flex-col items-center gap-4 rounded-2xl border border-border bg-surface py-20 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-muted-2">
+          <span className="flex h-14 w-14 items-center justify-center rounded-md bg-surface-2 text-muted-2">
             <Search className="h-6 w-6" />
           </span>
           <div>
-            <p className="font-display text-lg font-semibold">No events found</p>
+            <p className="type-print text-2xl">No events found</p>
             <p className="mt-1 text-sm text-muted">Try another keyword or category.</p>
           </div>
           <Button

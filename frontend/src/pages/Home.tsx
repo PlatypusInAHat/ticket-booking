@@ -1,139 +1,169 @@
+import { useMemo } from "react"
 import { Link } from "react-router-dom"
-import { Music, PartyPopper, Trophy, Drama, Mic, Presentation, ShieldCheck, Zap, RefreshCw } from "lucide-react"
+import { AlertCircle, ArrowUpRight, CalendarX } from "lucide-react"
 import { Hero } from "@/components/home/Hero"
 import { EventCard } from "@/components/EventCard"
 import { SectionTitle } from "@/components/ui/SectionTitle"
 import { Button } from "@/components/ui/Button"
-import { events } from "@/data/events"
+import { Perforation } from "@/components/ui/Perforation"
+import { useCatalogEvents } from "@/hooks/useCatalogEvents"
+import type { EventItem } from "@/data/types"
 
-const categoryTiles = [
-  { name: "Concert", icon: Music },
-  { name: "Festival", icon: PartyPopper },
-  { name: "Sports", icon: Trophy },
-  { name: "Theater", icon: Drama },
-  { name: "Comedy", icon: Mic },
-  { name: "Conference", icon: Presentation },
+const categories = ["Concert", "Festival", "Sports", "Theater", "Conference", "Workshop"]
+
+const steps = [
+  {
+    title: "Pick your tickets",
+    desc: "Choose a ticket tier and quantity. Your tickets are held while you complete payment.",
+  },
+  {
+    title: "Pay your way",
+    desc: "Check out with VNPay or MoMo. Your booking is confirmed the moment payment clears.",
+  },
+  {
+    title: "Walk straight in",
+    desc: "Every ticket gets its own QR code and barcode, ready in your account for check-in at the gate.",
+  },
 ]
 
-const perks = [
-  { icon: Zap, title: "Instant tickets", desc: "Digital tickets delivered the moment you check out — no waiting, no printing." },
-  { icon: ShieldCheck, title: "Verified & secure", desc: "Every event is verified and every payment is protected end-to-end." },
-  { icon: RefreshCw, title: "Easy refunds", desc: "Plans changed? Flexible refund options on eligible events, hassle-free." },
-]
+function EventGrid({ events, loading, count }: { events: EventItem[]; loading: boolean; count: number }) {
+  if (loading) {
+    return (
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4" aria-busy="true">
+        {Array.from({ length: count }).map((_, index) => (
+          <div key={index} className="h-[24rem] animate-pulse rounded-[var(--radius-card)] border border-border bg-surface" />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className={"mt-8 grid gap-5 sm:grid-cols-2 " + (events.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4")}>
+      {events.map((event) => (
+        <EventCard key={event.id} event={event} />
+      ))}
+    </div>
+  )
+}
 
 export function Home() {
-  const trending = events.filter((e) => e.popular).slice(0, 4)
-  const upcoming = events.slice(0, 8)
+  const { events, loading, error } = useCatalogEvents()
+
+  const upcoming = useMemo(() => {
+    const now = Date.now()
+    return events
+      .filter((event) => event.status !== "soldout" && +new Date(event.date) >= now)
+      .sort((a, b) => +new Date(a.date) - +new Date(b.date))
+  }, [events])
+
+  const trending = useMemo(() => {
+    const popular = upcoming.filter((event) => event.popular)
+    return (popular.length >= 4 ? popular : [...popular, ...upcoming.filter((event) => !event.popular)]).slice(0, 4)
+  }, [upcoming])
+
+  const featured = trending[0]
+  // The featured event already owns the hero ticket, so the grid leaves it out.
+  const trendingGrid = trending.slice(1).concat(upcoming.filter((event) => !trending.includes(event))).slice(0, 4)
+  const later = upcoming.filter((event) => event !== featured && !trendingGrid.includes(event)).slice(0, 8)
 
   return (
     <>
-      <Hero />
+      <Hero featured={featured} />
 
-      {/* Categories */}
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <SectionTitle
-          eyebrow="Browse"
-          title="Find your scene"
-          description="From sold-out arenas to intimate clubs, explore events across every category."
-        />
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {categoryTiles.map((c) => {
-            const Icon = c.icon
-            return (
-              <Link
-                key={c.name}
-                to={`/events?category=${c.name}`}
-                className="group flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-6 text-center transition-all duration-200 hover:-translate-y-1 hover:border-accent/40 hover:bg-surface-2"
-              >
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-2 text-accent transition-colors group-hover:bg-accent-soft">
-                  <Icon className="h-6 w-6" />
-                </span>
-                <span className="text-sm font-medium">{c.name}</span>
-              </Link>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* Trending */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between gap-4">
-          <SectionTitle eyebrow="Hot right now" title="Trending events" />
-          <Button to="/events" variant="ghost" size="sm" className="hidden sm:inline-flex">
-            View all &rarr;
-          </Button>
-        </div>
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {trending.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
-      </section>
-
-      {/* Perks */}
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-5 md:grid-cols-3">
-          {perks.map((p) => {
-            const Icon = p.icon
-            return (
-              <div
-                key={p.title}
-                className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-soft text-accent">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <h3 className="font-display text-lg font-semibold">{p.title}</h3>
-                <p className="text-sm leading-relaxed text-muted">{p.desc}</p>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* Upcoming */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <SectionTitle
-          eyebrow="On sale now"
-          title="Upcoming events"
-          description="Lock in your spot before they sell out."
-        />
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {upcoming.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface p-10 text-center sm:p-16">
-          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
-          <div className="relative">
-            <SectionTitle
-              align="center"
-              eyebrow="Never miss out"
-              title="Get first access to new drops"
-              description="Join the list for early-bird tickets, exclusive presales, and curated picks."
-              className="mx-auto items-center"
-            />
-            <form
-              className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <input
-                type="email"
-                required
-                placeholder="you@email.com"
-                className="h-12 flex-1 rounded-full border border-border bg-background px-5 text-sm text-foreground placeholder:text-muted-2 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-              />
-              <Button size="lg" type="submit">
-                Subscribe
-              </Button>
-            </form>
+      {error ? (
+        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-surface px-6 py-16 text-center">
+            <AlertCircle className="h-8 w-8 text-danger" aria-hidden="true" />
+            <div>
+              <p className="type-print text-2xl">Events are unavailable right now</p>
+              <p className="mt-1 text-sm text-muted">{error}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Try again
+            </Button>
           </div>
-        </div>
+        </section>
+      ) : !loading && upcoming.length === 0 ? (
+        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-surface px-6 py-16 text-center">
+            <CalendarX className="h-8 w-8 text-muted-2" aria-hidden="true" />
+            <div>
+              <p className="type-print text-2xl">No upcoming events yet</p>
+              <p className="mt-1 text-sm text-muted">New events appear here as soon as organizers open ticket sales.</p>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between gap-4">
+            <SectionTitle title="Trending events" description="The events people are booking right now." />
+            <Button to="/events" variant="ghost" size="sm" className="hidden sm:inline-flex">
+              View all events
+            </Button>
+          </div>
+          <EventGrid events={trendingGrid} loading={loading} count={4} />
+        </section>
+      )}
+
+      <nav aria-label="Browse by category" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <h2 className="text-sm font-medium text-muted">Browse by category</h2>
+        <ul className="mt-4 grid grid-cols-1 gap-px border-y border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+          {categories.map((name) => (
+            <li key={name} className="bg-background">
+              <Link
+                to={`/events?category=${name}`}
+                className="group flex items-center justify-between gap-4 px-1 py-5 transition-colors hover:bg-surface sm:px-5"
+              >
+                <span className="type-print text-4xl transition-colors group-hover:text-accent">{name}</span>
+                <ArrowUpRight
+                  className="h-5 w-5 text-muted-2 transition-colors group-hover:text-accent"
+                  aria-hidden="true"
+                />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <SectionTitle title="From browsing to the front gate" />
+        {/* The journey as one long ticket, each step a coupon torn off along a perforation. */}
+        <ol className="mt-8 flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface md:flex-row">
+          {steps.map((step, index) => (
+            <li key={step.title} className="contents">
+              {index > 0 && (
+                <>
+                  <Perforation className="md:hidden" />
+                  <Perforation orientation="vertical" className="hidden md:block" />
+                </>
+              )}
+              <div className={index === steps.length - 1 ? "paper flex-1 p-6 md:p-8" : "flex-1 p-6 md:p-8"}>
+                <h3 className="type-print text-3xl">{step.title}</h3>
+                <p
+                  className={
+                    "mt-2 max-w-sm text-sm leading-relaxed " +
+                    (index === steps.length - 1 ? "text-paper-muted" : "text-muted")
+                  }
+                >
+                  {step.desc}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </section>
+
+      {!error && (loading || later.length > 0) && (
+        <section className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 lg:px-8">
+          <SectionTitle title="Coming up" description="Lock in your spot before they sell out." />
+          <EventGrid events={later} loading={loading} count={4} />
+          <div className="mt-10 flex justify-center">
+            <Button to="/events" variant="outline">
+              See all events
+            </Button>
+          </div>
+        </section>
+      )}
     </>
   )
 }

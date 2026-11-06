@@ -65,7 +65,6 @@ export function mapApiEventToEventItem(apiEvent: any, apiTickets: any[] = []): E
     status: statusToEventStatus(apiEvent.status, remaining),
     popular: Boolean(apiEvent.stats?.views > 100 || apiEvent.stats?.soldTickets > 20),
     priceFrom,
-    rating: 4.8,
     description: stripHtml(apiEvent.description || "Event information is being updated."),
     lineup: [companyName],
     tiers,

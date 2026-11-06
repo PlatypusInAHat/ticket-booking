@@ -3,12 +3,13 @@ import type { EventStatus } from "@/data/types"
 
 type Tone = "accent" | "success" | "danger" | "neutral" | "info"
 
+// Statuses are printed like a rubber stamp on the ticket: a ruled box of condensed caps, no fill.
 const tones: Record<Tone, string> = {
-  accent: "bg-accent-soft text-accent border-accent/30",
-  success: "bg-success/12 text-success border-success/30",
-  danger: "bg-danger/12 text-danger border-danger/30",
-  info: "bg-info/12 text-info border-info/30",
-  neutral: "bg-surface-2 text-muted border-border",
+  accent: "text-accent border-accent/70",
+  success: "text-foreground border-foreground/60",
+  danger: "text-danger border-danger/70",
+  info: "text-info border-info/70",
+  neutral: "text-muted border-border-strong",
 }
 
 export function Badge({
@@ -23,7 +24,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium tracking-wide backdrop-blur-sm",
+        "inline-flex items-center gap-1.5 rounded-sm border px-1.5 pb-px pt-0.5 font-display text-[0.8125rem] font-bold uppercase leading-none tracking-[0.04em]",
         tones[tone],
         className,
       )}
@@ -33,18 +34,21 @@ export function Badge({
   )
 }
 
-export function StatusBadge({ status }: { status: EventStatus }) {
-  if (status === "soldout") return <Badge tone="danger">Sold out</Badge>
+export function StatusBadge({ status, className }: { status: EventStatus; className?: string }) {
+  if (status === "soldout")
+    return (
+      <Badge tone="danger" className={className}>
+        Sold out
+      </Badge>
+    )
   if (status === "limited")
     return (
-      <Badge tone="accent">
-        <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-        Almost sold out
+      <Badge tone="accent" className={className}>
+        Almost gone
       </Badge>
     )
   return (
-    <Badge tone="success">
-      <span className="h-1.5 w-1.5 rounded-full bg-success" />
+    <Badge tone="success" className={className}>
       On sale
     </Badge>
   )

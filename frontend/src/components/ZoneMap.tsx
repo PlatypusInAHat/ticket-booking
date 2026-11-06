@@ -29,7 +29,7 @@ export function ZoneMap({ zoneMap, onZoneSelect, selectedZoneId }: ZoneMapProps)
   }
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-inner group">
+    <div className="relative w-full overflow-hidden rounded-2xl border border-border bg-surface group">
       {/* Container maintains aspect ratio implicitly based on the image */}
       <img
         src={zoneMap.backgroundImage}
@@ -49,7 +49,7 @@ export function ZoneMap({ zoneMap, onZoneSelect, selectedZoneId }: ZoneMapProps)
               className={cn(
                 "absolute cursor-pointer transition-all duration-300",
                 isSelected 
-                  ? "opacity-80 scale-[1.02] shadow-[0_0_20px_rgba(255,255,255,0.5)] z-10" 
+                  ? "opacity-80 scale-[1.02] ring-2 ring-accent z-10" 
                   : "opacity-40 hover:opacity-70 hover:scale-[1.01] hover:z-10"
               )}
               style={{
@@ -60,13 +60,13 @@ export function ZoneMap({ zoneMap, onZoneSelect, selectedZoneId }: ZoneMapProps)
                 backgroundColor: zone.color,
                 borderRadius: "8px",
                 border: isSelected ? "3px solid white" : "2px solid rgba(255,255,255,0.3)",
-                backdropFilter: "blur(2px)",
+                
               }}
               title={zone.name}
             >
               <div className="flex h-full w-full items-center justify-center text-center">
                 <span className={cn(
-                  "font-bold text-white drop-shadow-md transition-opacity duration-300",
+                  "font-bold text-white transition-opacity duration-300",
                   isSelected ? "opacity-100 text-sm" : "opacity-0 group-hover:opacity-100 text-xs"
                 )}>
                   {zone.name}

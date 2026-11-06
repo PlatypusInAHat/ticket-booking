@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-06T12:00:00Z",
+  "title": "Design System: TicketStage",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Hổ phách in", "canonical": "oklch(0.82 0.15 78)", "tonalRamp": ["oklch(0.18 0.04 78)", "oklch(0.3 0.07 78)", "oklch(0.42 0.1 78)", "oklch(0.55 0.13 78)", "oklch(0.68 0.15 78)", "oklch(0.82 0.15 78)", "oklch(0.9 0.09 80)", "oklch(0.96 0.04 82)"] },
+      "accent-strong": { "role": "primary", "displayName": "Hổ phách đậm", "canonical": "oklch(0.76 0.16 70)" },
+      "accent-foreground": { "role": "primary", "displayName": "Mực trên hổ phách", "canonical": "oklch(0.18 0.02 70)" },
+      "foil": { "role": "primary", "displayName": "Nhũ foil", "canonical": "oklch(0.52 0.13 60)", "tonalRamp": ["oklch(0.2 0.05 60)", "oklch(0.3 0.08 60)", "oklch(0.4 0.11 60)", "oklch(0.52 0.13 60)", "oklch(0.62 0.13 62)", "oklch(0.72 0.11 66)", "oklch(0.84 0.07 72)", "oklch(0.94 0.03 80)"] },
+      "paper": { "role": "neutral", "displayName": "Giấy bìa", "canonical": "oklch(0.925 0.028 86)", "tonalRamp": ["oklch(0.2 0.015 60)", "oklch(0.45 0.02 65)", "oklch(0.6 0.026 72)", "oklch(0.72 0.03 75)", "oklch(0.82 0.032 80)", "oklch(0.885 0.032 84)", "oklch(0.925 0.028 86)", "oklch(0.965 0.015 88)"] },
+      "paper-2": { "role": "neutral", "displayName": "Giấy bìa sẫm", "canonical": "oklch(0.885 0.032 84)" },
+      "paper-ink": { "role": "neutral", "displayName": "Mực giấy", "canonical": "oklch(0.2 0.015 60)" },
+      "paper-muted": { "role": "neutral", "displayName": "Mực giấy phụ", "canonical": "oklch(0.45 0.02 65)" },
+      "paper-line": { "role": "neutral", "displayName": "Kẻ giấy", "canonical": "oklch(0.72 0.03 75)" },
+      "background": { "role": "neutral", "displayName": "Phòng tối", "canonical": "oklch(0.155 0.006 60)", "tonalRamp": ["oklch(0.155 0.006 60)", "oklch(0.195 0.007 62)", "oklch(0.235 0.008 64)", "oklch(0.29 0.009 66)", "oklch(0.42 0.011 70)", "oklch(0.62 0.012 70)", "oklch(0.7 0.012 75)", "oklch(0.96 0.008 85)"] },
+      "surface": { "role": "neutral", "displayName": "Thân vé", "canonical": "oklch(0.195 0.007 62)" },
+      "surface-2": { "role": "neutral", "displayName": "Thân vé nâng", "canonical": "oklch(0.235 0.008 64)" },
+      "surface-3": { "role": "neutral", "displayName": "Thân vé nâng cao", "canonical": "oklch(0.29 0.009 66)" },
+      "foreground": { "role": "neutral", "displayName": "Chữ in sáng", "canonical": "oklch(0.96 0.008 85)" },
+      "muted": { "role": "neutral", "displayName": "Chữ phụ", "canonical": "oklch(0.7 0.012 75)" },
+      "muted-2": { "role": "neutral", "displayName": "Chữ mờ", "canonical": "oklch(0.62 0.012 70)" },
+      "border": { "role": "neutral", "displayName": "Đường kẻ", "canonical": "oklch(0.3 0.009 68)" },
+      "border-strong": { "role": "neutral", "displayName": "Đường kẻ đậm", "canonical": "oklch(0.42 0.011 70)" },
+      "stamp-red": { "role": "status", "displayName": "Dấu đỏ", "canonical": "oklch(0.5 0.19 27)" },
+      "danger": { "role": "status", "displayName": "Nguy hiểm", "canonical": "oklch(0.68 0.18 25)" },
+      "success": { "role": "status", "displayName": "Thành công", "canonical": "oklch(0.78 0.14 155)" },
+      "info": { "role": "status", "displayName": "Thông tin", "canonical": "oklch(0.72 0.1 230)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Tiêu đề hero trang chủ và trang chi tiết, in hoa, hai dòng." },
+      "headline": { "displayName": "Headline", "purpose": "Tiêu đề khu vực, trang tài khoản, khung đăng nhập." },
+      "title": { "displayName": "Title", "purpose": "Tên sự kiện trên vé, tên hạng vé, tên danh mục." },
+      "price": { "displayName": "Price", "purpose": "Giá và tổng tiền in foil trên cuống giấy; ngày trên cuống." },
+      "stamp": { "displayName": "Stamp", "purpose": "Chữ dấu trạng thái và danh mục trong khung kẻ." },
+      "body": { "displayName": "Body", "purpose": "Mô tả và văn bản đọc, tối đa ~36rem." },
+      "body-sm": { "displayName": "Body nhỏ", "purpose": "Địa điểm, chú thích." },
+      "label": { "displayName": "Label", "purpose": "Nhãn biểu mẫu, liên kết điều hướng." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "ease-print", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Đường cong chung cho fade-up và stub-tear." },
+      { "name": "fade-up", "value": "0.5s, translateY(12px) → 0, opacity 0 → 1", "purpose": "Vé nổi bật hiện lên dưới hero." },
+      { "name": "stub-tear", "value": "0.45s, translateY(2px) rotate(-1.2deg) ở 35%, gốc xoay 0 0", "purpose": "Cuống vé xé nhẹ khi thêm vào giỏ." },
+      { "name": "state", "value": "transition-colors 150–200ms", "purpose": "Hover và trạng thái chọn; không đổi kích thước ngoài ảnh phóng 1.02–1.03." },
+      { "name": "press", "value": "translateY(1px) khi :active", "purpose": "Nút nhấn xuống." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "container", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Nút chính",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Hành động chính duy nhất của một vùng: Get tickets, Add to cart, Sign in.",
+      "html": "<button class=\"ds-btn-primary\">Get tickets</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 20px; border: 0; border-radius: 4px; background: var(--color-accent, oklch(0.82 0.15 78)); color: var(--color-accent-foreground, oklch(0.18 0.02 70)); font-family: 'Be Vietnam Pro', sans-serif; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background-color 150ms; } .ds-btn-primary:hover { background: var(--color-accent-strong, oklch(0.76 0.16 70)); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-accent, oklch(0.82 0.15 78)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Nút phụ",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Hành động thứ cấp đặc, như Search.",
+      "html": "<button class=\"ds-btn-secondary\">Search</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 20px; border: 1px solid var(--color-border, oklch(0.3 0.009 68)); border-radius: 4px; background: var(--color-surface-2, oklch(0.235 0.008 64)); color: var(--color-foreground, oklch(0.96 0.008 85)); font-family: 'Be Vietnam Pro', sans-serif; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background-color 150ms; } .ds-btn-secondary:hover { background: var(--color-surface-3, oklch(0.29 0.009 66)); } .ds-btn-secondary:active { transform: translateY(1px); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--color-accent, oklch(0.82 0.15 78)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Nút viền",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Điều hướng thứ cấp: See all events, Try again.",
+      "html": "<button class=\"ds-btn-outline\">See all events</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 20px; border: 1px solid var(--color-border-strong, oklch(0.42 0.011 70)); border-radius: 4px; background: transparent; color: var(--color-foreground, oklch(0.96 0.008 85)); font-family: 'Be Vietnam Pro', sans-serif; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: border-color 150ms; } .ds-btn-outline:hover { border-color: var(--color-foreground, oklch(0.96 0.008 85)); } .ds-btn-outline:focus-visible { outline: 2px solid var(--color-accent, oklch(0.82 0.15 78)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Ô nhập",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Ô nhập 48px, focus đổi viền sang hổ phách.",
+      "html": "<input class=\"ds-input\" type=\"search\" placeholder=\"Search by event, organizer or city\" />",
+      "css": ".ds-input { height: 48px; width: 100%; padding: 0 16px; border: 1px solid var(--color-border, oklch(0.3 0.009 68)); border-radius: 4px; background: var(--color-surface, oklch(0.195 0.007 62)); color: var(--color-foreground, oklch(0.96 0.008 85)); caret-color: var(--color-accent, oklch(0.82 0.15 78)); font-family: 'Be Vietnam Pro', sans-serif; font-size: 0.875rem; outline: none; transition: border-color 150ms; } .ds-input::placeholder { color: var(--color-muted-2, oklch(0.62 0.012 70)); } .ds-input:focus { border-color: var(--color-accent, oklch(0.82 0.15 78)); }"
+    },
+    {
+      "name": "Điều hướng",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Thanh đặc 64px; mục đang chọn có gạch chân hổ phách 2px sát đáy.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link ds-nav-active\" href=\"#\">Home</a><a class=\"ds-nav-link\" href=\"#\">Events</a><a class=\"ds-nav-link\" href=\"#\">Festivals</a></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; height: 64px; background: var(--color-background, oklch(0.155 0.006 60)); } .ds-nav-link { position: relative; display: flex; align-items: center; height: 64px; padding: 0 12px; color: var(--color-muted, oklch(0.7 0.012 75)); font-family: 'Be Vietnam Pro', sans-serif; font-size: 0.875rem; font-weight: 500; text-decoration: none; transition: color 150ms; } .ds-nav-link:hover { color: var(--color-foreground, oklch(0.96 0.008 85)); } .ds-nav-active { color: var(--color-foreground, oklch(0.96 0.008 85)); } .ds-nav-active::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: 0; height: 2px; background: var(--color-accent, oklch(0.82 0.15 78)); } .ds-nav-link:focus-visible { outline: 2px solid var(--color-accent, oklch(0.82 0.15 78)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Dấu trạng thái",
+      "kind": "chip",
+      "refersTo": "stamp",
+      "description": "Chữ dấu in hoa trong khung kẻ, không tô nền.",
+      "html": "<span class=\"ds-stamp ds-stamp-on\">On sale</span> <span class=\"ds-stamp ds-stamp-low\">Almost gone</span> <span class=\"ds-stamp ds-stamp-out\">Sold out</span>",
+      "css": ".ds-stamp { display: inline-flex; align-items: center; padding: 2px 6px 1px; border: 1px solid; border-radius: 3px; font-family: 'Big Shoulders', sans-serif; font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1; } .ds-stamp-on { color: var(--color-foreground, oklch(0.96 0.008 85)); border-color: oklch(0.96 0.008 85 / 0.6); } .ds-stamp-low { color: var(--color-accent, oklch(0.82 0.15 78)); border-color: oklch(0.82 0.15 78 / 0.7); } .ds-stamp-out { color: var(--color-danger, oklch(0.68 0.18 25)); border-color: oklch(0.68 0.18 25 / 0.7); }"
+    },
+    {
+      "name": "Vé sự kiện",
+      "kind": "card",
+      "refersTo": "ticket-body",
+      "description": "Thân vé tối, đường răng cưa có hai khấc, cuống giấy kem với ngày và giá foil.",
+      "html": "<a class=\"ds-ticket\" href=\"#\"><div class=\"ds-ticket-img\"></div><div class=\"ds-ticket-body\"><h3 class=\"ds-ticket-title\">Thu Bay Khong Lo</h3><p class=\"ds-ticket-place\">CGV Landmark 81, TP HCM</p></div><div class=\"ds-perf\"><span class=\"ds-perf-line\"></span><span class=\"ds-notch ds-notch-l\"></span><span class=\"ds-notch ds-notch-r\"></span></div><div class=\"ds-stub\"><div class=\"ds-date\"><span class=\"ds-day\">29</span><span class=\"ds-month\">Dec<br><span style=\"opacity:.7\">Tue 19:45</span></span></div><div class=\"ds-price-wrap\"><span class=\"ds-from\">From</span><span class=\"ds-price\">180.000 ₫</span></div></div></a>",
+      "css": ".ds-ticket { position: relative; display: flex; flex-direction: column; width: 280px; overflow: hidden; border: 1px solid var(--color-border, oklch(0.3 0.009 68)); border-radius: 6px; background: var(--color-surface, oklch(0.195 0.007 62)); color: var(--color-foreground, oklch(0.96 0.008 85)); text-decoration: none; transition: border-color 200ms; } .ds-ticket:hover { border-color: var(--color-border-strong, oklch(0.42 0.011 70)); } .ds-ticket:hover .ds-ticket-title { color: var(--color-accent, oklch(0.82 0.15 78)); } .ds-ticket:focus-visible { outline: 2px solid var(--color-accent, oklch(0.82 0.15 78)); outline-offset: 2px; } .ds-ticket-img { aspect-ratio: 16/10; background: var(--color-surface-2, oklch(0.235 0.008 64)); } .ds-ticket-body { padding: 16px 20px 20px; } .ds-ticket-title { margin: 0; font-family: 'Big Shoulders', sans-serif; font-weight: 800; text-transform: uppercase; font-size: 1.65rem; line-height: 0.95; letter-spacing: 0.01em; } .ds-ticket-place { margin: 6px 0 0; font-family: 'Be Vietnam Pro', sans-serif; font-size: 0.875rem; color: var(--color-muted, oklch(0.7 0.012 75)); } .ds-perf { position: relative; height: 0; } .ds-perf-line { position: absolute; left: 20px; right: 20px; top: -1px; border-top: 2px dashed var(--color-paper-line, oklch(0.72 0.03 75)); } .ds-notch { position: absolute; top: -14px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--color-border, oklch(0.3 0.009 68)); background: var(--color-background, oklch(0.155 0.006 60)); } .ds-notch-l { left: -14px; } .ds-notch-r { right: -14px; } .ds-stub { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 16px 20px; background: var(--color-paper, oklch(0.925 0.028 86)); color: var(--color-paper-ink, oklch(0.2 0.015 60)); } .ds-date { display: flex; align-items: flex-end; gap: 8px; } .ds-day { font-family: 'Big Shoulders', sans-serif; font-weight: 800; font-size: 3rem; line-height: 0.8; } .ds-month { font-family: 'Big Shoulders', sans-serif; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; line-height: 1.05; letter-spacing: 0.03em; } .ds-price-wrap { display: flex; flex-direction: column; align-items: flex-end; } .ds-from { font-family: 'Be Vietnam Pro', sans-serif; font-size: 0.75rem; font-weight: 500; color: var(--color-paper-muted, oklch(0.45 0.02 65)); } .ds-price { font-family: 'Big Shoulders', sans-serif; font-weight: 800; font-size: 1.5rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--color-foil, oklch(0.52 0.13 60)); }"
+    },
+    {
+      "name": "Dấu hết vé trên giấy",
+      "kind": "custom",
+      "refersTo": "stamp",
+      "description": "SOLD OUT đóng dấu đỏ trên cuống giấy, viền 2px, nghiêng -3°.",
+      "html": "<div class=\"ds-paper\"><span class=\"ds-stamp-red\">Sold out</span></div>",
+      "css": ".ds-paper { display: inline-block; padding: 16px 20px; background: var(--color-paper, oklch(0.925 0.028 86)); } .ds-stamp-red { display: inline-block; padding: 2px 6px 0; border: 2px solid currentColor; border-radius: 3px; color: oklch(0.5 0.19 27); font-family: 'Big Shoulders', sans-serif; font-weight: 800; font-size: 1rem; text-transform: uppercase; line-height: 1; transform: rotate(-3deg); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Tấm vé in",
+    "overview": "Mỗi sự kiện là một tấm vé thật. Thân vé (ảnh, tên sự kiện, địa điểm) nằm trên nền tối; qua một đường xé răng cưa là cuống vé bằng giấy bìa màu kem, nơi in ngày, giá và nút mua. Mua vé là xé cuống. Cùng một hình dạng vé đi theo khách từ trang chủ, trang chi tiết, chọn hạng vé cho tới tài khoản, nơi vé giữ mã QR.\n\nNền là màu gần đen ấm như phòng tối; tấm vé là vật thể duy nhất có chất liệu. Hổ phách là màu mực in duy nhất cho hành động: nút chính, gạch chân điều hướng đang chọn, vùng bôi chọn, viền hạng vé đang chọn. Trên giấy kem, giá được in bằng màu nhũ hổ phách đậm (foil). Chữ tiêu đề là chữ in hoa hẹp Big Shoulders, như chữ in trên vé; phần đọc dùng Be Vietnam Pro. Góc cắt khuôn 3–8px, không có hình viên thuốc, không bóng đổ, không kính mờ: chiều sâu chỉ đến từ việc vé chồng lên mép nền.\n\nMật độ vừa phải, phục vụ khách xem trên điện thoại ban đêm: một thông tin quan trọng (giá, ngày) luôn đọc được ngay trên cuống vé, không phải đi tìm.",
+    "keyCharacteristics": [
+      "Thân vé tối + cuống vé giấy kem, ngăn bởi đường răng cưa có hai khấc cắt tròn.",
+      "Một màu hành động duy nhất: hổ phách. Giá in bằng foil trên giấy.",
+      "Chữ in hoa hẹp Big Shoulders cho tiêu đề, ngày, giá và trạng thái.",
+      "Trạng thái là chữ đóng dấu trong khung kẻ mảnh, không tô nền.",
+      "Chiều sâu chỉ bằng chồng lấp; không bóng, không kính, không viên thuốc."
+    ],
+    "rules": [
+      { "name": "The One Ink Rule", "body": "Hổ phách là màu hành động duy nhất. Không thêm màu nhấn thứ hai; mọi thứ khác là mực, giấy hoặc phòng tối.", "section": "colors" },
+      { "name": "The Foil-on-Paper Rule", "body": "Giá tiền luôn in trên cuống giấy bằng foil. Foil không bao giờ xuất hiện trên nền tối, và giá không đặt trên thân vé.", "section": "colors" },
+      { "name": "The Print Caps Rule", "body": "Big Shoulders in hoa chỉ dành cho thứ được \"in\" lên vé: tiêu đề, tên, ngày, giá, chữ dấu. Câu văn và nhãn biểu mẫu luôn là Be Vietnam Pro, chữ thường.", "section": "typography" },
+      { "name": "The Overlap-Only Rule", "body": "Muốn một vật nổi lên thì cho nó chồng lên mép của vật khác. Không dùng box-shadow, backdrop-filter hay quầng sáng.", "section": "elevation" },
+      { "name": "The Notch Matches Ground Rule", "body": "Đĩa khấc phải đúng màu của nền mà vé đang nằm trên đó (mặc định background; surface khi vé nằm trên dải hero hoặc thẻ). Vé vắt qua hai nền thì hai khấc mang hai màu.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do đặt giá và ngày của mọi sự kiện, hạng vé hay tóm tắt đơn trên cuống giấy kem, ngăn khỏi thân vé bằng đường răng cưa.",
+      "Do dùng hổ phách cho đúng một hành động chính mỗi vùng, cộng với trạng thái đang chọn và focus.",
+      "Do in giá bằng foil, chữ Big Shoulders 800, chữ số đều.",
+      "Do viết trạng thái thành chữ dấu trong khung kẻ (ON SALE, ALMOST GONE, SOLD OUT).",
+      "Do đặt màu đĩa khấc đúng màu nền bên dưới vé.",
+      "Do giữ góc trong thang 3–8px."
+    ],
+    "donts": [
+      "Don't dùng box-shadow, backdrop-filter hay quầng sáng; chiều sâu chỉ bằng chồng lấp.",
+      "Don't dùng hình viên thuốc (bo tròn hoàn toàn) cho nút, nhãn hay chip; hình tròn chỉ dành cho khấc cắt và vòng quay tải.",
+      "Don't tô nền cho chữ dấu trạng thái hoặc thêm màu nhấn thứ hai ngoài hổ phách.",
+      "Don't đặt foil trên nền tối hoặc đặt giá trên thân vé.",
+      "Don't dùng Big Shoulders cho câu văn hay nhãn biểu mẫu.",
+      "Don't đặt dòng chữ nhỏ in hoa giãn chữ (kicker/eyebrow) phía trên tiêu đề."
+    ]
+  }
+}

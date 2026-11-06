@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Mail, Lock, UserPlus, User } from "lucide-react"
+import { UserPlus } from "lucide-react"
+import { AuthCard } from "@/components/layout/AuthCard"
+import { Button } from "@/components/ui/Button"
 import { useAppDispatch } from "@/store"
 import { registerSuccess } from "@/store/authSlice"
 import { authAPI } from "@/services/api"
@@ -21,7 +23,7 @@ export function Register() {
     setError("")
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.")
+      setError("The two passwords don't match.")
       setLoading(false)
       return
     }
@@ -47,112 +49,103 @@ export function Register() {
 
       navigate("/")
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create account. Please try again.")
+      setError(err.response?.data?.message || "We couldn't create your account. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="relative flex min-h-[85vh] items-center justify-center px-4 py-20">
-      {/* Decorative background blurs */}
-      <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/10 blur-[150px] pointer-events-none"></div>
-
-      <div className="glass relative z-10 mx-auto w-full max-w-2xl overflow-hidden rounded-3xl border border-border bg-surface/50 p-10 shadow-2xl md:p-12">
-        <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-accent via-blue-500 to-purple-500"></div>
-
-        <div className="mb-10 text-center">
-          <span className="mb-6 inline-block rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs font-bold text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-            Join the Club
-          </span>
-          <h1 className="font-display text-4xl font-black text-foreground">Create an Account</h1>
-          <p className="mt-3 text-muted">Unlock premium features, faster checkout, and exclusive access.</p>
-        </div>
-
+    <AuthCard
+      title="Create your account"
+      description="Book faster and keep every e-ticket in one place."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link to="/login" className="font-semibold text-accent hover:text-accent-strong">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {error && (
-          <div className="mb-8 rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-center text-sm font-semibold text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.15)]">
+          <p className="alert-danger" role="alert">
             {error}
-          </div>
+          </p>
         )}
 
-        <form onSubmit={handleSubmit} className="grid gap-6 md:grid-cols-2">
-          <div className="md:col-span-2 space-y-2">
-            <label className="text-sm font-medium text-foreground">Full Name</label>
-            <div className="relative">
-              <User className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" />
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-11 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                placeholder="John Doe"
-                required
-              />
-            </div>
-          </div>
+        <div>
+          <label htmlFor="register-name" className="form-label">
+            Full name
+          </label>
+          <input
+            id="register-name"
+            type="text"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="form-input"
+            required
+          />
+        </div>
 
-          <div className="md:col-span-2 space-y-2">
-            <label className="text-sm font-medium text-foreground">Email Address</label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-11 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-          </div>
+        <div>
+          <label htmlFor="register-email" className="form-label">
+            Email
+          </label>
+          <input
+            id="register-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="form-input"
+            placeholder="name@example.com"
+            required
+          />
+        </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Password</label>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-11 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                placeholder="Min. 6 characters"
-                required
-              />
-            </div>
-          </div>
+        <div>
+          <label htmlFor="register-password" className="form-label">
+            Password
+          </label>
+          <input
+            id="register-password"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="form-input"
+            aria-describedby="register-password-hint"
+            required
+          />
+          <p id="register-password-hint" className="mt-1.5 text-xs text-muted">
+            At least 8 characters.
+          </p>
+        </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Confirm Password</label>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="flex h-12 w-full rounded-xl border border-border bg-surface-2 px-11 py-3 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                placeholder="Re-enter password"
-                required
-              />
-            </div>
-          </div>
+        <div>
+          <label htmlFor="register-confirm" className="form-label">
+            Confirm password
+          </label>
+          <input
+            id="register-confirm"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="form-input"
+            required
+          />
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-4 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-strong disabled:opacity-50 md:col-span-2"
-          >
-            <UserPlus className="h-5 w-5" />
-            {loading ? "Creating Account..." : "Sign Up"}
-          </button>
-        </form>
-
-        <p className="mt-8 text-center text-sm text-muted">
-          Already have an account?{" "}
-          <Link to="/login" className="font-bold text-blue-500 transition-colors hover:text-blue-400">
-            Sign In
-          </Link>
-        </p>
-      </div>
-    </div>
+        <Button type="submit" size="lg" disabled={loading} className="mt-1 w-full">
+          <UserPlus className="h-4 w-4" aria-hidden="true" />
+          {loading ? "Creating account…" : "Create account"}
+        </Button>
+      </form>
+    </AuthCard>
   )
 }

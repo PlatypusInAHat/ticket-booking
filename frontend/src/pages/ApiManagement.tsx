@@ -34,15 +34,11 @@ export function ApiManagement() {
   }, [fetchStatus])
 
   return (
-    <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-      <div className="absolute right-0 top-20 h-96 w-96 rounded-full bg-blue-500/10 blur-[150px] pointer-events-none" />
+    <div className="relative z-10 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
 
       <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span className="mb-3 inline-block rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-            System Admin
-          </span>
-          <h1 className="font-display text-4xl font-black text-foreground">API Management</h1>
+          <h1 className="type-print text-5xl sm:text-6xl">API Management</h1>
           <p className="mt-2 text-muted">Monitor microservices health, routes, and gateway status.</p>
         </div>
         <button
@@ -56,7 +52,7 @@ export function ApiManagement() {
       </div>
 
       {error && (
-        <div className="relative z-10 mb-8 rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm font-semibold text-red-500">
+        <div className="relative z-10 mb-8 rounded-xl border border-danger/30 bg-danger/10 px-5 py-4 text-sm font-semibold text-danger">
           {error}
         </div>
       )}
@@ -64,25 +60,24 @@ export function ApiManagement() {
       {data && (
         <>
           <section className="mb-10 grid gap-6 md:grid-cols-2">
-            <div className="glass rounded-2xl border border-border p-6 flex items-center gap-5">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-500/10 text-green-500">
+            <div className="bg-surface rounded-2xl border border-border p-6 flex items-center gap-5">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-success/10 text-success">
                 <ShieldCheck className="h-7 w-7" />
               </div>
               <div>
                 <p className="text-sm font-bold uppercase tracking-wider text-muted">Gateway Status</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    <span className="relative inline-flex rounded-md h-3 w-3 bg-success"></span>
                   </span>
-                  <p className="text-2xl font-black text-green-500">
+                  <p className="text-2xl font-black text-success">
                     {data.gateway.status}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="glass rounded-2xl border border-border p-6 flex items-center justify-between">
+            <div className="bg-surface rounded-2xl border border-border p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold uppercase tracking-wider text-muted">Uptime</p>
                 <p className="mt-1 text-2xl font-black text-foreground">
@@ -100,15 +95,15 @@ export function ApiManagement() {
             </div>
           </section>
 
-          <h2 className="mb-6 font-display text-2xl font-black text-foreground">Microservices Health</h2>
+          <h2 className="mb-6 type-print text-3xl">Microservices Health</h2>
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 mb-12">
             {data.services.map((service: any) => {
               const isUp = service.status === "UP"
               return (
-                <div key={service.name} className="glass rounded-2xl border border-border p-6 relative overflow-hidden">
+                <div key={service.name} className="bg-surface rounded-2xl border border-border p-6 relative overflow-hidden">
                   <div className={cn(
                     "absolute top-0 left-0 w-1 h-full",
-                    isUp ? "bg-green-500" : "bg-red-500"
+                    isUp ? "bg-success" : "bg-danger"
                   )} />
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
@@ -117,7 +112,7 @@ export function ApiManagement() {
                     </div>
                     <span className={cn(
                       "px-2 py-1 rounded text-xs font-bold",
-                      isUp ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+                      isUp ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
                     )}>
                       {service.status}
                     </span>
@@ -128,7 +123,7 @@ export function ApiManagement() {
                       <p> Timestamp: {new Date(service.detail?.timestamp).toLocaleTimeString()}</p>
                     </div>
                   ) : (
-                    <div className="text-sm text-red-400">
+                    <div className="text-sm text-danger">
                       <p>❌ Connection Error: {service.error}</p>
                       <p>Please check the terminal.</p>
                     </div>
@@ -138,8 +133,8 @@ export function ApiManagement() {
             })}
           </div>
 
-          <h2 className="mb-6 font-display text-2xl font-black text-foreground">Active Routes (Gateway Map)</h2>
-          <div className="glass rounded-2xl border border-border overflow-hidden">
+          <h2 className="mb-6 type-print text-3xl">Active Routes (Gateway Map)</h2>
+          <div className="bg-surface rounded-2xl border border-border overflow-hidden">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-surface-2 text-xs font-bold uppercase tracking-wider text-muted">
                 <tr>

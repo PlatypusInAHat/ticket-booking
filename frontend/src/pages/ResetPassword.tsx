@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { useNavigate, useSearchParams, Link } from "react-router-dom"
-import { Lock, Loader2, CheckCircle } from "lucide-react"
+import { CheckCircle2 } from "lucide-react"
+import { AuthCard } from "@/components/layout/AuthCard"
+import { Button } from "@/components/ui/Button"
 import { authAPI } from "@/services/api"
 
 export default function ResetPassword() {
@@ -16,15 +18,11 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-destructive">Error: Token Not Found</h2>
-          <p className="mt-2 text-muted">Your password reset link is invalid or missing a token.</p>
-          <Link to="/forgot-password" className="mt-4 inline-block text-accent hover:underline">
-            Request a new link
-          </Link>
-        </div>
-      </div>
+      <AuthCard title="This link doesn't work" description="The password reset link is missing its security token.">
+        <Button to="/forgot-password" size="lg" className="w-full">
+          Request a new link
+        </Button>
+      </AuthCard>
     )
   }
 
@@ -33,11 +31,11 @@ export default function ResetPassword() {
     setError("")
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.")
+      setError("The two passwords don't match.")
       return
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters long.")
+      setError("Use at least 8 characters for your new password.")
       return
     }
 
@@ -48,94 +46,84 @@ export default function ResetPassword() {
       setSuccess(true)
       setTimeout(() => navigate("/login"), 3000)
     } catch (err: any) {
-      setError(err.response?.data?.message || "Token expired or invalid.")
+      setError(err.response?.data?.message || "This reset link has expired or was already used. Request a new one.")
     } finally {
       setLoading(false)
     }
   }
 
+  if (success) {
+    return (
+      <AuthCard title="Password updated">
+        <div className="flex flex-col items-center gap-4 text-center" role="status">
+          <CheckCircle2 className="h-10 w-10 text-success" aria-hidden="true" />
+          <p className="text-muted">You can now sign in with your new password. Taking you to sign in…</p>
+          <Button to="/login" variant="outline">
+            Sign in now
+          </Button>
+        </div>
+      </AuthCard>
+    )
+  }
+
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-foreground">
-            Create New Password
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            Please enter your new password below.
+    <AuthCard
+      title="Set a new password"
+      description="Choose a password you haven't used here before."
+      footer={
+        <Link to="/login" className="text-muted hover:text-foreground">
+          Back to sign in
+        </Link>
+      }
+    >
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        {error && (
+          <p className="alert-danger" role="alert">
+            {error}
+          </p>
+        )}
+
+        <div>
+          <label htmlFor="password" className="form-label">
+            New password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="form-input"
+            aria-describedby="password-hint"
+          />
+          <p id="password-hint" className="mt-1.5 text-xs text-muted">
+            At least 8 characters.
           </p>
         </div>
 
-        <div className="glass mt-8 rounded-2xl border border-border p-8 shadow-xl">
-          {success ? (
-            <div className="text-center space-y-4">
-              <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-              <h3 className="text-xl font-bold text-foreground">Password Reset Successful!</h3>
-              <p className="text-muted">You will be redirected to the Login page in a few seconds...</p>
-            </div>
-          ) : (
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              {error && (
-                <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-foreground">
-                  New Password
-                </label>
-                <div className="relative mt-1">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Lock className="h-5 w-5 text-muted" aria-hidden="true" />
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full rounded-xl border border-border bg-surface px-10 py-2.5 text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent sm:text-sm"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground">
-                  Confirm New Password
-                </label>
-                <div className="relative mt-1">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Lock className="h-5 w-5 text-muted" aria-hidden="true" />
-                  </div>
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="block w-full rounded-xl border border-border bg-surface px-10 py-2.5 text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent sm:text-sm"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex w-full justify-center rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground transition-colors hover:bg-accent-strong focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50"
-                >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Password"}
-                </button>
-              </div>
-            </form>
-          )}
+        <div>
+          <label htmlFor="confirmPassword" className="form-label">
+            Confirm new password
+          </label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="form-input"
+          />
         </div>
-      </div>
-    </div>
+
+        <Button type="submit" size="lg" disabled={loading} className="mt-1 w-full">
+          {loading ? "Saving…" : "Save new password"}
+        </Button>
+      </form>
+    </AuthCard>
   )
 }

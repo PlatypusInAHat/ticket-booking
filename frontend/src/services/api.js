@@ -139,7 +139,10 @@ export const bookingsAPI = {
   create: (data) => API.post('/bookings', data),
   getAll: () => API.get('/bookings'),
   getById: (id) => API.get(`/bookings/${id}`),
-  cancel: (id) => API.put(`/bookings/${id}/cancel`)
+  cancel: (id) => API.post(`/bookings/${id}/cancel`),
+  getPasses: (id) => API.get(`/bookings/${id}/passes`),
+  // Pass images sit behind auth, so they are fetched as blobs instead of plain <img src>.
+  getPassQr: (id, passId) => API.get(`/bookings/${id}/passes/${passId}/qr.png`, { responseType: 'blob' })
 };
 
 // Users API

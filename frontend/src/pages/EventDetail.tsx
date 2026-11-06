@@ -7,13 +7,13 @@ import {
   Clock,
   MapPin,
   ShoppingBag,
-  Star,
   Users,
 } from "lucide-react"
 import type { EventItem } from "@/data/types"
 import { StatusBadge, Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { SectionTitle } from "@/components/ui/SectionTitle"
+import { Perforation, StubDate } from "@/components/ui/Perforation"
 import { TicketTierCard } from "@/components/TicketTierCard"
 import { EventCard } from "@/components/EventCard"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
@@ -23,7 +23,8 @@ import { eventsAPI, ticketsAPI } from "@/services/api"
 import { mapApiEventToEventItem } from "@/utils/eventMapper"
 
 export function EventDetail() {
-  const { slug } = useParams<{ slug: string }>()
+  // The route is /events/:id; the value is an event id or slug, both resolved by the catalog service.
+  const { id: slug } = useParams<{ id: string }>()
   const dispatch = useAppDispatch()
 
   const [event, setEvent] = useState<EventItem | null>(null)
@@ -59,14 +60,15 @@ export function EventDetail() {
         setEvent(mappedEvent)
         setSelectedTier(mappedEvent.tiers[0]?.id || "")
 
-        const relatedResponse = await eventsAPI.getEvents(
-          { eventType: apiEvent.eventType, limit: 4 },
-          { signal: controller.signal },
-        )
+        const [relatedResponse, catalogTicketsResponse] = await Promise.all([
+          eventsAPI.getEvents({ eventType: apiEvent.eventType, limit: 4 }, { signal: controller.signal }),
+          ticketsAPI.getAll({ limit: 100 }, { signal: controller.signal }),
+        ])
+        const catalogTickets = catalogTicketsResponse.data.data?.tickets || []
         const relatedEvents = (relatedResponse.data.data?.events || [])
           .filter((item: any) => String(item.id || item._id) !== String(mappedEvent.id))
           .slice(0, 3)
-          .map((item: any) => mapApiEventToEventItem(item))
+          .map((item: any) => mapApiEventToEventItem(item, catalogTickets))
         setRelated(relatedEvents)
       } catch (err: any) {
         if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return
@@ -123,7 +125,7 @@ export function EventDetail() {
   if (error || !event) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-32 text-center">
-        <h1 className="font-display text-2xl font-bold">Event not found</h1>
+        <h1 className="type-print text-4xl">Event not found</h1>
         <p className="text-muted">{error || "This event does not exist or is no longer on sale."}</p>
         <Button to="/events">View all events</Button>
       </div>
@@ -147,35 +149,33 @@ export function EventDetail() {
             Back to events
           </Link>
 
-          <div className="mt-28 flex flex-wrap items-center gap-2 sm:mt-40">
-            <Badge tone="neutral" className="bg-background/70">
-              {event.category}
-            </Badge>
-            {event.popular && <Badge tone="accent">Featured</Badge>}
-            <StatusBadge status={event.status} />
-          </div>
-
-          <h1 className="mt-4 max-w-3xl font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-balance sm:text-6xl">
+          <h1 className="type-print mt-28 max-w-4xl text-[clamp(3rem,8vw,6rem)] leading-[0.88] sm:mt-40">
             {event.title}
           </h1>
           <p className="mt-3 text-lg text-muted">{event.artist}</p>
 
-          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm">
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+            <span className="flex items-center gap-2">
+              {event.category && event.category !== "Other" && (
+                <Badge tone="neutral" className="border-transparent bg-background/85 text-foreground">
+                  {event.category}
+                </Badge>
+              )}
+              <StatusBadge status={event.status} />
+            </span>
             <span className="flex items-center gap-2 text-muted">
-              <Calendar className="h-4 w-4 text-accent" />
+              <Calendar className="h-4 w-4 text-muted-2" aria-hidden="true" />
               {formatDate(event.date, { weekday: "long" })}
             </span>
             <span className="flex items-center gap-2 text-muted">
-              <Clock className="h-4 w-4 text-accent" />
-              Doors {formatTime(event.doorsTime)} · Starts {formatTime(event.date)}
+              <Clock className="h-4 w-4 text-muted-2" aria-hidden="true" />
+              {event.doorsTime && formatTime(event.doorsTime) !== formatTime(event.date)
+                ? `Doors ${formatTime(event.doorsTime)} · Starts ${formatTime(event.date)}`
+                : `Starts ${formatTime(event.date)}`}
             </span>
             <span className="flex items-center gap-2 text-muted">
-              <MapPin className="h-4 w-4 text-accent" />
-              {event.venue}, {event.city}
-            </span>
-            <span className="flex items-center gap-2 text-muted">
-              <Star className="h-4 w-4 fill-accent text-accent" />
-              {event.rating} reviews
+              <MapPin className="h-4 w-4 text-muted-2" aria-hidden="true" />
+              {[event.venue, event.city].filter(Boolean).join(", ")}
             </span>
           </div>
         </div>
@@ -185,19 +185,19 @@ export function EventDetail() {
         <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
           <div className="flex flex-col gap-10">
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">Event information</h2>
+              <h2 className="type-print text-3xl">Event information</h2>
               <p className="mt-4 leading-relaxed text-pretty text-muted">{event.description}</p>
             </div>
 
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">Organizer</h2>
+              <h2 className="type-print text-3xl">Organizer</h2>
               <div className="mt-4 flex flex-wrap gap-2">
                 {event.lineup.map((act) => (
                   <span
                     key={act}
-                    className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm"
+                    className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm"
                   >
-                    <Users className="h-4 w-4 text-accent" />
+                    <Users className="h-4 w-4 text-muted-2" aria-hidden="true" />
                     {act}
                   </span>
                 ))}
@@ -205,12 +205,12 @@ export function EventDetail() {
             </div>
 
             <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">Choose your tickets</h2>
+              <h2 className="type-print text-3xl">Choose your tickets</h2>
               <p className="mt-2 text-sm text-muted">
                 Every paid ticket includes its own QR code and barcode for check-in.
               </p>
               {event.tiers.length > 0 ? (
-                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-5 grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Ticket tiers">
                   {event.tiers.map((item) => (
                     <TicketTierCard
                       key={item.id}
@@ -235,31 +235,41 @@ export function EventDetail() {
           </div>
 
           <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-2">From</span>
-                <StatusBadge status={event.status} />
+            <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+              <div className="px-6 pb-5 pt-6">
+                <StubDate date={event.date} />
+                <p className="mt-3 text-sm text-muted">{[event.venue, event.city].filter(Boolean).join(", ")}</p>
               </div>
-              <p className="mt-1 font-display text-3xl font-bold">
-                {formatCurrency(event.priceFrom)}
+              <Perforation />
+              <div key={added ? "torn" : "whole"} className={"paper px-6 pb-6 pt-5" + (added ? " animate-stub-tear" : "")}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-paper-muted">From</span>
+                {soldOut && (
+                  <span className="rounded-sm border-2 border-current px-1.5 pt-0.5 font-display text-base font-extrabold uppercase leading-none text-stamp">
+                    Sold out
+                  </span>
+                )}
+              </div>
+              <p className="font-display text-4xl font-extrabold leading-none tabular-nums text-foil">
+                {event.tiers.length > 0 ? formatCurrency(event.priceFrom) : "To be announced"}
               </p>
 
-              <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5 text-sm">
+              <div className="mt-5 flex flex-col gap-3 border-t border-paper-line pt-5 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Selected</span>
-                  <span className="font-medium">{tier?.name ?? "No ticket available"}</span>
+                  <span className="text-paper-muted">Selected</span>
+                  <span className="font-semibold">{tier?.name ?? "No ticket available"}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Quantity</span>
-                  <span className="font-medium">{tier ? effectiveQuantity : 0}</span>
+                  <span className="text-paper-muted">Quantity</span>
+                  <span className="font-semibold tabular-nums">{tier ? effectiveQuantity : 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted">Price per ticket</span>
-                  <span className="font-medium">{formatCurrency(tier?.price ?? 0)}</span>
+                  <span className="text-paper-muted">Price per ticket</span>
+                  <span className="font-semibold tabular-nums">{formatCurrency(tier?.price ?? 0)}</span>
                 </div>
-                <div className="flex items-center justify-between border-t border-border pt-3 text-base">
+                <div className="flex items-center justify-between border-t-2 border-dashed border-paper-line pt-3 text-base">
                   <span className="font-semibold">Total</span>
-                  <span className="font-display text-xl font-bold text-accent">
+                  <span className="font-display text-3xl font-extrabold leading-none tabular-nums text-foil">
                     {formatCurrency(total)}
                   </span>
                 </div>
@@ -286,20 +296,24 @@ export function EventDetail() {
                 )}
               </Button>
               {!soldOut && tier && (
-                <Button to="/cart" variant="ghost" size="sm" className="mt-2 w-full">
-                  Go to checkout
-                </Button>
+                <Link
+                  to="/cart"
+                  className="mt-3 block text-center text-sm font-medium text-paper-ink underline underline-offset-4 hover:text-foil"
+                >
+                  View cart
+                </Link>
               )}
-              <p className="mt-4 text-center text-xs text-muted-2">
+              <p className="mt-4 text-center text-xs text-paper-muted">
                 Secure checkout · Instant digital tickets
               </p>
+              </div>
             </div>
           </aside>
         </div>
 
         {related.length > 0 && (
           <div className="mt-20">
-            <SectionTitle eyebrow="You may also like" title="Similar events" />
+            <SectionTitle title="You may also like" />
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((item) => (
                 <EventCard key={item.id} event={item} />

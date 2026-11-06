@@ -224,10 +224,10 @@ export function AdminDashboard() {
     () =>
       stats
         ? [
-            { label: "Total Users", value: stats.totalUsers, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
-            { label: "Active Tickets", value: stats.totalTickets, icon: Ticket, color: "text-purple-500", bg: "bg-purple-500/10" },
+            { label: "Total Users", value: stats.totalUsers, icon: Users, color: "text-info", bg: "bg-info/10" },
+            { label: "Active Tickets", value: stats.totalTickets, icon: Ticket, color: "text-info", bg: "bg-info/10" },
             { label: "Total Bookings", value: stats.totalBookings, icon: TrendingUp, color: "text-accent", bg: "bg-accent/10" },
-            { label: "Revenue", value: formatCurrency(stats.totalRevenue), icon: Banknote, color: "text-green-500", bg: "bg-green-500/10" },
+            { label: "Revenue", value: formatCurrency(stats.totalRevenue), icon: Banknote, color: "text-success", bg: "bg-success/10" },
           ]
         : [],
     [stats],
@@ -482,20 +482,15 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-      <div className="absolute right-0 top-20 h-96 w-96 rounded-full bg-purple-500/10 blur-[150px] pointer-events-none" />
-      <div className="absolute left-0 top-[520px] h-96 w-96 rounded-full bg-accent/10 blur-[150px] pointer-events-none" />
+    <div className="relative z-10 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
 
       <div className="mb-10">
-        <span className="mb-3 inline-block rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-          Admin Control
-        </span>
-        <h1 className="font-display text-4xl font-black text-foreground">Platform Management</h1>
+        <h1 className="type-print text-5xl sm:text-6xl">Platform Management</h1>
         <p className="mt-2 text-muted">Create polished event launches, monitor bookings, and manage the platform.</p>
       </div>
 
       {message && (
-        <div className="relative z-10 mb-8 rounded-xl border border-accent/30 bg-accent/10 px-5 py-4 text-sm font-semibold text-accent backdrop-blur-md">
+        <div className="relative z-10 mb-8 rounded-xl border border-accent/30 bg-accent/10 px-5 py-4 text-sm font-semibold text-accent">
           {message}
         </div>
       )}
@@ -503,9 +498,9 @@ export function AdminDashboard() {
       {stats && (
         <section className="relative z-10 mb-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {statCards.map(({ label, value, icon: Icon, color, bg }) => (
-            <div key={label} className="group flex items-center gap-5 overflow-hidden rounded-2xl border border-border glass p-6">
+            <div key={label} className="group flex items-center gap-5 overflow-hidden rounded-2xl border border-border bg-surface p-6">
               <div className={cn("flex h-14 w-14 items-center justify-center rounded-2xl transition-transform group-hover:scale-110", bg, color)}>
-                <Icon className="h-6 w-6 drop-shadow-md" />
+                <Icon className="h-6 w-6" />
               </div>
               <div>
                 <p className="text-sm font-bold uppercase tracking-wider text-muted">{label}</p>
@@ -516,11 +511,11 @@ export function AdminDashboard() {
         </section>
       )}
 
-      <section className="relative z-10 mb-12 overflow-hidden rounded-[2rem] border border-border bg-surface/80 shadow-[0_30px_100px_-60px_rgba(0,0,0,0.9)] backdrop-blur">
+      <section className="relative z-10 mb-12 overflow-hidden rounded-lg border border-border bg-surface">
         <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
           <aside className="border-b border-border bg-surface-2/70 p-6 lg:border-b-0 lg:border-r">
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-accent">Event Wizard</p>
-            <h2 className="mt-3 font-display text-2xl font-black text-foreground">Create a launch-ready event</h2>
+            <h2 className="mt-3 type-print text-3xl">Create a launch-ready event</h2>
             <p className="mt-3 text-sm text-muted">Complete every detail once, then publish the event with sessions and tickets.</p>
 
             <div className="mt-8 space-y-3">
@@ -539,7 +534,7 @@ export function AdminDashboard() {
                   <div className="flex items-center gap-3">
                     <span
                       className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-full text-xs font-black",
+                        "flex h-8 w-8 items-center justify-center rounded-md text-xs font-black",
                         activeStep === step.id ? "bg-accent text-accent-foreground" : "bg-surface text-muted",
                       )}
                     >
@@ -556,8 +551,8 @@ export function AdminDashboard() {
 
             <div className="mt-8 rounded-2xl border border-border bg-background/70 p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted">Draft health</p>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface">
-                <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(completedStepCount / 4) * 100}%` }} />
+              <div className="mt-4 h-2 overflow-hidden rounded-md bg-surface">
+                <div className="h-full rounded-md bg-accent transition-all" style={{ width: `${(completedStepCount / 4) * 100}%` }} />
               </div>
               <p className="mt-3 text-sm text-muted">{completedStepCount}/4 sections have enough information.</p>
             </div>
@@ -568,7 +563,7 @@ export function AdminDashboard() {
               <div className="space-y-8">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Step 1</p>
-                  <h3 className="mt-2 font-display text-3xl font-black text-foreground">Event basics</h3>
+                  <h3 className="mt-2 type-print text-4xl">Event basics</h3>
                   <p className="mt-2 text-sm text-muted">Set the identity, story, organizer, and searchable tags for this event.</p>
                 </div>
 
@@ -650,7 +645,7 @@ export function AdminDashboard() {
               <div className="space-y-8">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Step 2</p>
-                  <h3 className="mt-2 font-display text-3xl font-black text-foreground">Location and media</h3>
+                  <h3 className="mt-2 type-print text-4xl">Location and media</h3>
                   <p className="mt-2 text-sm text-muted">Add the venue, address, map coordinates, and visual assets.</p>
                 </div>
 
@@ -714,7 +709,7 @@ export function AdminDashboard() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Step 3</p>
-                    <h3 className="mt-2 font-display text-3xl font-black text-foreground">Schedule and ticket types</h3>
+                    <h3 className="mt-2 type-print text-4xl">Schedule and ticket types</h3>
                     <p className="mt-2 text-sm text-muted">Create one or more sessions, each with its own ticket inventory.</p>
                   </div>
                   <button type="button" onClick={addSession} className="btn-outline">
@@ -724,11 +719,11 @@ export function AdminDashboard() {
 
                 <div className="space-y-6">
                   {sessions.map((session, sessionIndex) => (
-                    <div key={session.id} className="rounded-3xl border border-border bg-background/70 p-5">
+                    <div key={session.id} className="rounded-lg border border-border bg-background/70 p-5">
                       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-bold uppercase tracking-wider text-muted">Session {sessionIndex + 1}</p>
-                          <h4 className="font-display text-xl font-black text-foreground">
+                          <h4 className="type-print text-2xl">
                             {session.startDate ? formatDate(session.startDate) : "New session"}
                           </h4>
                         </div>
@@ -770,7 +765,7 @@ export function AdminDashboard() {
                             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                               <div>
                                 <p className="text-xs font-bold uppercase tracking-wider text-muted">Ticket type {ticketIndex + 1}</p>
-                                <h5 className="font-display text-lg font-bold text-foreground">{ticket.name || "Untitled ticket"}</h5>
+                                <h5 className="type-print text-xl">{ticket.name || "Untitled ticket"}</h5>
                               </div>
                               {session.ticketTypes.length > 1 && (
                                 <button type="button" onClick={() => removeTicketType(session.id, ticket.id)} className="btn-danger">
@@ -863,7 +858,7 @@ export function AdminDashboard() {
                                 Free ticket
                               </label>
                               <p className="text-sm text-muted">
-                                Potential revenue: <span className="font-bold text-green-500">{formatCurrency((ticket.isFree ? 0 : ticket.price) * ticket.totalQuantity)}</span>
+                                Potential revenue: <span className="font-bold text-success">{formatCurrency((ticket.isFree ? 0 : ticket.price) * ticket.totalQuantity)}</span>
                               </p>
                             </div>
                           </div>
@@ -883,7 +878,7 @@ export function AdminDashboard() {
               <div className="space-y-8">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Step 4</p>
-                  <h3 className="mt-2 font-display text-3xl font-black text-foreground">Rules and review</h3>
+                  <h3 className="mt-2 type-print text-4xl">Rules and review</h3>
                   <p className="mt-2 text-sm text-muted">Set sale windows, check-in methods, policies, then review before publishing.</p>
                 </div>
 
@@ -911,8 +906,8 @@ export function AdminDashboard() {
                   </Field>
                 </div>
 
-                <div className="rounded-3xl border border-border bg-background/70 p-5">
-                  <h4 className="font-display text-xl font-bold text-foreground">Allowed check-in methods</h4>
+                <div className="rounded-lg border border-border bg-background/70 p-5">
+                  <h4 className="type-print text-2xl">Allowed check-in methods</h4>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {[
                       ["allowQr", "QR code"],
@@ -946,7 +941,7 @@ export function AdminDashboard() {
                   <ReviewCard icon={Banknote} label="Potential revenue" value={formatCurrency(draftRevenue)} detail="Before fees and discounts" />
                 </div>
 
-                <div className="rounded-3xl border border-accent/30 bg-accent/10 p-5">
+                <div className="rounded-lg border border-accent/30 bg-accent/10 p-5">
                   <div className="flex items-start gap-4">
                     <ShieldCheck className="mt-1 h-6 w-6 shrink-0 text-accent" />
                     <div>
@@ -1017,7 +1012,7 @@ function Field({
   return (
     <label className={cn("space-y-2", className)}>
       <span className="flex items-center gap-1 text-sm font-semibold text-foreground">
-        {required && <span className="text-red-500">*</span>}
+        {required && <span className="text-danger">*</span>}
         {label}
       </span>
       {children}
@@ -1038,7 +1033,7 @@ function ImageUploadButton({ label, onChange }: { label: string; onChange: (even
 
 function ImagePreview({ title, url }: { title: string; url: string }) {
   return (
-    <div className="overflow-hidden rounded-3xl border border-border bg-background/70">
+    <div className="overflow-hidden rounded-lg border border-border bg-background/70">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <p className="font-bold text-foreground">{title}</p>
         <ImageIcon className="h-4 w-4 text-muted" />
@@ -1054,14 +1049,14 @@ function ImagePreview({ title, url }: { title: string; url: string }) {
 
 function ReviewCard({ icon: Icon, label, value, detail }: { icon: any; label: string; value: any; detail: string }) {
   return (
-    <div className="rounded-3xl border border-border bg-background/70 p-5">
+    <div className="rounded-lg border border-border bg-background/70 p-5">
       <div className="flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent">
           <Icon className="h-5 w-5" />
         </span>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted">{label}</p>
-          <p className="font-display text-xl font-black text-foreground">{value}</p>
+          <p className="type-print text-2xl">{value}</p>
         </div>
       </div>
       <p className="mt-3 text-sm text-muted">{detail}</p>
@@ -1091,21 +1086,21 @@ function ManagementSections({
   return (
     <>
       <section className="relative z-10 mb-12">
-        <div className="glass flex flex-col rounded-2xl border border-border p-8">
-          <h2 className="mb-8 font-display text-2xl font-black text-foreground">Active Inventory</h2>
+        <div className="bg-surface flex flex-col rounded-2xl border border-border p-8">
+          <h2 className="mb-8 type-print text-3xl">Active Inventory</h2>
           <div className="custom-scrollbar space-y-4 overflow-y-auto pr-2">
             {events.map((event: any) => (
               <article key={event._id} className="rounded-2xl border border-border bg-surface-2 p-5 transition-colors hover:bg-surface-3">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <span className="mb-3 inline-block rounded-full border border-accent/20 bg-accent/10 px-2 py-1 text-xs font-semibold text-accent">
+                    <span className="mb-3 inline-block rounded-md border border-accent/20 bg-accent/10 px-2 py-1 text-xs font-semibold text-accent">
                       {getLabel(eventTypeLabels, event.eventType)}
                     </span>
                     <h3 className="text-lg font-black text-foreground">{event.title}</h3>
                     <p className="mt-1 text-sm text-muted">
                       {event.location?.venue}, {event.location?.city} - {formatDate(event.startsAt)}
                     </p>
-                    <p className="mt-3 font-bold text-green-500">
+                    <p className="mt-3 font-bold text-success">
                       Total Capacity: {event.stats?.totalTickets || 0}
                       <span className="ml-2 font-normal text-muted">
                         - {(event.stats?.totalTickets || 0) - (event.stats?.soldTickets || 0)} tickets left
@@ -1131,8 +1126,8 @@ function ManagementSections({
         </div>
       </section>
 
-      <section className="glass relative z-10 mb-12 rounded-2xl border border-border p-8">
-        <h2 className="mb-8 font-display text-2xl font-black text-foreground">Booking Management</h2>
+      <section className="bg-surface relative z-10 mb-12 rounded-2xl border border-border p-8">
+        <h2 className="mb-8 type-print text-3xl">Booking Management</h2>
         {loading ? (
           <div className="h-64 animate-pulse rounded-2xl border border-border bg-surface-2" />
         ) : bookings.length === 0 ? (
@@ -1160,7 +1155,7 @@ function ManagementSections({
                     <td className="px-6 py-4 text-muted">
                       {booking.tickets.reduce((total: number, item: any) => total + item.quantity, 0)}
                     </td>
-                    <td className="px-6 py-4 font-black text-green-500">{formatCurrency(booking.totalAmount)}</td>
+                    <td className="px-6 py-4 font-black text-success">{formatCurrency(booking.totalAmount)}</td>
                     <td className="px-6 py-4">
                       <select
                         value={booking.paymentStatus}
@@ -1175,7 +1170,7 @@ function ManagementSections({
                       </select>
                     </td>
                     <td className="px-6 py-4 font-bold text-accent">
-                      <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs uppercase tracking-wider">
+                      <span className="rounded-md border border-accent/20 bg-accent/10 px-3 py-1 text-xs uppercase tracking-wider">
                         {getLabel(bookingStatusLabels, booking.bookingStatus)}
                       </span>
                     </td>
@@ -1187,8 +1182,8 @@ function ManagementSections({
         )}
       </section>
 
-      <section className="glass relative z-10 mb-12 rounded-2xl border border-border p-8">
-        <h2 className="mb-8 font-display text-2xl font-black text-foreground">User Management</h2>
+      <section className="bg-surface relative z-10 mb-12 rounded-2xl border border-border p-8">
+        <h2 className="mb-8 type-print text-3xl">User Management</h2>
         {users.length === 0 ? (
           <div className="rounded-2xl border border-border bg-surface-2 p-10 text-center">
             <p className="text-muted">No users found.</p>
@@ -1230,8 +1225,8 @@ function ManagementSections({
         )}
       </section>
 
-      <section className="glass relative z-10 rounded-2xl border border-border p-8">
-        <h2 className="mb-8 font-display text-2xl font-black text-foreground">Event Statistics</h2>
+      <section className="bg-surface relative z-10 rounded-2xl border border-border p-8">
+        <h2 className="mb-8 type-print text-3xl">Event Statistics</h2>
         {events.length === 0 ? (
           <div className="rounded-2xl border border-border bg-surface-2 p-10 text-center">
             <p className="text-muted">No events available.</p>
@@ -1264,12 +1259,12 @@ function ManagementSections({
                       </td>
                       <td className="px-6 py-4 text-muted">{formatDate(event.startsAt)}</td>
                       <td className="px-6 py-4 text-right font-medium">{total}</td>
-                      <td className="px-6 py-4 text-right font-medium text-blue-500">{sold}</td>
-                      <td className="px-6 py-4 text-right font-medium text-orange-500">{total - sold}</td>
-                      <td className="px-6 py-4 text-right font-black text-green-500">{formatCurrency(revenue)}</td>
+                      <td className="px-6 py-4 text-right font-medium text-info">{sold}</td>
+                      <td className="px-6 py-4 text-right font-medium text-accent">{total - sold}</td>
+                      <td className="px-6 py-4 text-right font-black text-success">{formatCurrency(revenue)}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-2 w-24 overflow-hidden rounded-full bg-surface-3">
+                          <div className="h-2 w-24 overflow-hidden rounded-md bg-surface-3">
                             <div className="h-full bg-accent transition-all duration-500" style={{ width: `${Math.min(fillRate, 100)}%` }} />
                           </div>
                           <span className="text-xs font-bold text-muted">{fillRate.toFixed(1)}%</span>

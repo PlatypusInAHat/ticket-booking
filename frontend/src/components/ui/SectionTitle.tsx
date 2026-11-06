@@ -1,34 +1,27 @@
 import { cn } from "@/lib/utils"
 
 export function SectionTitle({
-  eyebrow,
   title,
   description,
   align = "left",
+  as: Heading = "h2",
   className,
 }: {
-  eyebrow?: string
   title: string
   description?: string
   align?: "left" | "center"
+  as?: "h1" | "h2"
   className?: string
 }) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-3",
+        "flex flex-col gap-2",
         align === "center" && "items-center text-center",
         className,
       )}
     >
-      {eyebrow && (
-        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          {eyebrow}
-        </span>
-      )}
-      <h2 className="font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-        {title}
-      </h2>
+      <Heading className="type-print text-4xl sm:text-5xl">{title}</Heading>
       {description && (
         <p className="max-w-xl text-pretty leading-relaxed text-muted">{description}</p>
       )}

@@ -77,7 +77,7 @@ export interface EventItem {
   status: EventStatus
   popular: boolean
   priceFrom: number
-  rating: number
+  rating?: number
   description: string
   lineup: string[]
   tiers: TicketTier[]

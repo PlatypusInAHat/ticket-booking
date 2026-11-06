@@ -1,41 +1,45 @@
 import { useEffect, useState } from "react"
-import { Link, useSearchParams } from "react-router-dom"
-import { CheckCircle, Clock, AlertTriangle, Receipt, Ticket } from "lucide-react"
-import { paymentAPI } from "@/services/api"
+import { useSearchParams } from "react-router-dom"
+import { CheckCircle2, Clock, AlertTriangle, Ticket } from "lucide-react"
+import { Button } from "@/components/ui/Button"
+import { bookingsAPI, paymentAPI } from "@/services/api"
 import { cn } from "@/lib/utils"
 
+type ResultStatus = "checking" | "completed" | "pending" | "failed"
+
 const statusConfig = {
+  checking: {
+    icon: Clock,
+    title: "Checking your payment",
+    description: "This usually takes a few seconds.",
+    tone: "text-accent bg-accent-soft",
+  },
   completed: {
-    icon: CheckCircle,
-    title: "Payment Successful",
-    description: "Your booking is confirmed. You can view your e-tickets in your dashboard.",
-    color: "text-green-500",
-    border: "border-green-500/30",
-    bg: "bg-green-500/10",
+    icon: CheckCircle2,
+    title: "You're going!",
+    description: "Payment received and your booking is confirmed. Your e-tickets are ready in your account.",
+    tone: "text-success bg-success/12",
   },
   pending: {
     icon: Clock,
-    title: "Pending Confirmation",
-    description: "The payment gateway is processing your transaction. Please check back later.",
-    color: "text-accent",
-    border: "border-accent/30",
-    bg: "bg-accent/10",
+    title: "Payment is still processing",
+    description: "The payment gateway hasn't confirmed yet. Your booking updates automatically once it does.",
+    tone: "text-accent bg-accent-soft",
   },
   failed: {
     icon: AlertTriangle,
-    title: "Payment Incomplete",
-    description: "The transaction was not successful or the reservation has expired.",
-    color: "text-red-500",
-    border: "border-red-500/30",
-    bg: "bg-red-500/10",
+    title: "Payment wasn't completed",
+    description: "The transaction didn't go through or the ticket hold expired. You can book again from the event page.",
+    tone: "text-danger bg-danger/12",
   },
-}
+} as const
 
 export function PaymentResult() {
   const [searchParams] = useSearchParams()
-  const [status, setStatus] = useState<"completed" | "pending" | "failed">("pending")
-  const [message, setMessage] = useState("Checking payment status...")
-  
+  const [status, setStatus] = useState<ResultStatus>("checking")
+  const [note, setNote] = useState("")
+  const [bookingNumber, setBookingNumber] = useState("")
+
   const bookingId =
     searchParams.get("bookingId") ||
     searchParams.get("orderId") ||
@@ -47,7 +51,7 @@ export function PaymentResult() {
     const fetchStatus = async () => {
       if (!bookingId) {
         setStatus("failed")
-        setMessage("Could not find the booking reference to check.")
+        setNote("We couldn't find a booking reference to check.")
         return
       }
 
@@ -55,14 +59,10 @@ export function PaymentResult() {
         const response = await paymentAPI.getPaymentStatus(bookingId)
         const paymentStatus = response.data.data?.paymentStatus || "pending"
 
-        if (!isMounted) {
-          return
-        }
+        if (!isMounted) return
 
-        setStatus(
-          paymentStatus === "completed" ? "completed" : paymentStatus === "failed" ? "failed" : "pending"
-        )
-        setMessage(`Booking Ref: ${bookingId}`)
+        setStatus(paymentStatus === "completed" ? "completed" : paymentStatus === "failed" ? "failed" : "pending")
+        setNote("")
 
         if (paymentStatus === "completed") {
           window.localStorage.removeItem("lastPendingBookingId")
@@ -70,50 +70,57 @@ export function PaymentResult() {
       } catch (error) {
         if (isMounted) {
           setStatus("pending")
-          setMessage(
-            "Could not confirm immediately. If you have paid, the system will update after the webhook arrives."
-          )
+          setNote("We couldn't confirm the status just now. If you've paid, it will update once the gateway notifies us.")
         }
       }
     }
 
     fetchStatus()
 
+    // The booking number matches what the account page shows; fall back to the raw id if the lookup fails.
+    if (bookingId) {
+      bookingsAPI
+        .getById(bookingId)
+        .then((response: any) => {
+          if (isMounted) setBookingNumber(response.data.data?.bookingNumber || "")
+        })
+        .catch(() => {})
+    }
+
     return () => {
       isMounted = false
     }
   }, [bookingId])
 
-  const config = statusConfig[status] || statusConfig.pending
+  const config = statusConfig[status]
   const Icon = config.icon
 
   return (
-    <div className="relative flex min-h-[70vh] items-center justify-center px-4 py-24">
-      <div className="absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/10 blur-[150px] pointer-events-none" />
-
-      <div className={cn("glass relative z-10 w-full max-w-2xl rounded-3xl border p-8 text-center md:p-12", config.border)}>
-        <div className={cn("mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl", config.bg, config.color)}>
-          <Icon className="h-10 w-10" />
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-20">
+      <div className="w-full max-w-lg rounded-[var(--radius-card)] border border-border bg-surface p-8 text-center md:p-10">
+        <div className={cn("mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-md", config.tone)}>
+          <Icon className={cn("h-8 w-8", status === "checking" && "animate-pulse")} aria-hidden="true" />
         </div>
-        <h1 className="font-display text-3xl font-black text-foreground">{config.title}</h1>
-        <p className="mx-auto mt-4 max-w-lg text-muted">{config.description}</p>
-        <p className="mx-auto mt-5 max-w-md rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm font-semibold text-foreground">
-          {message}
-        </p>
+        <h1 className="type-print text-5xl" aria-live="polite">
+          {config.title}
+        </h1>
+        <p className="mx-auto mt-3 max-w-md text-pretty text-muted">{config.description}</p>
+
+        {bookingId && status !== "checking" && (
+          <p className="mt-6 text-sm text-muted-2">
+            Booking reference <span className="font-mono text-foreground">{bookingNumber || bookingId}</span>
+          </p>
+        )}
+        {note && <p className="mx-auto mt-3 max-w-md text-sm text-muted">{note}</p>}
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link
-            to="/dashboard"
-            className="flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-foreground transition-colors hover:bg-accent-strong"
-          >
-            <Receipt className="h-5 w-5" /> View Booking
-          </Link>
-          <Link
-            to="/events"
-            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-6 py-3 font-semibold text-foreground transition-colors hover:bg-surface-2"
-          >
-            <Ticket className="h-5 w-5" /> Browse Events
-          </Link>
+          <Button to="/dashboard" size="lg">
+            <Ticket className="h-4 w-4" aria-hidden="true" />
+            {status === "completed" ? "View my tickets" : "View my bookings"}
+          </Button>
+          <Button to="/events" size="lg" variant="outline">
+            Browse events
+          </Button>
         </div>
       </div>
     </div>

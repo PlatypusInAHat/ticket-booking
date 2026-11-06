@@ -48,7 +48,7 @@ export function SeatMap({ sections, onSelectionChange, maxSelectable = 10 }: Sea
   };
 
   return (
-    <div className="w-full overflow-x-auto rounded-2xl border border-border bg-surface p-6 shadow-inner">
+    <div className="w-full overflow-x-auto rounded-2xl border border-border bg-surface p-6">
       <div className="mb-6 flex items-center justify-center gap-6 text-sm font-semibold text-muted">
         <div className="flex items-center gap-2">
           <div className="h-4 w-4 rounded border border-border bg-surface-2" />
@@ -90,7 +90,7 @@ export function SeatMap({ sections, onSelectionChange, maxSelectable = 10 }: Sea
                         className={cn(
                           "flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-bold transition-all",
                           isSelected
-                            ? "border-accent bg-accent text-accent-foreground shadow-[0_0_10px_rgba(var(--accent),0.5)]"
+                            ? "border-accent bg-accent text-accent-foreground"
                             : isAvailable
                             ? "border-border bg-surface-2 text-foreground hover:border-accent hover:bg-surface-3"
                             : "cursor-not-allowed border-transparent bg-surface-3 text-muted/30"

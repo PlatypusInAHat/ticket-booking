@@ -1,16 +1,34 @@
 import { useState, useEffect } from "react"
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom"
-import { Ticket, ShoppingBag, Menu, X } from "lucide-react"
+import { ShoppingBag, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAppSelector, useAppDispatch } from "@/store"
 import { logout } from "@/store/authSlice"
 import { authAPI } from "@/services/api"
+import { Button } from "@/components/ui/Button"
+import { Logo } from "@/components/layout/Logo"
+
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Events", to: "/events" },
   { label: "Festivals", to: "/events?category=Festival" },
   { label: "Sports", to: "/events?category=Sports" },
 ]
+
+// Query-string links never show as active: /events?category=X would otherwise light up with /events.
+const desktopLink = (active: boolean) =>
+  cn(
+    "relative flex h-16 items-center px-3 text-sm font-medium transition-colors",
+    active
+      ? "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-accent"
+      : "text-muted hover:text-foreground",
+  )
+
+const mobileLink = (active: boolean) =>
+  cn(
+    "border-b border-border py-3.5 type-print text-3xl transition-colors",
+    active ? "text-accent" : "text-foreground hover:text-accent",
+  )
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
@@ -21,6 +39,17 @@ export function Navbar() {
   const count = items.reduce((total: number, item: any) => total + item.quantity, 0) || 0
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+
+  const links = [
+    ...navItems,
+    ...(user ? [{ label: "My tickets", to: "/dashboard" }] : []),
+    ...(user?.role === "admin"
+      ? [
+          { label: "Admin", to: "/admin" },
+          { label: "API", to: "/api-management" },
+        ]
+      : []),
+  ]
 
   const handleLogout = async () => {
     try {
@@ -47,110 +76,56 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        scrolled ? "glass border-b border-border" : "border-b border-transparent",
+        "fixed inset-x-0 top-0 z-50 border-b bg-background transition-colors duration-200",
+        scrolled || open ? "border-border" : "border-transparent",
       )}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-            <Ticket className="h-5 w-5" />
-          </span>
-          <span className="font-display text-lg font-bold tracking-tight">TicketStage</span>
+        <Link to="/" aria-label="TicketStage home">
+          <Logo />
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
-          {navItems.map((item) => (
+        <nav className="hidden items-center md:flex" aria-label="Main">
+          {links.map((item) => (
             <NavLink
               key={item.label}
               to={item.to}
               end={item.to === "/"}
-              className={({ isActive }) =>
-                cn(
-                  "rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                  isActive && item.to.indexOf("?") === -1
-                    ? "bg-surface-2 text-foreground"
-                    : "text-muted hover:text-foreground",
-                )
-              }
+              className={({ isActive }) => desktopLink(isActive && !item.to.includes("?"))}
             >
               {item.label}
             </NavLink>
           ))}
-          {user && (
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) =>
-                cn(
-                  "rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                  isActive ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground"
-                )
-              }
-            >
-              Dashboard
-            </NavLink>
-          )}
-          {user?.role === "admin" && (
-            <>
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                    isActive ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground"
-                  )
-                }
-              >
-                Admin
-              </NavLink>
-              <NavLink
-                to="/api-management"
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                    isActive ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground"
-                  )
-                }
-              >
-                API
-              </NavLink>
-            </>
-          )}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Link
             to="/cart"
-            className="relative flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
-            aria-label={`Cart with ${count} items`}
+            className="relative flex h-10 items-center gap-2 rounded-md px-2.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+            aria-label={count === 1 ? "Cart, 1 ticket" : `Cart, ${count} tickets`}
           >
-            <ShoppingBag className="h-5 w-5" />
+            <ShoppingBag className="h-5 w-5" aria-hidden="true" />
             {count > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold text-accent-foreground">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-sm bg-accent px-1 text-xs font-bold tabular-nums text-accent-foreground">
                 {count}
               </span>
             )}
           </Link>
-          
+
           {token ? (
-            <button
-              onClick={handleLogout}
-              className="hidden rounded-full bg-surface-2 px-5 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-3 sm:inline-flex"
-            >
-              Logout
-            </button>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden sm:inline-flex">
+              Sign out
+            </Button>
           ) : (
-            <Link
-              to="/login"
-              className="hidden rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-strong sm:inline-flex"
-            >
-              Sign In
-            </Link>
+            <Button to="/login" size="sm" className="hidden sm:inline-flex">
+              Sign in
+            </Button>
           )}
           <button
-            className="flex h-10 w-10 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-foreground md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-foreground md:hidden"
             onClick={() => setOpen((v) => !v)}
-            aria-label="Toggle menu"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -158,81 +133,29 @@ export function Navbar() {
       </div>
 
       {open && (
-        <div className="glass border-t border-border md:hidden">
-          <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-4">
-            {navItems.map((item) => (
+        <div className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-background md:hidden">
+          <nav className="mx-auto flex max-w-7xl flex-col px-4 pb-6 pt-2" aria-label="Main">
+            {links.map((item) => (
               <NavLink
                 key={item.label}
                 to={item.to}
                 end={item.to === "/"}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-xl px-4 py-3 text-sm font-medium transition-colors",
-                    isActive && item.to.indexOf("?") === -1
-                      ? "bg-surface-2 text-foreground"
-                      : "text-muted hover:bg-surface-2 hover:text-foreground",
-                  )
-                }
+                className={({ isActive }) => mobileLink(isActive && !item.to.includes("?"))}
               >
                 {item.label}
               </NavLink>
             ))}
-            {user && (
-              <NavLink
-                to="/dashboard"
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-xl px-4 py-3 text-sm font-medium transition-colors",
-                    isActive ? "bg-surface-2 text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"
-                  )
-                }
-              >
-                Dashboard
-              </NavLink>
-            )}
-            {user?.role === "admin" && (
-              <>
-                <NavLink
-                  to="/admin"
-                  className={({ isActive }) =>
-                    cn(
-                      "rounded-xl px-4 py-3 text-sm font-medium transition-colors",
-                      isActive ? "bg-surface-2 text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"
-                    )
-                  }
-                >
-                  Admin
-                </NavLink>
-                <NavLink
-                  to="/api-management"
-                  className={({ isActive }) =>
-                    cn(
-                      "rounded-xl px-4 py-3 text-sm font-medium transition-colors",
-                      isActive ? "bg-surface-2 text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"
-                    )
-                  }
-                >
-                  API
-                </NavLink>
-              </>
-            )}
-            <div className="my-2 h-px bg-border" />
-            {token ? (
-              <button
-                onClick={handleLogout}
-                className="rounded-xl bg-surface-2 px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-3"
-              >
-                Logout
-              </button>
-            ) : (
-              <Link
-                to="/login"
-                className="rounded-xl bg-accent px-4 py-3 text-center text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-strong"
-                onClick={() => setOpen(false)}
-              >
-                Sign In
-              </Link>
-            )}
+            <div className="mt-6">
+              {token ? (
+                <Button variant="secondary" className="w-full" onClick={handleLogout}>
+                  Sign out
+                </Button>
+              ) : (
+                <Button to="/login" className="w-full">
+                  Sign in
+                </Button>
+              )}
+            </div>
           </nav>
         </div>
       )}

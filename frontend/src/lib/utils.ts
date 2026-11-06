@@ -5,27 +5,30 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Prices are stored in VND across every service, so every surface formats them the same way.
+const currencyFormatter = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+  maximumFractionDigits: 0,
+})
+
 export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(amount)
+  return currencyFormatter.format(Number(amount) || 0)
 }
 
 export function formatDate(iso: string, opts?: Intl.DateTimeFormatOptions) {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short",
-    month: "short",
     day: "numeric",
+    month: "short",
     year: "numeric",
     ...opts,
   })
 }
 
 export function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-US", {
-    hour: "numeric",
+  return new Date(iso).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
     minute: "2-digit",
   })
 }
