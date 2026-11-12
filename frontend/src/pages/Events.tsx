@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { AlertCircle, Search, SlidersHorizontal, X } from "lucide-react"
+import { AlertCircle, Search, SlidersHorizontal, Sparkles, X } from "lucide-react"
 import { EventCard } from "@/components/EventCard"
 import { Button } from "@/components/ui/Button"
 import type { EventCategory } from "@/data/types"
@@ -33,7 +33,7 @@ export function Events() {
   const activeCategory = params.get("category") ?? "All"
   const [query, setQuery] = useState(() => params.get("q") ?? "")
   const [sort, setSort] = useState<SortKey>("popular")
-  const { events, loading, error } = useCatalogEvents()
+  const { events, loading, error, refresh } = useCatalogEvents()
 
   useEffect(() => {
     setQuery(params.get("q") ?? "")
@@ -85,11 +85,15 @@ export function Events() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-3">
-        <h1 className="type-print text-5xl sm:text-6xl">
+      <div className="relative overflow-hidden border-b border-border pb-8">
+        <div className="absolute -right-8 -top-12 h-40 w-40 rounded-full border border-accent/20" aria-hidden="true" />
+        <div className="relative flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-accent">
+          <Sparkles className="h-4 w-4" aria-hidden="true" /> Live ticket desk
+        </div>
+        <h1 className="relative mt-3 type-print text-5xl sm:text-6xl">
           {activeCategory === "All" ? "All events" : activeCategory}
         </h1>
-        <p className="max-w-xl leading-relaxed text-muted">
+        <p className="relative mt-3 max-w-xl leading-relaxed text-muted">
           Discover events now on sale, filter by category, and book digital tickets in just a few steps.
         </p>
         {!loading && !error && (
@@ -99,7 +103,7 @@ export function Events() {
         )}
       </div>
 
-      <div className="sticky top-16 z-30 -mx-4 mt-8 border-y border-border bg-background px-4 py-4 sm:mx-0 sm:rounded-2xl sm:border sm:px-5">
+      <div className="sticky top-16 z-30 -mx-4 mt-8 border-y border-border bg-background/95 px-4 py-4 backdrop-blur-md sm:mx-0 sm:rounded-[var(--radius-card)] sm:border sm:px-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-sm">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-2" />
@@ -116,6 +120,7 @@ export function Events() {
             />
             {query && (
               <button
+                type="button"
                 onClick={() => setQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-2 hover:text-foreground"
                 aria-label="Clear search"
@@ -178,7 +183,7 @@ export function Events() {
             <p className="type-print text-2xl">Events are unavailable right now</p>
             <p className="mt-1 text-sm text-muted">{error}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+          <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
             Try again
           </Button>
         </div>

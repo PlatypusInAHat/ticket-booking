@@ -1,41 +1,66 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { EventItem } from "@/data/types"
 import { eventsAPI, ticketsAPI } from "@/services/api"
 import { mapApiEventToEventItem } from "@/utils/eventMapper"
 
-// Loads the live catalog (events joined with their ticket tiers) once per mount.
+const CACHE_TTL_MS = 30_000
+const catalogCache: { events: EventItem[]; expiresAt: number } = { events: [], expiresAt: 0 }
+let catalogRequest: Promise<EventItem[]> | null = null
+
+async function requestCatalog() {
+  if (catalogCache.expiresAt > Date.now()) return catalogCache.events
+  if (!catalogRequest) {
+    catalogRequest = Promise.all([
+      eventsAPI.getEvents({ limit: 100 }),
+      ticketsAPI.getAll({ limit: 100 }),
+    ])
+      .then(([eventsResponse, ticketsResponse]) => {
+        const apiEvents = eventsResponse.data.data?.events || []
+        const apiTickets = ticketsResponse.data.data?.tickets || []
+        const events = apiEvents.map((event: any) => mapApiEventToEventItem(event, apiTickets))
+        catalogCache.events = events
+        catalogCache.expiresAt = Date.now() + CACHE_TTL_MS
+        return events
+      })
+      .finally(() => {
+        catalogRequest = null
+      })
+  }
+  return catalogRequest
+}
+
+// Shares one short-lived catalog snapshot across Home and Events and deduplicates concurrent mounts.
 export function useCatalogEvents() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  useEffect(() => {
-    const controller = new AbortController()
-
-    const loadEvents = async () => {
+  const loadEvents = useCallback((signal?: AbortSignal) => {
       setLoading(true)
       setError("")
-
-      try {
-        const [eventsResponse, ticketsResponse] = await Promise.all([
-          eventsAPI.getEvents({ limit: 100 }, { signal: controller.signal }),
-          ticketsAPI.getAll({ limit: 100 }, { signal: controller.signal }),
-        ])
-
-        const apiEvents = eventsResponse.data.data?.events || []
-        const apiTickets = ticketsResponse.data.data?.tickets || []
-        setEvents(apiEvents.map((event: any) => mapApiEventToEventItem(event, apiTickets)))
-      } catch (err: any) {
-        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return
-        setError(err.response?.data?.message || "We couldn't load events. Check your connection and try again.")
-      } finally {
-        if (!controller.signal.aborted) setLoading(false)
-      }
-    }
-
-    loadEvents()
-    return () => controller.abort()
+      return requestCatalog()
+        .then((nextEvents) => setEvents(nextEvents))
+        .catch((err: any) => {
+          if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return
+          setError(err.response?.data?.message || "We couldn't load events. Check your connection and try again.")
+        })
+        .finally(() => {
+          if (!signal?.aborted) setLoading(false)
+        })
   }, [])
 
-  return { events, loading, error }
+  useEffect(() => {
+    const controller = new AbortController()
+    loadEvents(controller.signal)
+    return () => controller.abort()
+  }, [loadEvents])
+
+  const refresh = useCallback(() => {
+    catalogCache.expiresAt = 0
+    const controller = new AbortController()
+    loadEvents(controller.signal)
+    return () => controller.abort()
+  }, [loadEvents])
+
+  return { events, loading, error, refresh }
 }

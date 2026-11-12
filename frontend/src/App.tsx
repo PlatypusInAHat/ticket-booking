@@ -20,6 +20,7 @@ const Checkout = lazy(() => import("@/pages/Checkout").then((module) => ({ defau
 const PaymentResult = lazy(() => import("@/pages/PaymentResult").then((module) => ({ default: module.PaymentResult })))
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then((module) => ({ default: module.AdminDashboard })))
 const ApiManagement = lazy(() => import("@/pages/ApiManagement").then((module) => ({ default: module.ApiManagement })))
+const NotFound = lazy(() => import("@/pages/NotFound").then((module) => ({ default: module.NotFound })))
 
 function PageLoader({ title = "Loading…" }) {
   return (
@@ -102,18 +103,14 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>
 
-          {["admin", "organizer"].includes(user?.role) && (
-            <Route element={<PrivateRoute requiredRoles={["admin", "organizer"]} />}>
-              <Route path="/admin" element={<AdminDashboard />} />
-            </Route>
-          )}
-          {user?.role === "admin" && (
-            <Route element={<PrivateRoute requiredRole="admin" />}>
-              <Route path="/api-management" element={<ApiManagement />} />
-            </Route>
-          )}
+          <Route element={<PrivateRoute requiredRoles={["admin", "organizer"]} />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Route>
+          <Route element={<PrivateRoute requiredRole="admin" />}>
+            <Route path="/api-management" element={<ApiManagement />} />
+          </Route>
 
-          <Route path="*" element={<Home />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </Suspense>

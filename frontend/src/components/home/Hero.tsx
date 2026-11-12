@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/utils"
 function FeaturedTicket({ event }: { event: EventItem }) {
   const place = [event.venue, event.city].filter(Boolean).join(", ")
   const hasTickets = event.tiers.length > 0 && event.priceFrom > 0
+  const remaining = event.tiers.reduce((total, tier) => total + Math.max(0, tier.remaining || 0), 0)
 
   return (
     <article className="relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border-strong bg-surface md:flex-row">
@@ -39,9 +40,16 @@ function FeaturedTicket({ event }: { event: EventItem }) {
       <div className="paper flex flex-col gap-5 px-5 py-5 sm:px-7 md:w-80 md:py-7">
         <div className="flex items-start justify-between gap-3">
           <StubDate date={event.date} />
-          <span className="rounded-sm border border-paper-line px-1.5 pt-0.5 font-display text-sm font-bold uppercase leading-none tracking-[0.04em] text-paper-muted">
-            {event.category}
-          </span>
+          <div className="flex flex-col items-end gap-1.5">
+            <span className="rounded-sm border border-paper-line px-1.5 pt-0.5 font-display text-sm font-bold uppercase leading-none tracking-[0.04em] text-paper-muted">
+              {event.category}
+            </span>
+            {event.status === "limited" && remaining > 0 && (
+              <span className="font-display text-xs font-bold uppercase tracking-[0.04em] text-foil">
+                {remaining <= 20 ? `${remaining} left` : "Almost gone"}
+              </span>
+            )}
+          </div>
         </div>
         <div className="text-sm">
           <p className="font-semibold">{event.venue || "Venue to be announced"}</p>

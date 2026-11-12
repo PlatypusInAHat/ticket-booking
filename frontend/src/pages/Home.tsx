@@ -48,7 +48,7 @@ function EventGrid({ events, loading, count }: { events: EventItem[]; loading: b
 }
 
 export function Home() {
-  const { events, loading, error } = useCatalogEvents()
+  const { events, loading, error, refresh } = useCatalogEvents()
 
   const upcoming = useMemo(() => {
     const now = Date.now()
@@ -98,7 +98,7 @@ export function Home() {
               <p className="type-print text-2xl">Events are unavailable right now</p>
               <p className="mt-1 text-sm text-muted">{error}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+            <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
               Try again
             </Button>
           </div>

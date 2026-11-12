@@ -256,7 +256,10 @@ export function AdminDashboard() {
     }
 
     try {
-      const response = await companiesAPI.create({ name: newCompanyName.trim() })
+      const response = await companiesAPI.create({
+        name: newCompanyName.trim(),
+        organizationType: "event_organizer",
+      })
       const company = response.data.data
       setNewCompanyName("")
       await fetchCompanies()
@@ -566,9 +569,9 @@ export function AdminDashboard() {
   return (
     <div className="relative z-10 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
 
-      <div className="mb-10">
-        <h1 className="type-print text-5xl sm:text-6xl">Platform Management</h1>
-        <p className="mt-2 text-muted">Create polished event launches, monitor bookings, and manage the platform.</p>
+      <div className="mb-12">
+        <h1 className="type-print text-6xl leading-[0.88] sm:text-7xl">Platform Management</h1>
+        <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">Create polished event launches, monitor bookings, and manage the platform.</p>
       </div>
 
       {message && (
@@ -577,7 +580,7 @@ export function AdminDashboard() {
         </div>
       )}
 
-      <section className="relative z-10 mb-8 rounded-2xl border border-border bg-surface p-6">
+      <section className="relative z-10 mb-8 rounded-[var(--radius-card)] border border-border bg-surface p-5 md:p-6">
         <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
           <label className="space-y-2">
             <span className="text-sm font-semibold text-foreground">Organizer company</span>
@@ -608,15 +611,15 @@ export function AdminDashboard() {
       </section>
 
       {stats && (
-        <section className="relative z-10 mb-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <section className="relative z-10 mb-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {statCards.map(({ label, value, icon: Icon, color, bg }) => (
-            <div key={label} className="group flex items-center gap-5 overflow-hidden rounded-2xl border border-border bg-surface p-6">
-              <div className={cn("flex h-14 w-14 items-center justify-center rounded-2xl transition-transform group-hover:scale-110", bg, color)}>
+            <div key={label} className="group flex items-center gap-5 overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface p-5 md:p-6">
+              <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-md", bg, color)}>
                 <Icon className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm font-bold uppercase tracking-wider text-muted">{label}</p>
-                <p className={cn("mt-1 text-2xl font-black", color)}>{value}</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.08em] text-muted">{label}</p>
+                <p className={cn("mt-1 font-display text-3xl font-extrabold leading-none", color)}>{value}</p>
               </div>
             </div>
           ))}

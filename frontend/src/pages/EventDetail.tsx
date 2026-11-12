@@ -12,6 +12,7 @@ import {
 import type { EventItem } from "@/data/types"
 import { StatusBadge, Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
+import { EventNotFound } from "@/components/EventNotFound"
 import { SectionTitle } from "@/components/ui/SectionTitle"
 import { Perforation, StubDate } from "@/components/ui/Perforation"
 import { TicketTierCard } from "@/components/TicketTierCard"
@@ -121,20 +122,19 @@ export function EventDetail() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-        <div className="h-[520px] animate-pulse rounded-[var(--radius-card)] border border-border bg-surface" />
+      <div role="status" aria-label="Loading event details" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="h-5 w-28 animate-pulse rounded-sm bg-surface-2" />
+        <div className="mt-8 h-[360px] animate-pulse rounded-[var(--radius-card)] border border-border bg-surface sm:h-[460px]" />
+        <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_380px]">
+          <div className="space-y-4"><div className="h-9 w-2/3 animate-pulse rounded-sm bg-surface-2" /><div className="h-24 animate-pulse rounded-[var(--radius-card)] bg-surface" /></div>
+          <div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-surface" />
+        </div>
       </div>
     )
   }
 
   if (error || !event) {
-    return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-32 text-center">
-        <h1 className="type-print text-4xl">Event not found</h1>
-        <p className="text-muted">{error || "This event does not exist or is no longer on sale."}</p>
-        <Button to="/events">View all events</Button>
-      </div>
-    )
+    return <EventNotFound message={error || "This event does not exist or is no longer on sale."} />
   }
 
   return (

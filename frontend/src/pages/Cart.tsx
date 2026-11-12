@@ -1,5 +1,6 @@
 import { Minus, Plus, Trash2, ShoppingBag, ShieldCheck, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/Button"
+import { EmptyState } from "@/components/ui/EmptyState"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { removeFromCart, updateQuantity } from "@/store/cartSlice"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -12,17 +13,14 @@ export function Cart() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-4 py-32 text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-md bg-surface-2 text-muted-2">
-          <ShoppingBag className="h-7 w-7" />
-        </span>
-        <div>
-          <h1 className="type-print text-4xl">Your cart is empty</h1>
-          <p className="mt-2 text-muted">Pick an event you love and your tickets will appear here.</p>
-        </div>
-        <Button to="/events" size="lg">
-          Browse events
-        </Button>
+      <div className="mx-auto max-w-2xl px-4 py-20 sm:px-6 lg:px-8">
+        <EmptyState
+          icon={ShoppingBag}
+          title="Your cart is empty"
+          description="Pick an event you love and your tickets will appear here."
+          action="Browse events"
+          actionTo="/events"
+        />
       </div>
     )
   }
@@ -37,14 +35,15 @@ export function Cart() {
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
         <div className="flex flex-col gap-4">
           {items.map((line: any) => (
-            <div
+            <article
               key={line._id || line.id}
-              className="flex gap-4 rounded-2xl border border-border bg-surface p-4"
+              className="grid grid-cols-[auto_1fr] gap-4 rounded-[var(--radius-card)] border border-border bg-surface p-4 sm:flex"
             >
               <img
                 src={line.image || line.eventImage || "/placeholder.svg"}
-                alt=""
-                className="h-24 w-24 shrink-0 rounded-xl bg-surface-2 object-cover"
+                alt={line.eventName || line.eventTitle || "Event"}
+                loading="lazy"
+                className="h-20 w-20 shrink-0 rounded-md bg-surface-2 object-cover sm:h-24 sm:w-24"
               />
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-start justify-between gap-2">
@@ -53,6 +52,7 @@ export function Cart() {
                     <p className="text-sm text-accent">{line.category || line.tierName}</p>
                   </div>
                   <button
+                    type="button"
                     onClick={() => dispatch(removeFromCart(line._id || line.id))}
                     className="flex h-8 w-8 items-center justify-center rounded-md text-muted-2 transition-colors hover:bg-surface-2 hover:text-danger"
                     aria-label="Remove item"
@@ -68,6 +68,7 @@ export function Cart() {
                 <div className="mt-auto flex items-center justify-between pt-3">
                   <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1">
                     <button
+                      type="button"
                       onClick={() =>
                         dispatch(
                           updateQuantity({
@@ -84,6 +85,7 @@ export function Cart() {
                     </button>
                     <span className="w-5 text-center text-sm font-semibold">{line.quantity}</span>
                     <button
+                      type="button"
                       onClick={() =>
                         dispatch(
                           updateQuantity({
@@ -104,7 +106,7 @@ export function Cart() {
                   </span>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
 

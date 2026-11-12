@@ -10,11 +10,12 @@ export const EventCard = memo(function EventCard({ event }: { event: EventItem }
   const hasTickets = event.tiers.length > 0 && event.priceFrom > 0
   const place = [event.venue, event.city].filter(Boolean).join(", ")
   const soldOut = event.status === "soldout"
+  const remaining = event.tiers.reduce((total, tier) => total + Math.max(0, tier.remaining || 0), 0)
 
   return (
     <Link
       to={`/events/${event.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface transition-colors duration-200 hover:border-border-strong"
+      className="group relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface transition-[border-color,transform,box-shadow] duration-300 hover:-translate-y-1 hover:border-border-strong hover:shadow-[0_18px_45px_rgba(0,0,0,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
         <img
@@ -26,6 +27,7 @@ export const EventCard = memo(function EventCard({ event }: { event: EventItem }
             (soldOut ? "grayscale" : "")
           }
         />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/55 to-transparent" aria-hidden="true" />
         {event.category && event.category !== "Other" && (
           <Badge tone="neutral" className="absolute left-3 top-3 border-transparent bg-background/85 text-foreground">
             {event.category}
@@ -34,7 +36,8 @@ export const EventCard = memo(function EventCard({ event }: { event: EventItem }
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5 px-5 pb-5 pt-4">
-        <h3 className="type-print text-[1.65rem] group-hover:text-accent">{event.title}</h3>
+        <h3 className="type-print line-clamp-2 text-[1.65rem] leading-[0.95] group-hover:text-accent">{event.title}</h3>
+        {event.artist && <p className="truncate text-sm text-muted-2">{event.artist}</p>}
         <p className="truncate text-sm text-muted">{place || "Venue to be announced"}</p>
       </div>
 
@@ -51,7 +54,7 @@ export const EventCard = memo(function EventCard({ event }: { event: EventItem }
             <>
               {event.status === "limited" ? (
                 <span className="mb-1 rounded-sm border-2 border-current px-1 pt-0.5 font-display text-xs font-extrabold uppercase leading-none text-foil">
-                  Almost gone
+                  {remaining > 0 && remaining <= 20 ? `${remaining} left` : "Almost gone"}
                 </span>
               ) : (
                 <span className="text-xs font-medium text-paper-muted">From</span>

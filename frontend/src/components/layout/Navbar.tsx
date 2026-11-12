@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom"
-import { ShoppingBag, Menu, X } from "lucide-react"
+import { CalendarDays, Menu, ShoppingBag, Ticket, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAppSelector, useAppDispatch } from "@/store"
 import { logout } from "@/store/authSlice"
@@ -11,6 +11,9 @@ import { Logo } from "@/components/layout/Logo"
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Events", to: "/events" },
+]
+
+const eventCategories = [
   { label: "Festivals", to: "/events?category=Festival" },
   { label: "Sports", to: "/events?category=Sports" },
 ]
@@ -18,10 +21,10 @@ const navItems = [
 // Query-string links never show as active: /events?category=X would otherwise light up with /events.
 const desktopLink = (active: boolean) =>
   cn(
-    "relative flex h-16 items-center px-3 text-sm font-medium transition-colors",
+    "relative flex h-10 items-center gap-2 rounded-sm px-3 text-sm font-medium transition-colors",
     active
-      ? "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-accent"
-      : "text-muted hover:text-foreground",
+      ? "bg-accent text-accent-foreground"
+      : "text-muted hover:bg-surface-2 hover:text-foreground",
   )
 
 const mobileLink = (active: boolean) =>
@@ -74,7 +77,7 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 border-b bg-background transition-colors duration-200",
+        "fixed inset-x-0 top-0 z-50 border-b bg-background/95 backdrop-blur-md transition-colors duration-200",
         scrolled || open ? "border-border" : "border-transparent",
       )}
     >
@@ -83,23 +86,49 @@ export function Navbar() {
           <Logo />
         </Link>
 
-        <nav className="hidden items-center md:flex" aria-label="Main">
-          {links.map((item) => (
+        <nav className="hidden items-center gap-1 rounded-md border border-border bg-surface/60 p-1 md:flex" aria-label="Main">
+          {links.slice(0, 2).map((item, index) => (
             <NavLink
               key={item.label}
               to={item.to}
               end={item.to === "/"}
               className={({ isActive }) => desktopLink(isActive && !item.to.includes("?"))}
             >
+              {index === 0 ? <Ticket className="h-3.5 w-3.5" aria-hidden="true" /> : index === 1 ? <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+              {item.label}
+            </NavLink>
+          ))}
+          <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+          {eventCategories.map((item) => (
+            <NavLink
+              key={item.label}
+              to={item.to}
+              className="flex h-8 items-center rounded-sm px-2 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+            >
               {item.label}
             </NavLink>
           ))}
         </nav>
 
+        <div className="hidden items-center gap-3 md:flex">
+          {links.slice(2).map((item) => (
+            <NavLink
+              key={item.label}
+              to={item.to}
+              className={({ isActive }) => cn(
+                "text-sm font-medium transition-colors hover:text-foreground",
+                isActive && !item.to.includes("?") ? "text-accent" : "text-muted",
+              )}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+
         <div className="flex items-center gap-1.5">
           <Link
             to="/cart"
-            className="relative flex h-10 items-center gap-2 rounded-md px-2.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+            className="relative flex h-10 items-center gap-2 rounded-md border border-transparent px-2.5 text-muted transition-colors hover:border-border hover:bg-surface-2 hover:text-foreground"
             aria-label={count === 1 ? "Cart, 1 ticket" : `Cart, ${count} tickets`}
           >
             <ShoppingBag className="h-5 w-5" aria-hidden="true" />
@@ -133,7 +162,29 @@ export function Navbar() {
       {open && (
         <div className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-background md:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col px-4 pb-6 pt-2" aria-label="Main">
-            {links.map((item) => (
+            {links.slice(0, 2).map((item) => (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                end={item.to === "/"}
+                className={({ isActive }) => mobileLink(isActive && !item.to.includes("?"))}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+            <div className="ml-4 border-l border-border pl-4">
+              <p className="pb-1 text-xs font-semibold uppercase tracking-[0.16em] text-muted-2">Event categories</p>
+              {eventCategories.map((item) => (
+                <NavLink
+                  key={item.label}
+                  to={item.to}
+                  className="block border-b border-border py-3 type-print text-2xl text-muted transition-colors hover:text-accent"
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+            {links.slice(2).map((item) => (
               <NavLink
                 key={item.label}
                 to={item.to}
