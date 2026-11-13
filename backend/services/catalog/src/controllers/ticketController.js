@@ -1,5 +1,6 @@
 const ticketService = require('../services/ticketService');
 const { asyncHandler, ApiResponse } = require('@ticket-booking/shared');
+const { invalidateEventCache } = require('../middleware/httpCache');
 
 const getAllTickets = asyncHandler(async (req, res) => {
   const data = await ticketService.getAllTickets(req.query);
@@ -12,17 +13,20 @@ const getTicketById = asyncHandler(async (req, res) => {
 });
 
 const createTicket = asyncHandler(async (req, res) => {
-  const ticket = await ticketService.createTicket(req.body, req.user);
+  const ticket = await ticketService.createTicket(req.body, req.user);
+  invalidateEventCache();
   res.status(201).json(new ApiResponse(201, ticket, 'Ticket created successfully'));
 });
 
 const updateTicket = asyncHandler(async (req, res) => {
-  const ticket = await ticketService.updateTicket(req.params.id, req.body, req.user);
+  const ticket = await ticketService.updateTicket(req.params.id, req.body, req.user);
+  invalidateEventCache();
   res.status(200).json(new ApiResponse(200, ticket, 'Ticket updated successfully'));
 });
 
 const deleteTicket = asyncHandler(async (req, res) => {
-  await ticketService.deleteTicket(req.params.id, req.user);
+  await ticketService.deleteTicket(req.params.id, req.user);
+  invalidateEventCache();
   res.status(200).json(new ApiResponse(200, null, 'Ticket deleted successfully'));
 });
 

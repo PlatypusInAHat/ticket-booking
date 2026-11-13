@@ -1,10 +1,25 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const { body, param, query } = require('express-validator');
 const { authenticateToken, authorizeRole } = require('../../../../middleware/auth');
 const companyController = require('../controllers/companyController');
 const validateRequest = require('../../../../middleware/validateRequest');
 
 const router = express.Router();
+
+const companyLookupParam = () => param('id')
+  .custom((value) => /^[a-z0-9-]{1,200}$/i.test(value))
+  .withMessage('Company ID or slug is invalid');
+
+// Public route: attach req.user when a valid bearer token is present, never reject.
+const optionalAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token || !process.env.JWT_SECRET) return next();
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (!err) req.user = user;
+    next();
+  });
+};
 
 const companyIdParam = () => param('id')
   .isMongoId()
@@ -70,7 +85,7 @@ router.get('/', [
     .withMessage('limit must be between 1 and 100'),
   validateRequest
 ], companyController.getCompanies);
-router.get('/:id', [companyIdParam(), validateRequest], companyController.getCompanyById);
+router.get('/:id', [companyLookupParam(), validateRequest, optionalAuth], companyController.getCompanyById);
 router.post('/', [
   authenticateToken,
   authorizeRole(['admin', 'organizer']),

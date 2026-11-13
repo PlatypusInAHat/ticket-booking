@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Company = require('../models/Company');
 const { ApiError, queryUtils } = require('@ticket-booking/shared');
 const { buildSort, parsePositiveInt } = queryUtils;
@@ -56,7 +57,7 @@ const getCompanies = async (query = {}, user = null) => {
   const sort = buildSort(sortBy, order, ['createdAt', 'name', 'status', 'verification.status'], 'createdAt');
 
   const [companies, total] = await Promise.all([
-    Company.find(filter).sort(sort).skip(skip).limit(parsePositiveInt(limit, 100, { min: 1, max: 100 })),
+    Company.find(filter).sort(sort).skip(skip).limit(parsePositiveInt(limit, 100, { min: 1, max: 100 })).lean(),
     Company.countDocuments(filter)
   ]);
 
@@ -79,6 +80,60 @@ const getCompanyById = async (id) => {
   }
 
   return company;
+};
+
+const PUBLIC_COMPANY_STATUSES = ['active'];
+const PUBLIC_COMPANY_FIELDS = 'name slug description logo coverImage metadata.coverImage contact.website address.city address.country status verification.status createdAt';
+
+const buildCompanyLookup = (idOrSlug) => (
+  mongoose.Types.ObjectId.isValid(idOrSlug) && String(new mongoose.Types.ObjectId(String(idOrSlug))) === String(idOrSlug)
+    ? { _id: idOrSlug }
+    : { slug: String(idOrSlug).toLowerCase() }
+);
+
+const toPublicCompanyProfile = (company) => ({
+  _id: company._id,
+  id: String(company._id),
+  name: company.name,
+  slug: company.slug,
+  description: company.description || '',
+  logo: company.logo || '',
+  coverImage: company.coverImage || company.metadata?.coverImage || '',
+  contact: {
+    website: company.contact?.website || ''
+  },
+  address: {
+    city: company.address?.city || '',
+    country: company.address?.country || ''
+  },
+  verified: company.verification?.status === 'verified',
+  createdAt: company.createdAt
+});
+
+/**
+ * Resolves a company by ObjectId or slug.
+ * - Managers (owner/manager members) and admins get the full document (previous behaviour).
+ * - Everyone else gets a public projection, and only for active companies.
+ */
+const getCompanyProfile = async (idOrSlug, user = null) => {
+  const lookup = buildCompanyLookup(idOrSlug);
+
+  if (user) {
+    const company = await Company.findOne(lookup);
+    if (company && canManageCompany(company, user)) {
+      return { company, isPublic: false };
+    }
+  }
+
+  const company = await Company.findOne({ ...lookup, status: { $in: PUBLIC_COMPANY_STATUSES } })
+    .select(PUBLIC_COMPANY_FIELDS)
+    .lean();
+
+  if (!company) {
+    throw new ApiError(404, 'Company not found');
+  }
+
+  return { company: toPublicCompanyProfile(company), isPublic: true };
 };
 
 const createCompany = async (companyData, user) => {
@@ -118,5 +173,7 @@ module.exports = {
   createCompany,
   getCompanies,
   getCompanyById,
+  getCompanyProfile,
+  toPublicCompanyProfile,
   updateCompany
 };

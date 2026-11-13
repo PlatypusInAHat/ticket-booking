@@ -196,6 +196,7 @@ const ticketSchema = new mongoose.Schema({
 });
 
 ticketSchema.index({ event: 1, session: 1 });
+ticketSchema.index({ event: 1, status: 1 }); // ticketSummary aggregation + per-event listings
 ticketSchema.index({ company: 1, event: 1 });
 ticketSchema.index({ eventType: 1, status: 1, date: 1 });
 ticketSchema.index({ 'location.city': 1, status: 1, date: 1 });

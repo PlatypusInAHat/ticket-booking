@@ -5,6 +5,7 @@ const eventController = require('../controllers/eventController');
 const validateRequest = require('../../../../middleware/validateRequest');
 const { cache } = require('@ticket-booking/platform');
 const { cacheMiddleware } = cache;
+const { publicCacheControl } = require('../middleware/httpCache');
 
 const router = express.Router();
 
@@ -58,6 +59,10 @@ const eventWriteRules = () => [
 
 router.get('/', [
   query('companyId')
+    .optional()
+    .isMongoId()
+    .withMessage('Company ID is invalid'),
+  query('company')
     .optional()
     .isMongoId()
     .withMessage('Company ID is invalid'),
@@ -117,9 +122,12 @@ router.get('/', [
     .isInt({ min: 1, max: 100 })
     .withMessage('limit must be between 1 and 100'),
   validateRequest,
+  publicCacheControl,
   cacheMiddleware(60)
 ], eventController.getEvents);
-router.get('/:id', [eventLookupParam(), validateRequest, cacheMiddleware(300)], eventController.getEventById);
+// Detail embeds live ticketSummary (remaining seats), so keep the in-process TTL short;
+// event/ticket writes also invalidate the cache (see invalidateEventCache).
+router.get('/:id', [eventLookupParam(), validateRequest, publicCacheControl, cacheMiddleware(60)], eventController.getEventById);
 router.post('/bundle', [
   authenticateToken,
   authorizeRole(['admin', 'organizer'])

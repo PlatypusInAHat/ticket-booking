@@ -13,8 +13,9 @@ router.use(internalAuth);
 
 router.get('/stats', asyncHandler(async (req, res) => {
   const [totalBookings, totalPayments, completedPayments, totalRevenue] = await Promise.all([
-    Booking.countDocuments(),
-    Payment.countDocuments(),
+    // Unfiltered totals: use collection metadata instead of scanning the whole index.
+    Booking.estimatedDocumentCount(),
+    Payment.estimatedDocumentCount(),
     Payment.countDocuments({ status: 'completed' }),
     Booking.aggregate([
       { $match: { paymentStatus: 'completed' } },

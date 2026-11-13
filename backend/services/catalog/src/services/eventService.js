@@ -7,9 +7,75 @@ const { ApiError, queryUtils } = require('@ticket-booking/shared');
 const { canManageCompany } = require('./companyService');
 const { buildSort, parseDate, parsePositiveInt } = queryUtils;
 
+// A ticket tier is "sellable" when it is active, published and still has seats
+// (same seat semantics as `availableOnly=true` on GET /api/tickets).
+const SELLABLE_TICKET_MATCH = Object.freeze({
+  isActive: true,
+  status: 'published',
+  availableSeats: { $gt: 0 }
+});
+
+const EMPTY_TICKET_SUMMARY = Object.freeze({
+  minPrice: 0,
+  maxPrice: 0,
+  currency: 'VND',
+  remaining: 0,
+  tierCount: 0
+});
+
+const toObjectId = (value) => {
+  if (value instanceof mongoose.Types.ObjectId) return value;
+  return mongoose.Types.ObjectId.isValid(value) ? new mongoose.Types.ObjectId(String(value)) : null;
+};
+
+/**
+ * Computes ticket summaries for many events with a single aggregation over Ticket.
+ * Returns a Map keyed by event id string.
+ */
+const getTicketSummaries = async (eventIds = []) => {
+  const ids = eventIds.map(toObjectId).filter(Boolean);
+  const summaries = new Map();
+
+  if (!ids.length) {
+    return summaries;
+  }
+
+  const rows = await Ticket.aggregate([
+    { $match: { event: { $in: ids }, ...SELLABLE_TICKET_MATCH } },
+    {
+      $group: {
+        _id: '$event',
+        minPrice: { $min: '$price' },
+        maxPrice: { $max: '$price' },
+        currency: { $first: '$currency' },
+        remaining: { $sum: '$availableSeats' },
+        tierCount: { $sum: 1 }
+      }
+    }
+  ]);
+
+  rows.forEach((row) => {
+    summaries.set(String(row._id), {
+      minPrice: Number(row.minPrice) || 0,
+      maxPrice: Number(row.maxPrice) || 0,
+      currency: row.currency || EMPTY_TICKET_SUMMARY.currency,
+      remaining: Number(row.remaining) || 0,
+      tierCount: Number(row.tierCount) || 0
+    });
+  });
+
+  return summaries;
+};
+
+const withTicketSummary = (event, summaries) => ({
+  ...event,
+  ticketSummary: summaries.get(String(event._id)) || { ...EMPTY_TICKET_SUMMARY }
+});
+
 const getEvents = async (query = {}) => {
   const {
     companyId,
+    company,
     eventType,
     city,
     status = 'published',
@@ -26,8 +92,9 @@ const getEvents = async (query = {}) => {
   } = query;
   const filter = {};
 
-  if (companyId) {
-    filter.company = companyId;
+  const companyFilter = companyId || company;
+  if (companyFilter) {
+    filter.company = companyFilter;
   }
 
   if (eventType) {
@@ -87,8 +154,10 @@ const getEvents = async (query = {}) => {
     Event.countDocuments(filter)
   ]);
 
+  const summaries = await getTicketSummaries(events.map((event) => event._id));
+
   return {
-    events,
+    events: events.map((event) => withTicketSummary(event, summaries)),
     pagination: {
       total,
       page: parsedPage,
@@ -111,7 +180,8 @@ const getEventById = async (id) => {
     throw new ApiError(404, 'Event not found');
   }
 
-  return event;
+  const summaries = await getTicketSummaries([event._id]);
+  return withTicketSummary(event, summaries);
 };
 
 const createEvent = async (eventData, user) => {
@@ -331,6 +401,9 @@ const deleteEvent = async (id, user) => {
 };
 
 module.exports = {
+  EMPTY_TICKET_SUMMARY,
+  SELLABLE_TICKET_MATCH,
+  getTicketSummaries,
   getEvents,
   getEventById,
   createEvent,

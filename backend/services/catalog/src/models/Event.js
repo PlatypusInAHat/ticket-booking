@@ -146,6 +146,8 @@ eventSchema.pre('validate', function(next) {
   next();
 });
 
+// Hot paths: public listing (status + startsAt sort) and company filter.
+eventSchema.index({ status: 1, startsAt: 1 });
 eventSchema.index({ company: 1, startsAt: 1 });
 
 eventSchema.index({ eventType: 1, status: 1, startsAt: 1 });

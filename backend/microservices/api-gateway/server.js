@@ -127,6 +127,9 @@ const forwardRequest = (service) => async (req, res) => {
       method: req.method,
       headers: {
         ...stripHopByHopHeaders(req.headers),
+        // The gateway compresses the client response itself (compression() above), so ask
+        // upstreams for identity encoding instead of gzip -> gunzip -> gzip on every hop.
+        'accept-encoding': 'identity',
         'x-gateway-service': SERVICE_NAME
       },
       data: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,

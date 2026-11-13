@@ -3,6 +3,7 @@ const { body, param, query } = require('express-validator');
 const { authenticateToken, authorizeRole } = require('../../../../middleware/auth');
 const ticketController = require('../controllers/ticketController');
 const validateRequest = require('../../../../middleware/validateRequest');
+const { publicCacheControl } = require('../middleware/httpCache');
 
 const router = express.Router();
 
@@ -138,7 +139,7 @@ const ticketWriteRules = () => [
     .withMessage('Seat map sections must be an array')
 ];
 
-router.get('/', [...listRules(), validateRequest], ticketController.getAllTickets);
+router.get('/', [...listRules(), validateRequest, publicCacheControl], ticketController.getAllTickets);
 router.get('/:id', [ticketIdParam(), validateRequest], ticketController.getTicketById);
 router.post('/', [
   authenticateToken,

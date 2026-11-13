@@ -5,6 +5,12 @@ const { toPublicTicket } = require('../serializers/ticketSerializer');
 const { canManageCompany } = require('./companyService');
 const { buildSort, parseBoolean, parseDate, parsePositiveInt } = queryUtils;
 
+const PUBLIC_TICKET_LIST_FIELDS = [
+  'event', 'company', 'eventName', 'eventType', 'name', 'ticketName', 'ticketType', 'category',
+  'description', 'image', 'location', 'date', 'time', 'price', 'currency', 'availableSeats',
+  'totalSeats', 'soldSeats', 'status', 'isActive', 'visibility', 'seatMap'
+].join(' ');
+
 const getAllTickets = async (query) => {
   const {
     companyId,
@@ -67,15 +73,19 @@ const getAllTickets = async (query) => {
     'date'
   );
 
-  const tickets = await Ticket.find(filter)
-    .populate('company', 'name slug logo status')
-    .populate('event', 'title slug eventType coverImage startsAt endsAt status company location')
-    .populate('session', 'startsAt endsAt status')
-    .skip(skip)
-    .limit(pageSize)
-    .sort(sort);
-
-  const total = await Ticket.countDocuments(filter);
+  // Read-only list: project only what toPublicTicket emits, skip hydration (.lean()),
+  // and run the count in parallel. `session` is not part of the list payload, so it is not populated.
+  const [tickets, total] = await Promise.all([
+    Ticket.find(filter)
+      .select(PUBLIC_TICKET_LIST_FIELDS)
+      .populate('company', 'name slug logo status')
+      .populate('event', 'title slug eventType coverImage startsAt endsAt status company location')
+      .skip(skip)
+      .limit(pageSize)
+      .sort(sort)
+      .lean(),
+    Ticket.countDocuments(filter)
+  ]);
 
   return {
     tickets: tickets.map(ticket => toPublicTicket(ticket)),

@@ -6,8 +6,11 @@ const getCompanies = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, companies));
 });
 
+const { PUBLIC_CACHE_CONTROL } = require('../middleware/httpCache');
+
 const getCompanyById = asyncHandler(async (req, res) => {
-  const company = await companyService.getCompanyById(req.params.id);
+  const { company, isPublic } = await companyService.getCompanyProfile(req.params.id, req.user || null);
+  res.set('Cache-Control', isPublic && !req.headers.authorization ? PUBLIC_CACHE_CONTROL : 'private, no-store');
   res.status(200).json(new ApiResponse(200, company));
 });
 
