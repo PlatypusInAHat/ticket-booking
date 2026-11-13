@@ -22,6 +22,7 @@ import { useAppDispatch } from "@/store"
 import { addToCart } from "@/store/cartSlice"
 import { eventsAPI, ticketsAPI } from "@/services/api"
 import { mapApiEventToEventItem } from "@/utils/eventMapper"
+import { loadCatalog } from "@/lib/catalogCache"
 
 export function EventDetail() {
   // The route is /events/:id; the value is an event id or slug, both resolved by the catalog service.
@@ -62,16 +63,20 @@ export function EventDetail() {
         setEvent(mappedEvent)
         setSelectedTier(mappedEvent.tiers[0]?.id || "")
 
-        const [relatedResponse, catalogTicketsResponse] = await Promise.all([
-          eventsAPI.getEvents({ eventType: apiEvent.eventType, limit: 4 }, { signal: controller.signal }),
-          ticketsAPI.getAll({ limit: 100 }, { signal: controller.signal }),
-        ])
-        const catalogTickets = catalogTicketsResponse.data.data?.tickets || []
-        const relatedEvents = (relatedResponse.data.data?.events || [])
-          .filter((item: any) => String(item.id || item._id) !== String(mappedEvent.id))
-          .slice(0, 3)
-          .map((item: any) => mapApiEventToEventItem(item, catalogTickets))
-        setRelated(relatedEvents)
+        // Related events come from the shared catalog cache, usually already warm from Home or Events.
+        loadCatalog()
+          .then((catalog) => {
+            if (controller.signal.aborted) return
+            setRelated(
+              catalog
+                .filter((item) => item.id !== mappedEvent.id && item.category === mappedEvent.category)
+                .filter((item) => +new Date(item.date) >= Date.now())
+                .slice(0, 3),
+            )
+          })
+          .catch(() => {
+            // Related events are optional; the page works without them.
+          })
       } catch (err: any) {
         if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return
         setError(err.response?.data?.message || "Could not load event details.")
@@ -197,15 +202,27 @@ export function EventDetail() {
             <div>
               <h2 className="type-print text-3xl">Organizer</h2>
               <div className="mt-4 flex flex-wrap gap-2">
-                {event.lineup.map((act) => (
-                  <span
-                    key={act}
-                    className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm"
-                  >
-                    <Users className="h-4 w-4 text-muted-2" aria-hidden="true" />
-                    {act}
-                  </span>
-                ))}
+                {event.lineup.map((act) =>
+                  event.organizerId ? (
+                    <Link
+                      key={act}
+                      to={`/organizers/${event.organizerId}`}
+                      className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm transition-colors hover:border-border-strong hover:text-accent"
+                    >
+                      <Users className="h-4 w-4 text-muted-2" aria-hidden="true" />
+                      {act}
+                      <span className="text-muted-2">· More events</span>
+                    </Link>
+                  ) : (
+                    <span
+                      key={act}
+                      className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm"
+                    >
+                      <Users className="h-4 w-4 text-muted-2" aria-hidden="true" />
+                      {act}
+                    </span>
+                  ),
+                )}
               </div>
             </div>
 

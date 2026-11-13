@@ -7,7 +7,7 @@ import { formatCurrency } from "@/lib/utils"
 
 // An event printed as a ticket: photo and title on the body, date and price on the cream stub.
 export const EventCard = memo(function EventCard({ event }: { event: EventItem }) {
-  const hasTickets = event.tiers.length > 0 && event.priceFrom > 0
+  const hasTickets = event.priceFrom > 0
   const place = [event.venue, event.city].filter(Boolean).join(", ")
   const soldOut = event.status === "soldout"
 
@@ -21,6 +21,7 @@ export const EventCard = memo(function EventCard({ event }: { event: EventItem }
           src={event.image || "/placeholder.svg"}
           alt=""
           loading="lazy"
+          decoding="async"
           className={
             "h-full w-full object-cover transition-[filter,transform] duration-500 group-hover:scale-[1.03] " +
             (soldOut ? "grayscale" : "")

@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { ArrowLeft, Check, Info, Loader2, Lock, Receipt, ShieldCheck } from "lucide-react"
 import { TurnstileWidget } from "@/components/TurnstileWidget"
+import { WaitingRoom, type QueueState } from "@/components/WaitingRoom"
 import { Button } from "@/components/ui/Button"
 import { Perforation } from "@/components/ui/Perforation"
 import { useAppDispatch, useAppSelector } from "@/store"
@@ -53,6 +54,8 @@ export function Checkout() {
   const [promoMessage, setPromoMessage] = useState("")
 
   const grandTotal = promoPreview?.grandTotal ?? totalPrice
+  const [queue, setQueue] = useState<QueueState | null>(null)
+  const leftQueue = useRef(false)
 
   const waitForAdmission = async (deviceFingerprint: string) => {
     const eventIds = Array.from(
@@ -64,16 +67,26 @@ export function Checkout() {
     const entryToken = joinResponse.data.data.entryToken
     const deadline = Date.now() + 30 * 60 * 1000
 
-    while (Date.now() < deadline) {
-      const statusResponse = await waitingRoomAPI.getStatus(entryToken)
-      const queue = statusResponse.data.data
-      if (queue.state === "admitted") {
-        return queue.accessToken
+    leftQueue.current = false
+    let startPosition = 0
+    try {
+      while (Date.now() < deadline) {
+        if (leftQueue.current) throw new Error("You left the queue. Your cart is still saved.")
+        const statusResponse = await waitingRoomAPI.getStatus(entryToken)
+        const queue = statusResponse.data.data
+        if (queue.state === "admitted") {
+          return queue.accessToken
+        }
+        startPosition = Math.max(startPosition, Number(queue.position) || 0)
+        setQueue({
+          position: Number(queue.position) || 0,
+          estimatedWaitSeconds: Number(queue.estimatedWaitSeconds) || 0,
+          startPosition,
+        })
+        await new Promise((resolve) => window.setTimeout(resolve, (queue.retryAfterSeconds || 5) * 1000))
       }
-      setStatusText(
-        `You're number ${queue.position} in line. Estimated wait: ${Math.ceil(queue.estimatedWaitSeconds / 60)} min.`,
-      )
-      await new Promise((resolve) => window.setTimeout(resolve, (queue.retryAfterSeconds || 5) * 1000))
+    } finally {
+      setQueue(null)
     }
 
     throw new Error("Your place in the waiting room expired. Please try again.")
@@ -203,6 +216,15 @@ export function Checkout() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      {queue && (
+        <WaitingRoom
+          queue={queue}
+          onLeave={() => {
+            leftQueue.current = true
+            setQueue(null)
+          }}
+        />
+      )}
       <Link
         to="/cart"
         className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"

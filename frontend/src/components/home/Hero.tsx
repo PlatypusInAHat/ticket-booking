@@ -9,7 +9,7 @@ import { formatCurrency } from "@/lib/utils"
 // The featured ticket straddles the band's bottom edge: its top notch sits on the band, its bottom notch on the page.
 function FeaturedTicket({ event }: { event: EventItem }) {
   const place = [event.venue, event.city].filter(Boolean).join(", ")
-  const hasTickets = event.tiers.length > 0 && event.priceFrom > 0
+  const hasTickets = event.priceFrom > 0
 
   return (
     <article className="relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border-strong bg-surface md:flex-row">
@@ -20,6 +20,7 @@ function FeaturedTicket({ event }: { event: EventItem }) {
         <img
           src={event.heroImage || event.image || "/placeholder.svg"}
           alt=""
+          fetchPriority="high"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
         />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background/95 via-background/60 to-transparent px-5 pb-5 pt-16 sm:px-7 sm:pb-6">

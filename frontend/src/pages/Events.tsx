@@ -184,6 +184,7 @@ export function Events() {
         </div>
       ) : filtered.length > 0 ? (
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <h2 className="sr-only">Results</h2>
           {filtered.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}

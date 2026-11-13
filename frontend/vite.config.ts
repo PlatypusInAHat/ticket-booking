@@ -28,6 +28,13 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, "index.html"),
       },
+      output: {
+        // Long-lived vendor chunks: app deploys don't bust the cached framework code.
+        manualChunks: {
+          react: ["react", "react-dom", "react-dom/client", "react-router-dom", "scheduler"],
+          state: ["@reduxjs/toolkit", "react-redux", "axios"],
+        },
+      },
     },
   },
 })

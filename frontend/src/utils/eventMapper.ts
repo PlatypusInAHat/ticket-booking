@@ -61,8 +61,16 @@ export function mapApiEventToEventItem(apiEvent: any, apiTickets: any[] = []): E
     return String(eventId) === String(apiEvent.id || apiEvent._id)
   })
   const tiers = tickets.map(mapApiTicketToTier)
-  const remaining = tiers.reduce((total, tier) => total + Number(tier.remaining || 0), 0)
-  const priceFrom = tiers.length ? Math.min(...tiers.map((tier) => Number(tier.price || 0))) : 0
+  // List responses carry a server-side ticketSummary; detail pages pass the full tier list instead.
+  const summary = tiers.length === 0 ? apiEvent.ticketSummary : undefined
+  const remaining = summary
+    ? Number(summary.remaining || 0)
+    : tiers.reduce((total, tier) => total + Number(tier.remaining || 0), 0)
+  const priceFrom = summary
+    ? Number(summary.minPrice || 0)
+    : tiers.length
+      ? Math.min(...tiers.map((tier) => Number(tier.price || 0)))
+      : 0
   const startDate = toDate(apiEvent.startsAt, apiEvent.date)
   const companyName = apiEvent.company?.name || apiEvent.organizerDetails?.name || "TicketStage"
 
@@ -71,6 +79,7 @@ export function mapApiEventToEventItem(apiEvent: any, apiTickets: any[] = []): E
     slug: apiEvent.slug || apiEvent.id || apiEvent._id,
     title: apiEvent.title || apiEvent.eventName || "Untitled event",
     artist: companyName,
+    organizerId: apiEvent.company?._id || apiEvent.company?.id || (typeof apiEvent.company === "string" ? apiEvent.company : undefined),
     category: eventTypeToCategory[apiEvent.eventType] || "Other",
     date: startDate,
     doorsTime: apiEvent.admission?.gatesOpenAt || startDate,
@@ -82,6 +91,7 @@ export function mapApiEventToEventItem(apiEvent: any, apiTickets: any[] = []): E
     status: statusToEventStatus(apiEvent.status, remaining),
     popular: Boolean(apiEvent.stats?.views > 100 || apiEvent.stats?.soldTickets > 20),
     priceFrom,
+    tierCount: summary ? Number(summary.tierCount || 0) : tiers.length,
     description: stripHtml(apiEvent.description || "Event information is being updated."),
     lineup: [companyName],
     tiers,

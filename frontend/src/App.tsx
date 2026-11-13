@@ -20,14 +20,28 @@ const Checkout = lazy(() => import("@/pages/Checkout").then((module) => ({ defau
 const PaymentResult = lazy(() => import("@/pages/PaymentResult").then((module) => ({ default: module.PaymentResult })))
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then((module) => ({ default: module.AdminDashboard })))
 const ApiManagement = lazy(() => import("@/pages/ApiManagement").then((module) => ({ default: module.ApiManagement })))
+const Organizer = lazy(() => import("@/pages/Organizer").then((module) => ({ default: module.Organizer })))
+const NotificationSettings = lazy(() =>
+  import("@/pages/NotificationSettings").then((module) => ({ default: module.NotificationSettings })),
+)
+const Unsubscribe = lazy(() => import("@/pages/Unsubscribe").then((module) => ({ default: module.Unsubscribe })))
+const NotFound = lazy(() => import("@/pages/NotFound").then((module) => ({ default: module.NotFound })))
 
+// The pages people open next from Home; fetched once the browser is idle so the first click is instant.
+const prefetchCommonRoutes = () => {
+  import("@/pages/Events")
+  import("@/pages/EventDetail")
+  import("@/pages/Cart")
+}
+
+/** Route-level loading: a thin amber strip under the navbar instead of a spinner over a blank page. */
 function PageLoader({ title = "Loading…" }) {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center" role="status">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent/20 border-t-accent" aria-hidden="true" />
-        <p className="text-sm text-muted">{title}</p>
+    <div className="min-h-[50vh]" role="status" aria-label={title}>
+      <div className="fixed inset-x-0 top-16 z-40 h-0.5 overflow-hidden bg-surface-2" aria-hidden="true">
+        <div className="h-full w-1/3 animate-[route-progress_1.1s_ease-in-out_infinite] bg-accent" />
       </div>
+      <span className="sr-only">{title}</span>
     </div>
   )
 }
@@ -70,6 +84,9 @@ export default function App() {
 
     bootstrapProfile()
 
+    const idle = (window as any).requestIdleCallback || ((cb: () => void) => window.setTimeout(cb, 1500))
+    idle(prefetchCommonRoutes)
+
     return () => {
       isMounted = false
     }
@@ -96,10 +113,13 @@ export default function App() {
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/payment/result" element={<PaymentResult />} />
+          <Route path="/organizers/:id" element={<Organizer />} />
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
 
           <Route element={<PrivateRoute />}>
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/account/notifications" element={<NotificationSettings />} />
           </Route>
 
           {["admin", "organizer"].includes(user?.role) && (
@@ -113,7 +133,7 @@ export default function App() {
             </Route>
           )}
 
-          <Route path="*" element={<Home />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </Suspense>

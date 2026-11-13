@@ -127,6 +127,7 @@ export const eventsAPI = {
 
 export const companiesAPI = {
   getAll: (params = {}) => API.get('/companies', { params }),
+  getById: (id, config = {}) => API.get(`/companies/${encodeURIComponent(id)}`, config),
   create: (data) => API.post('/companies', data),
   update: (id, data) => API.put(`/companies/${id}`, data)
 };
@@ -166,7 +167,9 @@ export const notificationsAPI = {
     locale,
     source: 'website-home'
   }),
-  updatePreferences: (data) => API.put('/notifications/preferences', data)
+  getPreferences: () => API.get('/notifications/preferences'),
+  updatePreferences: (data) => API.put('/notifications/preferences', data),
+  unsubscribe: (email, token) => API.post('/notifications/unsubscribe', { email, token })
 };
 
 export const promotionsAPI = {

@@ -67,6 +67,8 @@ export interface EventItem {
   slug: string
   title: string
   artist: string
+  /** Company id of the organizer, when the API exposes it. */
+  organizerId?: string
   category: EventCategory
   date: string // ISO
   doorsTime: string // ISO
@@ -78,6 +80,8 @@ export interface EventItem {
   status: EventStatus
   popular: boolean
   priceFrom: number
+  /** Number of ticket tiers on sale; list pages get it from the server-side ticket summary. */
+  tierCount?: number
   rating?: number
   description: string
   lineup: string[]

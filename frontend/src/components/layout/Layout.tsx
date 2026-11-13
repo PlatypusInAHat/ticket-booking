@@ -10,7 +10,8 @@ export function Layout() {
   }, [pathname])
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    // pb-16 keeps the footer clear of the mobile tab bar.
+    <div className="flex min-h-dvh flex-col pb-16 md:pb-0">
       <Navbar />
       <main className="flex-1 pt-16">
         <Outlet />
