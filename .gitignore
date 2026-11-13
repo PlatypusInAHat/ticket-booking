@@ -31,3 +31,6 @@ yarn-error.log*
 .claude/skills/generated/
 .eslintignore
 infra/
+
+# Impeccable launcher downloads its own binary on first run
+.github/skills/impeccable/scripts/bin/

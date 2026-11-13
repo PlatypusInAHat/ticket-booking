@@ -60,7 +60,8 @@ const SERVICE_ROUTES = [
   },
   {
     name: 'notification-service',
-    prefixes: ['/api/notifications', '/internal/notifications'],
+    // /internal/* routes are service-to-service only and must not be reachable through the public gateway.
+    prefixes: ['/api/notifications'],
     target: normalizeServiceUrl(process.env.NOTIFICATION_SERVICE_URL, 'http://localhost:5105')
   }
 ];
